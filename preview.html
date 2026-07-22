@@ -1,0 +1,3167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>THARUVANA Meelad Fest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --emerald-deep:#0B3D2E; --emerald:#155E43; --emerald-light:#1F7A57;
+  --gold:#C9A227; --gold-light:#E4C767; --crimson:#8B2635;
+  --bg:#F4F5F7; --surface:#FFFFFF; --surface2:#F0EDE3;
+  --text:#1A2332; --muted:#6B7280; --border:rgba(0,0,0,0.08);
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Poppins',sans-serif;}
+.font-display{font-family:'Amiri',serif;}
+.hidden{display:none !important;}
+.muted{color:var(--muted);}
+a{text-decoration:none;color:inherit;}
+button{font-family:inherit;cursor:pointer;border:none;}
+input,select{font-family:inherit;}
+
+/* ---- shapes ---- */
+.arch-top{border-radius:50% 50% 0 0 / 26% 26% 0 0;}
+.tiraz{height:10px;background:repeating-linear-gradient(45deg,var(--gold) 0 8px,var(--emerald) 8px 16px);opacity:.85;}
+
+/* ---- topbar ---- */
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--emerald-deep);box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.icon-btn{background:#0A1A14;color:var(--gold-light);font-size:1.3rem;padding:.5rem;border-radius:.9rem;line-height:1;width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.35);}
+.icon-btn:hover{background:#122a20;}
+.brand{display:flex;align-items:center;gap:.5rem;cursor:pointer;}
+.brand-badge{width:2rem;height:2rem;border-radius:50% 50% 0 0/26% 26% 0 0;background:var(--gold);color:var(--emerald-deep);display:flex;align-items:center;justify-content:center;font-size:.9rem;}
+.brand-title{font-family:'Amiri',serif;font-size:1.05rem;color:var(--gold-light);line-height:1;}
+.brand-sub{font-size:.62rem;color:#9BBFAE;margin-top:.15rem;letter-spacing:.02em;}
+
+/* ---- ticker ---- */
+.ticker{display:none;align-items:stretch;overflow:hidden;background:var(--gold);}
+.ticker-badge{display:flex;align-items:center;gap:.4rem;padding:.35rem .75rem;background:var(--emerald-deep);color:#fff;font-size:.68rem;font-weight:700;letter-spacing:.05em;flex-shrink:0;}
+.ticker-badge.live{background:var(--crimson);}
+.ticker-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.ticker-track{flex:1;overflow:hidden;padding:.35rem 0;}
+.ticker-text{display:inline-block;white-space:nowrap;color:var(--emerald-deep);font-weight:600;font-size:.7rem;animation:scrollTicker 18s linear infinite;padding-left:100%;}
+@keyframes scrollTicker{0%{transform:translateX(0);}100%{transform:translateX(-100%);}}
+
+/* ---- sidebar ---- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45;}
+.sidebar{position:fixed;top:0;left:0;height:100%;width:280px;background:#020617;z-index:50;transform:translateX(-100%);transition:transform .3s ease;display:flex;flex-direction:column;padding:1rem 0;overflow-y:auto;}
+.sidebar.open{transform:translateX(0);}
+#adminSidebar{z-index:90;}
+#adminSidebarOverlay{z-index:89;}
+.sidebar-head{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.25rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:.5rem;}
+.sidebar-logo-box{width:2.6rem;height:2.6rem;border-radius:.85rem;background:linear-gradient(145deg,#0f172a,#10213c);display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#fff;box-shadow:5px 6px 0 #1f9d55;flex-shrink:0;}
+.side-section-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#53627b;font-weight:700;padding:1.1rem 1.25rem .5rem;}
+.side-link{display:flex;align-items:center;gap:.85rem;padding:.85rem 1rem;color:#9aa8c2;font-size:.9rem;border-radius:.9rem;margin:.2rem .6rem;background:transparent;transition:.2s;}
+.side-link:hover{background:#092c2e;color:#7bd99a;}
+.side-link.active{background:#062d2f;color:#80d99c;}
+.side-link .atab-ic{width:2.3rem;height:2.3rem;border-radius:.6rem;font-size:1.05rem;}
+.side-chevron{margin-left:auto;font-size:1.2rem;color:#4fc276;opacity:1;}
+.side-divider{height:1px;background:rgba(255,255,255,.07);margin:1.25rem 1rem;}
+.sidebar-bottom{margin-top:auto;padding:0 .75rem;}
+.sidebar-bottom div{color:#1e2a43;}
+.ic-mono{background:#0b1024;color:#9aa8c2;}
+.side-link.active .atab-ic{background:#168c4b;color:#fff;}
+
+/* ---- hero ---- */
+.hero-card-section{padding:1.25rem 1rem 0;}
+.hero-card{
+  position:relative;min-height:22rem;border-radius:1.75rem;overflow:hidden;
+  display:flex;align-items:flex-end;
+  background:linear-gradient(135deg,var(--emerald-deep),var(--emerald));
+  background-size:cover;background-position:center;
+  box-shadow:0 18px 36px rgba(0,0,0,.28);
+}
+.hero-card-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.78));}
+.hero-card-content{position:relative;z-index:2;padding:1.75rem 1.35rem;}
+.hero-badge{display:inline-flex;align-items:center;gap:.4rem;color:var(--gold-light);font-size:.72rem;font-weight:700;letter-spacing:.08em;margin-bottom:.6rem;}
+.hero-badge span:first-child{font-size:1.1rem;}
+.hero-card-title{font-family:'Playfair Display',serif;color:#fff;font-size:1.9rem;line-height:1.15;margin-bottom:.6rem;}
+.hero-card-sub{color:rgba(255,255,255,.88);font-size:.85rem;line-height:1.5;margin-bottom:1.1rem;max-width:26rem;}
+
+/* ---- counters ---- */
+.counters{max-width:720px;margin:1.5rem auto 0;position:relative;z-index:5;padding:0 1.5rem;display:grid;grid-template-columns:1fr;gap:1rem;}
+.counter-card{border-radius:1rem;padding:1.5rem 1.25rem;text-align:left;box-shadow:0 8px 20px rgba(0,0,0,.35);position:relative;overflow:hidden;color:#fff;}
+.counter-card.c-green{background:linear-gradient(135deg,#1F7A57,#0B3D2E);}
+.counter-card.c-gold{background:linear-gradient(135deg,#E4A63C,#B9781E);}
+.counter-card.c-red{background:linear-gradient(135deg,#D8455B,#8B2635);}
+.counter-icon{font-size:1.3rem;margin-bottom:.6rem;opacity:.95;}
+.counter-icon-bg{position:absolute;right:-.5rem;bottom:-.5rem;font-size:4.5rem;opacity:.14;}
+.counter-value{font-family:'Amiri',serif;font-size:2.1rem;line-height:1;color:#fff;}
+.counter-label{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.85);margin-top:.4rem;}
+
+/* ---- sections ---- */
+.section{max-width:720px;margin:0 auto;padding:2.5rem 1.5rem 0;}
+.section-heading{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;}
+.heading-badge{width:2.5rem;height:2.5rem;border-radius:50% 50% 0 0/26% 26% 0 0;background:var(--emerald-deep);display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--gold);}
+.heading-title{font-size:1.3rem;color:var(--emerald-deep);}
+.heading-sub{font-size:.7rem;color:var(--muted);}
+
+/* ---- leaderboard ---- */
+.leaderboard-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;}
+.leaderboard-rank{width:2.2rem;height:2.2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.9rem;font-weight:700;color:#fff;flex-shrink:0;}
+.leaderboard-rank.rank-1{background:linear-gradient(135deg,#1F7A57,#0B3D2E);font-size:1.1rem;}
+.leaderboard-rank.rank-2{background:linear-gradient(135deg,#3B7CD8,#1E4F97);}
+.leaderboard-rank.rank-3{background:linear-gradient(135deg,#D8455B,#8B2635);}
+.leaderboard-rank.rank-other{background:var(--surface2);color:var(--muted);}
+.leaderboard-main{flex:1;}
+.leaderboard-top{display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:.3rem;}
+.leaderboard-pts{font-family:'JetBrains Mono',monospace;color:var(--emerald-deep);font-weight:600;}
+.leaderboard-track{width:100%;height:.7rem;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;}
+.leaderboard-fill{height:100%;border-radius:999px;transition:width .7s ease;}
+
+/* ---- results portal ---- */
+.tabgroup{display:flex;gap:.5rem;margin-bottom:1rem;}
+.tab{flex:1;padding:.55rem;border-radius:.6rem;font-size:.85rem;font-weight:500;background:rgba(201,162,39,.1);color:var(--muted);}
+.tab.active{background:var(--emerald-deep);color:var(--gold-light);}
+.filters-row{display:grid;grid-template-columns:1fr 1fr auto;gap:.6rem;margin-bottom:.75rem;align-items:center;}
+.result-search-btn{background:linear-gradient(135deg,var(--gold),#8a6d1f);color:#0B3D2E;font-size:1.15rem;}
+.input{width:100%;padding:.55rem .7rem;border-radius:.6rem;border:1px solid var(--gold);background:#fff;color:#111;font-size:.85rem;}
+.search-wrap{margin-bottom:1rem;}
+.results-list{display:flex;flex-direction:column;gap:.5rem;}
+.result-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.7rem .9rem;border-radius:.6rem;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:border-color .15s;}
+.result-row:hover{border-color:var(--gold);}
+.result-row.disabled{opacity:.4;cursor:default;}
+.result-rank{font-size:.72rem;padding:.15rem .55rem;border-radius:999px;font-weight:700;}
+.rank-first{background:rgba(201,162,39,.25);color:#8A6D0E;}
+.rank-second{background:rgba(154,160,166,.25);color:#C9CDD1;}
+.rank-third{background:rgba(176,141,87,.25);color:#D8B98A;}
+.result-name{font-size:.85rem;font-weight:500;flex:1;}
+.result-meta{font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.empty-note{text-align:center;padding:1.75rem;border-radius:.6rem;background:var(--surface);border:1px dashed rgba(201,162,39,.35);color:var(--muted);font-size:.85rem;}
+
+/* ---- gallery ---- */
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;}
+.gallery-tile{aspect-ratio:1/1;border-radius:.6rem;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:.4rem;}
+.gallery-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+.gallery-tile span{position:relative;z-index:1;font-size:.62rem;color:#fff;font-weight:500;line-height:1.15;text-shadow:0 1px 3px rgba(0,0,0,.6);}
+.gallery-tile::after{content:"\1F4F7";position:absolute;top:.35rem;right:.4rem;font-size:.7rem;opacity:.55;z-index:1;}
+
+/* ---- footer ---- */
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:2rem 1rem 3rem;}
+
+/* ---- toast ---- */
+.toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:100;background:var(--emerald-deep);color:var(--gold-light);border:1px solid var(--gold);padding:.65rem 1.1rem;border-radius:.6rem;font-size:.82rem;box-shadow:0 6px 18px rgba(0,0,0,.4);}
+
+/* ---- modal ---- */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:90;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.modal-body{width:100%;max-width:400px;border-radius:1rem;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.poster-head{padding:2.2rem 1.5rem;text-align:center;background:linear-gradient(180deg,var(--emerald-deep),var(--emerald));border-radius:1rem 1rem 0 0 / 30% 30% 0 0;}
+.poster-rank{font-size:.95rem;color:var(--gold-light);font-family:'Amiri',serif;}
+.poster-name{font-size:1.7rem;color:#FAF6EC;font-family:'Amiri',serif;margin-top:.4rem;}
+.poster-code{font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--gold-light);margin-top:.25rem;}
+.poster-event{font-size:.75rem;color:#C9DED2;margin-top:.25rem;}
+.modal-actions{display:flex;gap:.5rem;padding:1rem;background:var(--surface);}
+.btn{padding:.6rem .9rem;border-radius:.6rem;font-size:.82rem;font-weight:500;flex:1;text-align:center;}
+.btn-primary{background:var(--emerald-deep);color:var(--gold-light);}
+.btn-whatsapp{background:#25D366;color:#fff;}
+.btn-ghost{background:rgba(201,162,39,.12);color:var(--gold-light);}
+.modal-close{width:100%;text-align:center;font-size:.72rem;padding:.6rem;background:var(--surface2);color:var(--muted);}
+.gallery-preview{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;}
+.gallery-preview .cap{font-family:'Amiri',serif;font-size:1.3rem;margin-top:.4rem;}
+
+/* ---- admin ---- */
+.admin-screen{position:fixed;inset:0;background:var(--bg);z-index:80;overflow-y:auto;}
+.admin-login-card{max-width:340px;margin:4rem auto;padding:1.5rem;text-align:center;background:var(--bg);}
+.admin-login-badge{width:3.5rem;height:3.5rem;margin:0 auto .75rem;border-radius:50% 50% 0 0/26% 26% 0 0;background:var(--emerald-deep);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--gold);}
+.error{color:var(--crimson);font-size:.75rem;margin-bottom:.5rem;text-align:left;}
+.link-btn{display:block;width:100%;background:none;color:var(--muted);font-size:.78rem;margin-top:.75rem;padding:.4rem;}
+.admin-topbar{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:var(--emerald-deep);z-index:2;}
+.admin-tabs{display:flex;gap:.35rem;overflow-x:auto;padding:.85rem 1rem 0;}
+.atab{flex-shrink:0;padding:.5rem .8rem;border-radius:.6rem;font-size:.72rem;font-weight:500;background:#EEF0F3;color:#4B5563;white-space:nowrap;display:flex;align-items:center;gap:.4rem;}
+.atab-ic{width:1.3rem;height:1.3rem;border-radius:.4rem;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;}
+.ic-green{background:rgba(31,122,87,.35);}
+.ic-blue{background:rgba(59,124,216,.35);}
+.ic-orange{background:rgba(228,166,60,.35);}
+.ic-purple{background:rgba(155,110,224,.35);}
+.ic-pink{background:rgba(216,69,120,.35);}
+.ic-red{background:rgba(216,69,91,.35);}
+.ic-gold{background:rgba(201,162,39,.35);}
+.ic-teal{background:rgba(45,180,170,.35);}
+.atab.active{background:var(--emerald-deep);color:var(--gold-light);}
+.admin-content{max-width:700px;margin:0 auto;padding:1.25rem;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:.9rem;padding:1rem;margin-bottom:.75rem;}
+.card-title{font-size:.85rem;font-weight:600;color:var(--emerald-deep);margin-bottom:.75rem;}
+.field-label{font-size:.7rem;color:var(--muted);margin-bottom:.25rem;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;}
+.row-between{display:flex;align-items:center;justify-content:space-between;gap:.5rem;}
+.chip{font-size:.68rem;padding:.15rem .5rem;border-radius:999px;background:rgba(201,162,39,.18);color:#8A6D0E;}
+.trash-btn{background:none;color:var(--crimson);font-size:1rem;}
+.checkbox-list{max-height:13rem;overflow-y:auto;display:flex;flex-direction:column;gap:.25rem;margin-bottom:.75rem;}
+.checkbox-row{display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;border-radius:.5rem;background:#FAF8F1;font-size:.75rem;color:#333;}
+.checkbox-row.checked{background:#DCEEE2;}
+.checkbox-row.disabled{opacity:.4;}
+.template-row{display:flex;gap:.5rem;margin-bottom:.75rem;}
+.template-swatch{flex:1;padding:.75rem .5rem;border-radius:.6rem;text-align:center;font-size:.7rem;cursor:pointer;border:2px solid transparent;background-size:cover;background-position:center;}
+.template-swatch.selected{border-color:var(--gold);}
+.template-del{position:absolute;top:.15rem;right:.3rem;font-size:.9rem;line-height:1;opacity:.85;background:rgba(0,0,0,.45);border-radius:50%;width:1.3rem;height:1.3rem;display:flex;align-items:center;justify-content:center;}
+
+.poster-carousel{display:flex;gap:.75rem;overflow-x:auto;scroll-snap-type:x mandatory;padding:1rem;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
+.poster-carousel::-webkit-scrollbar{display:none;}
+.poster-card{flex:0 0 76%;aspect-ratio:4/5;scroll-snap-align:center;border-radius:.9rem;background-size:cover;background-position:center;background-color:#0B3D2E;position:relative;border:3px solid transparent;box-shadow:0 6px 18px rgba(0,0,0,.35);overflow:hidden;cursor:pointer;transition:border-color .2s,transform .2s;}
+.poster-card.active{border-color:var(--gold);}
+.poster-card-overlay{position:absolute;left:0;right:0;transform:translateY(-50%);text-align:center;padding:0 .75rem;pointer-events:none;}
+.poster-card-rank{font-size:.8rem;font-family:'Amiri',serif;text-shadow:0 1px 4px rgba(0,0,0,.75);}
+.poster-card-name{font-size:1.35rem;font-weight:700;font-family:'Amiri',serif;text-shadow:0 1px 4px rgba(0,0,0,.75);margin-top:.15rem;line-height:1.15;}
+.poster-card-code{font-size:.68rem;font-family:'JetBrains Mono',monospace;text-shadow:0 1px 4px rgba(0,0,0,.75);margin-top:.2rem;}
+.poster-card-team{font-size:.72rem;text-shadow:0 1px 4px rgba(0,0,0,.75);margin-top:.15rem;}
+.result-card-overlay{position:absolute;left:0;right:0;text-align:center;padding:0 .7rem;pointer-events:none;display:flex;flex-direction:column;}
+.result-card-row{padding:.4rem 0;}
+.result-card-rank{font-size:.6rem;font-family:'Amiri',serif;letter-spacing:.06em;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,.75);}
+.result-card-name{font-size:1rem;font-weight:700;font-family:'Amiri',serif;text-shadow:0 1px 4px rgba(0,0,0,.75);line-height:1.15;margin-top:.1rem;}
+.result-card-meta{font-size:.62rem;text-shadow:0 1px 4px rgba(0,0,0,.75);margin-top:.1rem;}
+
+.id-card-carousel{display:flex;gap:.75rem;overflow-x:auto;scroll-snap-type:x mandatory;padding:1rem;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
+.id-card-carousel::-webkit-scrollbar{display:none;}
+.id-card{flex:0 0 88%;aspect-ratio:1013/638;scroll-snap-align:center;border-radius:.75rem;background-size:cover;background-position:center;background-color:#0B3D2E;position:relative;border:3px solid transparent;box-shadow:0 6px 18px rgba(0,0,0,.35);overflow:hidden;cursor:pointer;transition:border-color .2s;}
+.id-card.active{border-color:var(--gold);}
+.id-card-overlay{position:absolute;left:0;right:0;padding:0 1rem;pointer-events:none;}
+.id-card-name{font-size:1.15rem;font-weight:700;font-family:'Amiri',serif;text-shadow:0 1px 4px rgba(0,0,0,.75);}
+.id-card-code{font-size:.75rem;font-family:'JetBrains Mono',monospace;text-shadow:0 1px 4px rgba(0,0,0,.75);margin-top:.15rem;}
+.id-card-meta{font-size:.72rem;text-shadow:0 1px 4px rgba(0,0,0,.75);margin-top:.1rem;}
+.id-card-prog{font-size:.66rem;text-shadow:0 1px 4px rgba(0,0,0,.75);margin-top:.2rem;opacity:.9;}
+
+.print-cards-sheet{display:none;}
+@media print{
+  body.printing-cards > *:not(.print-cards-sheet){display:none !important;}
+  body.printing-cards .print-cards-sheet{display:flex;flex-wrap:wrap;gap:8mm;padding:10mm;background:#fff;}
+  .print-card-img{width:90mm;height:56.7mm;object-fit:cover;border-radius:3mm;page-break-inside:avoid;box-shadow:none;}
+  @page{size:A4;margin:10mm;}
+}
+.hero-photo-preview{width:100%;aspect-ratio:16/9;border-radius:.7rem;background-size:cover;background-position:center;margin-bottom:.25rem;}
+.export-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem;}
+.export-card{background:var(--surface);border:1px solid var(--gold);border-radius:.8rem;padding:.9rem;text-align:left;}
+.export-card .ic{font-size:1.1rem;margin-bottom:.4rem;}
+.export-card .t{font-size:.8rem;font-weight:500;}
+.export-card .s{font-size:.6rem;color:var(--muted);margin-top:.15rem;}
+.checklist-row{display:flex;justify-content:space-between;padding:.55rem .75rem;border-radius:.5rem;font-size:.72rem;margin-bottom:.3rem;background:var(--surface2);}
+.checklist-row.done{background:rgba(31,122,87,.18);}
+.tick{color:var(--emerald-light);}
+
+/* ---- print sheet (premium) ---- */
+.print-sheet{max-width:560px;background:#fff;color:#111;max-height:85vh;display:flex;flex-direction:column;}
+.print-sheet-bar{display:flex;justify-content:space-between;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #e3dcc5;}
+.print-sheet-bar span{font-size:.8rem;font-weight:600;color:var(--emerald-deep);}
+.print-content{padding:1.5rem;overflow-y:auto;}
+.print-masthead{display:flex;justify-content:space-between;align-items:baseline;font-size:.72rem;color:#444;margin-bottom:.15rem;}
+.print-masthead b{font-weight:700;}
+.print-heading{font-size:1.5rem;font-weight:700;margin:.1rem 0 .9rem;}
+.print-hr{border:none;border-top:1px solid #222;margin-bottom:.9rem;}
+.print-section-row{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #ccc;padding-bottom:.4rem;margin-bottom:.75rem;font-size:.85rem;flex-wrap:wrap;gap:.4rem;}
+.print-section-row b{text-decoration:underline;font-size:.92rem;}
+.print-content table{width:100%;border-collapse:collapse;font-size:.75rem;}
+.print-content th{text-align:left;padding:.4rem .3rem;background:#ececec;border:1px solid #ccc;font-weight:700;}
+.print-content td{text-align:left;padding:.4rem .3rem;border:1px solid #ddd;}
+.print-footnote{text-align:right;font-size:.68rem;color:#888;margin-top:.5rem;}
+
+/* ---- mark entry ---- */
+.status-pill{font-size:.63rem;padding:.15rem .55rem;border-radius:999px;font-weight:600;}
+.status-pending{background:rgba(255,255,255,.08);color:#B7C9BE;}
+.status-published{background:rgba(31,122,87,.25);color:#6FD6A8;}
+.dots-btn{background:none;color:var(--muted);font-size:1.1rem;padding:.2rem .5rem;}
+.dots-menu{position:relative;}
+.dots-dropdown{position:absolute;right:0;top:100%;background:var(--surface2);border:1px solid var(--border);border-radius:.5rem;overflow:hidden;z-index:5;min-width:9rem;}
+.dots-dropdown button{display:block;width:100%;text-align:left;padding:.55rem .8rem;font-size:.75rem;background:none;color:var(--text);}
+.dots-dropdown button:hover{background:rgba(201,162,39,.12);}
+.warn-banner{background:rgba(139,38,53,.1);border:1px solid var(--crimson);color:#8B2635;border-radius:.6rem;padding:.7rem .8rem;font-size:.75rem;margin-bottom:1rem;}
+.judge-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem;}
+.judge-chip{display:flex;align-items:center;gap:.35rem;background:rgba(201,162,39,.18);color:#8A6D0E;padding:.3rem .6rem;border-radius:999px;font-size:.72rem;}
+.judge-chip button{background:none;color:#8A6D0E;font-size:.8rem;padding:0;}
+.marks-table-wrap{overflow-x:auto;margin-bottom:.75rem;}
+.marks-table{width:100%;border-collapse:collapse;font-size:.72rem;}
+.marks-table th,.marks-table td{padding:.4rem;border:1px solid var(--border);text-align:center;white-space:nowrap;}
+.marks-table th{background:var(--surface2);color:var(--emerald-deep);}
+.marks-table input{width:3.5rem;padding:.3rem;border-radius:.4rem;border:1px solid var(--gold);text-align:center;}
+.sort-row{display:flex;gap:.5rem;margin-bottom:.75rem;}
+.sort-btn{flex:1;padding:.4rem;border-radius:.5rem;background:rgba(201,162,39,.1);color:var(--muted);font-size:.7rem;}
+
+/* ---- gallery admin ---- */
+.gallery-admin-tile{position:relative;border-radius:.6rem;overflow:hidden;aspect-ratio:1/1;}
+.gallery-admin-tile img{width:100%;height:100%;object-fit:cover;}
+.gallery-admin-tile .gcap{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:.62rem;padding:.3rem;}
+.gallery-admin-tile .gdel{position:absolute;top:.3rem;right:.3rem;background:rgba(139,38,53,.85);color:#fff;border-radius:50%;width:1.4rem;height:1.4rem;font-size:.75rem;line-height:1;}
+.gallery-admin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;}
+
+/* ---- wide light modal (marks entry) ---- */
+.modal-body.wide-modal{max-width:640px;}
+.marks-modal{background:#fff;color:#111;border-radius:1rem;padding:1.25rem;max-height:85vh;overflow-y:auto;}
+.marks-modal .field-label{color:#777;}
+.marks-modal .muted{color:#888;}
+.marks-modal .judge-chip{background:#EFEADA;color:#0B3D2E;}
+.marks-modal .judge-chip button{color:#0B3D2E;}
+.marks-modal .marks-table th{background:#F0EDE3;color:#333;}
+.marks-modal .marks-table th,.marks-modal .marks-table td{border-color:#E3DCC5;}
+.marks-modal .marks-table input{border-color:#C9A227;color:#111;}
+.marks-modal .sort-btn{background:#F0EDE3;color:#555;}
+.marks-modal .dots-btn{color:#999;}
+.marks-modal .btn-ghost{background:#F0EDE3;color:#333;}
+.marks-modal .warn-banner{background:#FBEAEC;}
+
+/* ---- admin dashboard overview ---- */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.dash-card{background:var(--surface);border-radius:1rem;padding:1.25rem;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+.dash-value{font-size:1.8rem;font-weight:700;color:var(--text);line-height:1;}
+.dash-label{font-size:.78rem;color:var(--muted);margin-top:.4rem;}
+
+@media(min-width:640px){
+  .gallery-grid{grid-template-columns:repeat(4,1fr);}
+}
+@media print{
+  .no-print{display:none !important;}
+  body{background:#fff;color:#111;}
+}
+
+/* ---- explore section ---- */
+html{scroll-behavior:smooth;}
+
+.primary-button{
+  display:inline-flex;align-items:center;gap:.5rem;
+  margin-top:0;padding:.85rem 1.75rem;
+  background:linear-gradient(180deg,var(--gold-light),var(--gold));
+  color:var(--emerald-deep);font-weight:700;font-size:.95rem;
+  border-radius:1rem;text-decoration:none;
+  box-shadow:0 5px 0 #96741d,0 12px 20px rgba(201,162,39,.3);
+  transition:.15s;
+}
+.primary-button:hover{transform:translateY(-2px);box-shadow:0 7px 0 #96741d,0 16px 26px rgba(201,162,39,.4);}
+.primary-button:active{transform:translateY(4px);box-shadow:0 1px 0 #96741d;}
+.primary-button span{font-size:1.1rem;line-height:1;}
+
+.explore-section{margin-top:0;padding:2.75rem 1.25rem;background:#fff;}
+.explore-section h2{
+  text-align:center;font-size:1.9rem;margin-bottom:1.5rem;
+  font-family:"Playfair Display",serif;color:var(--emerald-deep);
+}
+.explore-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;max-width:520px;margin:0 auto;}
+.explore-card{
+  background:#fff;border-radius:1.75rem;padding:1.75rem 1rem;
+  text-decoration:none;color:#071426;text-align:center;
+  border:1px solid #e8edf3;box-shadow:0 15px 30px rgba(0,0,0,.06);
+  transition:.3s;
+}
+.explore-card:hover{transform:translateY(-6px);box-shadow:0 20px 35px rgba(0,0,0,.12);}
+.explore-icon{
+  width:3.75rem;height:3.75rem;margin:0 auto .9rem;border-radius:1.1rem;
+  background:#e8f7ee;display:flex;align-items:center;justify-content:center;
+  font-size:1.7rem;
+}
+.explore-card h3{font-size:1.1rem;margin-bottom:.25rem;}
+.explore-card p{color:#64748b;font-size:.78rem;}
+.explore-stat{cursor:default;}
+.explore-stat:hover{transform:none;box-shadow:0 15px 30px rgba(0,0,0,.06);}
+.explore-stat h3{font-size:1.6rem;font-weight:700;color:var(--emerald-deep);}
+
+</style>
+</head>
+<body>
+
+  <!-- seed data embedded so the page also works when opened directly (file://) without a server -->
+  <script id="seed-data" type="application/json">
+{
+  "hero": {
+    "title": "THARUVANA Meelad Fest",
+    "subtitle": "Jalsa Meelad — August 2 & 3, 2026 (Saturday & Sunday) · THARUVANA",
+    "ayah": "طَلَبُ الْعِلْمِ فَرِيضَةْ عَلَى كُلِّ مُسْلِمِ",
+    "tag1": "Boys & Girls Competitions",
+    "tag2": "4 Categories",
+    "tag3": "Live Results",
+    "posterTemplate": null
+  },
+  "categories": [
+    "Sub Junior",
+    "Junior",
+    "Senior",
+    "Super Senior"
+  ],
+  "limits": {
+    "maxIndividual": 4,
+    "maxGroup": 2
+  },
+  "teams": [
+    {
+      "id": "t1",
+      "name": "Zumurrud Green",
+      "leader": "Aliyar K.",
+      "assistant": "Fahad P.",
+      "color": "#1F7A57"
+    },
+    {
+      "id": "t2",
+      "name": "Dahab Gold",
+      "leader": "Nihal M.",
+      "assistant": "Rizwan T.",
+      "color": "#C9A227"
+    },
+    {
+      "id": "t3",
+      "name": "Yaqoot Crimson",
+      "leader": "Sameer V.",
+      "assistant": "Ashraf N.",
+      "color": "#8B2635"
+    },
+    {
+      "id": "t4",
+      "name": "Lazward Blue",
+      "leader": "Basith K.",
+      "assistant": "Hamza C.",
+      "color": "#2C4B8B"
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "name": "Quran Recitation",
+      "category": "Sub Junior",
+      "type": "Individual",
+      "gender": "General",
+      "status": "pending",
+      "resultStatus": "Published",
+      "judges": []
+    },
+    {
+      "id": "e2",
+      "name": "Mono Act",
+      "category": "Junior",
+      "type": "Individual",
+      "gender": "Boys",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    },
+    {
+      "id": "e3",
+      "name": "Group Nasheed",
+      "category": "Senior",
+      "type": "Group",
+      "gender": "General",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    },
+    {
+      "id": "e4",
+      "name": "Speech (Malayalam)",
+      "category": "Junior",
+      "type": "Individual",
+      "gender": "Girls",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    },
+    {
+      "id": "e5",
+      "name": "Arabic Elocution",
+      "category": "Senior",
+      "type": "Individual",
+      "gender": "General",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    },
+    {
+      "id": "e6",
+      "name": "Drawing",
+      "category": "Sub Junior",
+      "type": "Individual",
+      "gender": "General",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    },
+    {
+      "id": "e7",
+      "name": "Skit",
+      "category": "Super Senior",
+      "type": "Group",
+      "gender": "General",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    },
+    {
+      "id": "e8",
+      "name": "Islamic Quiz",
+      "category": "Junior",
+      "type": "Group",
+      "gender": "General",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    },
+    {
+      "id": "e9",
+      "name": "Nasheed Solo",
+      "category": "Senior",
+      "type": "Individual",
+      "gender": "Boys",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    },
+    {
+      "id": "e10",
+      "name": "Rangoli",
+      "category": "Junior",
+      "type": "Individual",
+      "gender": "Girls",
+      "status": "pending",
+      "resultStatus": "Pending",
+      "judges": []
+    }
+  ],
+  "students": [
+    {
+      "id": "s1",
+      "name": "Muhammad Ayaan",
+      "cls": "5",
+      "phone": "9895000001",
+      "gender": "Boys",
+      "team": "t1",
+      "category": "Sub Junior",
+      "chestNo": "100",
+      "events": [
+        "e1",
+        "e6"
+      ]
+    },
+    {
+      "id": "s2",
+      "name": "Fathima Rizana",
+      "cls": "6",
+      "phone": "9895000002",
+      "gender": "Girls",
+      "team": "t2",
+      "category": "Junior",
+      "chestNo": "200",
+      "events": [
+        "e4",
+        "e10"
+      ]
+    },
+    {
+      "id": "s3",
+      "name": "Abdul Basith",
+      "cls": "9",
+      "phone": "9895000003",
+      "gender": "Boys",
+      "team": "t3",
+      "category": "Senior",
+      "chestNo": "300",
+      "events": [
+        "e5",
+        "e9",
+        "e3"
+      ]
+    },
+    {
+      "id": "s4",
+      "name": "Ameen Siddique",
+      "cls": "6",
+      "phone": "9895000004",
+      "gender": "Boys",
+      "team": "t4",
+      "category": "Junior",
+      "chestNo": "201",
+      "events": [
+        "e2",
+        "e8"
+      ]
+    },
+    {
+      "id": "s5",
+      "name": "Hafsa Nazrin",
+      "cls": "9",
+      "phone": "9895000005",
+      "gender": "Girls",
+      "team": "t1",
+      "category": "Senior",
+      "chestNo": "301",
+      "events": [
+        "e3",
+        "e5"
+      ]
+    }
+  ],
+  "results": {
+    "e1": {
+      "first": {
+        "studentId": "s1"
+      },
+      "second": null,
+      "third": null
+    }
+  },
+  "gallery": [
+    {
+      "id": "g1",
+      "caption": "Opening Ceremony",
+      "color": "#1F7A57",
+      "url": null
+    },
+    {
+      "id": "g2",
+      "caption": "Quran Recitation Stage",
+      "color": "#C9A227",
+      "url": null
+    },
+    {
+      "id": "g3",
+      "caption": "Group Nasheed",
+      "color": "#8B2635",
+      "url": null
+    },
+    {
+      "id": "g4",
+      "caption": "Arabic Elocution",
+      "color": "#2C4B8B",
+      "url": null
+    },
+    {
+      "id": "g5",
+      "caption": "Green Room",
+      "color": "#155E43",
+      "url": null
+    },
+    {
+      "id": "g6",
+      "caption": "Prize Prep",
+      "color": "#9C7A1E",
+      "url": null
+    },
+    {
+      "id": "g7",
+      "caption": "Volunteers",
+      "color": "#6B2E3A",
+      "url": null
+    },
+    {
+      "id": "g8",
+      "caption": "Evening Lights",
+      "color": "#1F4B7A",
+      "url": null
+    },
+    {
+      "id": "g9",
+      "caption": "Registration Desk",
+      "color": "#3A5B4B",
+      "url": null
+    }
+  ],
+  "judges": [
+    "Ustadh Rasheed",
+    "Ustadh Nawfal"
+  ],
+  "marks": {}
+}
+
+  </script>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Top bar -->
+  <header class="topbar no-print">
+    <button id="btnBack" class="icon-btn hidden" aria-label="Back">&#8592;</button>
+    <button id="btnMenu" class="icon-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand" id="brandHome">
+      <div class="brand-title" id="brandTitle" style="font-size:1.15rem">THARUVANA Meelad Fest</div>
+    </div>
+  </header>
+
+  <!-- Live ticker -->
+  <div id="ticker" class="ticker no-print">
+    <span id="tickerBadge" class="ticker-badge">NEXT</span>
+    <div class="ticker-track"><span id="tickerText" class="ticker-text"></span></div>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="sidebarOverlay" class="overlay hidden"></div>
+  <nav id="sidebar" class="sidebar no-print">
+    <div class="sidebar-head">
+      <div style="display:flex;align-items:center;gap:.85rem">
+        <div class="sidebar-logo-box">&#9733;</div>
+        <div>
+          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1.15rem;color:#F2F5F3;line-height:1.15" id="sideBrandTitle">THARUVANA Meelad Fest</div>
+          <div style="font-size:.72rem;color:#8FA6A0;margin-top:.15rem">Madrasa Programme</div>
+        </div>
+      </div>
+      <button id="btnCloseSidebar" class="icon-btn" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="side-section-label">Festival</div>
+    <a href="#top" class="side-link active" data-nav="top"><span class="atab-ic ic-mono">&#8962;</span> Home <span class="side-chevron">&#8250;</span></a>
+    <a href="#standings" class="side-link" data-nav="standings"><span class="atab-ic ic-mono">&#127942;</span> Live Results</a>
+    <a href="#gallery" class="side-link" data-nav="gallery"><span class="atab-ic ic-mono">&#128247;</span> Posters &amp; Gallery</a>
+
+    <div class="side-divider"></div>
+    <a href="#" class="side-link" data-admin-tab="dashboard"><span class="atab-ic ic-mono">&#128274;</span> Admin Login</a>
+
+    <div class="sidebar-bottom">
+      <div class="tiraz" style="margin-bottom:.75rem"></div>
+      <div style="font-size:.75rem;text-align:center">THARUVANA Meelad Fest v1.0</div>
+    </div>
+  </nav>
+
+  <main id="mainScroll">
+
+    <!-- HERO -->
+    <section id="top" class="hero-card-section">
+      <div id="heroCard" class="hero-card">
+        <div class="hero-card-overlay"></div>
+        <div class="hero-card-content">
+          <div class="hero-badge" id="heroBadge"><span>&#9733;</span> <span id="heroBadgeText">ANNUAL FESTIVAL</span></div>
+          <h1 class="hero-card-title" id="posterHeading">THARUVANA Meelad Fest</h1>
+          <p class="hero-card-sub" id="heroSubText">Meelad Festival \u2014 Celebrating Knowledge, Faith &amp; Excellence</p>
+          <a href="#explore" class="primary-button"><span>&#65291;</span> Explore Festival</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPLORE -->
+    <section id="explore" class="explore-section">
+      <div class="explore-grid">
+        <a href="#standings" class="explore-card">
+          <div class="explore-icon">&#128101;</div>
+          <h3>Team</h3>
+          <p>View all teams</p>
+        </a>
+        <a href="#results" class="explore-card">
+          <div class="explore-icon">&#127942;</div>
+          <h3>Events</h3>
+          <p>Festival events</p>
+        </a>
+        <div class="explore-card explore-stat">
+          <div class="explore-icon">&#128193;</div>
+          <h3 id="exploreCategoryCount">0</h3>
+          <p>Categories</p>
+        </div>
+        <div class="explore-card explore-stat">
+          <div class="explore-icon">&#127891;</div>
+          <h3 id="exploreParticipantCount">0</h3>
+          <p>Participants</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- COUNTERS -->
+    <section class="counters">
+      <div class="counter-card c-green"><div class="counter-icon">&#127942;</div><div class="counter-value" id="cntProgrammes">0</div><div class="counter-label">Total Programmes</div><div class="counter-icon-bg">&#127942;</div></div>
+      <div class="counter-card c-gold"><div class="counter-icon">&#128101;</div><div class="counter-value" id="cntStudents">0</div><div class="counter-label">Registered Participants</div><div class="counter-icon-bg">&#128101;</div></div>
+      <div class="counter-card c-red"><div class="counter-icon">&#128681;</div><div class="counter-value" id="cntTeams">0</div><div class="counter-label">Competing Teams</div><div class="counter-icon-bg">&#128681;</div></div>
+    </section>
+
+    <!-- STANDINGS -->
+    <section id="standings" class="section">
+      <div class="section-heading"><div class="heading-badge">&#127942;</div><div><div class="font-display heading-title">Team Points</div><div class="heading-sub">Cumulative points, live</div></div></div>
+      <div id="leaderboard" class="leaderboard"></div>
+    </section>
+
+    <!-- RESULTS SEARCH -->
+    <section id="results" class="section">
+      <div class="section-heading"><div class="heading-badge">&#128269;</div><div><div class="font-display heading-title">Result Download Options</div><div class="heading-sub">Find results by category, programme or name</div></div></div>
+
+      <div class="tabgroup" id="genderTabs">
+        <button class="tab active" data-gender="Boys">Boys</button>
+        <button class="tab" data-gender="Girls">Girls</button>
+      </div>
+
+      <div class="filters-row">
+        <select id="filterCategory" class="input"></select>
+        <select id="filterEvent" class="input"></select>
+        <button id="btnResultSearch" class="icon-btn result-search-btn" aria-label="Show full result" title="Show 1st, 2nd &amp; 3rd together">&#128269;</button>
+      </div>
+
+      <div class="search-wrap">
+        <input id="searchBox" class="input" placeholder="Search by student name or chest number..." />
+      </div>
+
+      <div id="resultsList" class="results-list"></div>
+    </section>
+
+    <!-- GALLERY -->
+    <section id="gallery" class="section">
+      <div class="section-heading"><div class="heading-badge">&#128248;</div><div><div class="font-display heading-title">Event Gallery</div><div class="heading-sub">Photos from the venue</div></div></div>
+      <div id="galleryGrid" class="gallery-grid"></div>
+    </section>
+
+    <footer class="footer no-print">THARUVANA Meelad Fest &middot; Built with care for the Ummah</footer>
+  </main>
+
+  <!-- Victory poster / lightbox modal -->
+  <div id="modalOverlay" class="modal-overlay hidden">
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+
+  <!-- Admin login -->
+  <div id="adminLoginScreen" class="admin-screen hidden">
+    <div class="admin-login-card">
+      <div class="admin-login-badge">&#128737;</div>
+      <div class="font-display" style="font-size:1.4rem;color:var(--emerald-deep)">Admin Mode</div>
+      <div class="muted" style="font-size:.75rem;margin-bottom:1rem">Usthads' Control Panel</div>
+      <input id="adminUser" class="input" placeholder="Username" style="margin-bottom:.5rem" />
+      <input id="adminPass" type="password" class="input" placeholder="Password" style="margin-bottom:.5rem" />
+      <div id="adminError" class="error hidden"></div>
+      <button id="btnAdminLogin" class="btn btn-primary" style="width:100%">Sign In</button>
+      <div class="muted" style="font-size:.68rem;text-align:center;margin-top:1rem">Demo credentials &mdash; admin / meelad786</div>
+      <button id="btnAdminCancel" class="link-btn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Admin dashboard -->
+  <div id="adminScreen" class="admin-screen hidden">
+    <div class="admin-topbar">
+      <div style="display:flex;align-items:center;gap:.4rem">
+        <button id="btnAdminGuestView" class="icon-btn" aria-label="Guest View" title="View as guest (stay logged in)">&#8592;</button>
+        <button id="btnAdminMenu" class="icon-btn" aria-label="Admin Menu">&#9776;</button>
+      </div>
+      <div class="font-display" style="color:var(--gold-light)">&#128737; Admin Control Panel</div>
+      <button id="btnAdminExit" class="btn btn-ghost">Logout</button>
+    </div>
+    <div id="adminContent" class="admin-content"></div>
+  </div>
+
+  <!-- Admin portrait menu (vertical, same design as guest sidebar) -->
+  <div id="adminSidebarOverlay" class="overlay hidden"></div>
+  <nav id="adminSidebar" class="sidebar no-print">
+    <div class="sidebar-head">
+      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1.05rem;color:#F2F5F3">Admin Menu</div>
+      <button id="btnCloseAdminSidebar" class="icon-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="side-section-label">Admin Control</div>
+    <a href="#" class="side-link admin-menu-link active" data-tab="dashboard"><span class="atab-ic ic-mono">&#128202;</span> DASHBOARD</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="poster"><span class="atab-ic ic-mono">&#127942;</span> HOME</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="teams"><span class="atab-ic ic-mono">&#128101;</span> TEAM</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="events"><span class="atab-ic ic-mono">&#127941;</span> PROGRAMME</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="chestno"><span class="atab-ic ic-mono">&#128290;</span> CHESS NO</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="students"><span class="atab-ic ic-mono">&#128100;</span> PARTICIPANTS</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="limits"><span class="atab-ic ic-mono">&#9878;</span> LIMITS</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="markentry"><span class="atab-ic ic-mono">&#127908;</span> MARK ENTRY</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="export"><span class="atab-ic ic-mono">&#127917;</span> GREEN ROOM</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="gallery"><span class="atab-ic ic-mono">&#128248;</span> GALLERY</a>
+    <div class="side-divider"></div>
+    <a href="#" id="btnDrawerLogout" class="side-link"><span class="atab-ic ic-mono">&#128682;</span> Logout</a>
+  </nav>
+
+  <!-- Print sheet -->
+  <div id="printOverlay" class="modal-overlay hidden print-only-overlay">
+    <div class="modal-body print-sheet">
+      <div class="no-print print-sheet-bar">
+        <span id="printTitle"></span>
+        <div>
+          <button id="btnPrintNow" class="btn btn-primary">Print</button>
+          <button id="btnPrintClose" class="btn btn-ghost">Close</button>
+        </div>
+      </div>
+      <div id="printContent" class="print-content"></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+  <script>
+/* ============================================================
+   THARUVANA Meelad Fest — app.js
+   Plain JavaScript, no build step. Data lives in memory (seeded
+   from the JSON embedded in index.html / data.json).
+
+   TO CONNECT FIREBASE LATER: see FIREBASE-SETUP.md. The only
+   places you need to touch are marked with "FIREBASE HOOK" below —
+   swap the in-memory read/write for firebase.database() calls.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  /* ---------------- data layer ---------------- */
+  const seed = JSON.parse(document.getElementById("seed-data").textContent);
+  const DEFAULT_CATEGORY_START = { "Sub Junior": 100, Junior: 200, Senior: 300, "Super Senior": 400 };
+  let state = {
+    hero: seed.hero,
+    categories: seed.categories,
+    categoryStartNumbers: seed.categoryStartNumbers || {},
+    limits: seed.limits,
+    teams: seed.teams,
+    events: seed.events,
+    students: seed.students,
+    results: seed.results,
+    gallery: seed.gallery,
+    marks: seed.marks || {},
+    judges: seed.judges || ["Judge 1"],
+    customTemplates: seed.customTemplates || [],
+    cardTemplates: seed.cardTemplates || [],
+    resultTemplates: seed.resultTemplates || [],
+    chestCounters: seed.chestCounters || {},
+    deletedChestNumbers: seed.deletedChestNumbers || [],
+  };
+
+  function ensureStateDefaults() {
+    state.hero = state.hero || seed.hero;
+    state.categories = state.categories || seed.categories;
+    state.limits = state.limits || seed.limits;
+    state.teams = state.teams || [];
+    state.events = state.events || [];
+    state.students = state.students || [];
+    state.results = state.results || {};
+    state.gallery = state.gallery || [];
+    state.marks = state.marks || {};
+    state.judges = state.judges || ["Judge 1"];
+    state.customTemplates = state.customTemplates || [];
+    state.cardTemplates = state.cardTemplates || [];
+    state.resultTemplates = state.resultTemplates || [];
+    state.chestCounters = state.chestCounters || {};
+    state.deletedChestNumbers = state.deletedChestNumbers || [];
+    state.categoryStartNumbers = state.categoryStartNumbers || {};
+    state.events.forEach((e) => {
+      if (!e.resultStatus) e.resultStatus = state.results[e.id] ? "Published" : "Pending";
+      if (!e.assignedJudges) e.assignedJudges = [...state.judges];
+      e.status = e.status || "pending";
+    });
+    state.students.forEach((s) => { s.events = s.events || []; });
+    // Every category needs a start number. Known legacy categories fall back to
+    // their historical defaults; any brand-new category with no start number yet
+    // gets the next free hundred above every other category's start.
+    state.categories.forEach((c) => {
+      if (state.categoryStartNumbers[c] == null) {
+        if (DEFAULT_CATEGORY_START[c] != null) {
+          state.categoryStartNumbers[c] = DEFAULT_CATEGORY_START[c];
+        } else {
+          const highestStart = Object.values(state.categoryStartNumbers).reduce((m, v) => Math.max(m, v), 0);
+          state.categoryStartNumbers[c] = Math.floor(highestStart / 100) * 100 + 100;
+        }
+      }
+    });
+    // Chest-no counters must never fall behind any number already in use (current
+    // students) or already retired (deleted log) — this is what guarantees numbers
+    // are auto-incrementing only and are never repeated, even across deletions.
+    state.categories.forEach((c) => {
+      const start = state.categoryStartNumbers[c] || 100;
+      const highestUsed = state.students.filter((s) => s.category === c)
+        .reduce((max, s) => Math.max(max, parseInt(s.chestNo, 10) || 0), start - 1);
+      const highestDeleted = state.deletedChestNumbers.filter((d) => d.category === c)
+        .reduce((max, d) => Math.max(max, parseInt(d.chestNo, 10) || 0), start - 1);
+      const floor = Math.max(highestUsed, highestDeleted) + 1;
+      if (!state.chestCounters[c] || state.chestCounters[c] < floor) state.chestCounters[c] = floor;
+    });
+  }
+  ensureStateDefaults();
+
+  /* ---------------- Firebase (Realtime Database) ---------------- */
+  const firebaseConfig = {
+    apiKey: "AIzaSyCrgKwFY55gROH2_FkZlEjyrZw3DmrC2us",
+    authDomain: "meelad-9f4a0.firebaseapp.com",
+    databaseURL: "https://meelad-9f4a0-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "meelad-9f4a0",
+    storageBucket: "meelad-9f4a0.firebasestorage.app",
+    messagingSenderId: "1067848252475",
+    appId: "1:1067848252475:web:1953d18d55fbb967f5301e",
+  };
+  let dataRef = null;
+  let firebaseReady = false;
+  let suppressNextPersist = false;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    dataRef = firebase.database().ref("festData");
+  } catch (err) {
+    console.error("Firebase init failed, running on local data only:", err);
+  }
+
+  const uid = () => Math.random().toString(36).slice(2, 9);
+
+  // Resizes + re-compresses an uploaded image file so it stays small in Firebase
+  // (which is not meant for big binary blobs) while staying visually sharp.
+  function compressImageFile(file, maxDim = 1000, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read file"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Could not load image"));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
+          else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
+          const canvas = document.createElement("canvas");
+          canvas.width = width; canvas.height = height;
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function compressImagePngFile(file, maxDim = 1200) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read file"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Could not load image"));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
+          else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
+          const canvas = document.createElement("canvas");
+          canvas.width = width; canvas.height = height;
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/png")); // PNG keeps transparency, unlike the JPEG compressor above
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  const RANK_POINTS = { first: 10, second: 8, third: 4 };
+  const RANK_LABEL = { first: "1st Place", second: "2nd Place", third: "3rd Place" };
+  const RANK_ICON = { first: "\u{1F947}", second: "\u{1F948}", third: "\u{1F949}" };
+  const ORDINAL = (n) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
+  const GRADE_THRESHOLDS = [{ min: 80, label: "A" }, { min: 60, label: "B" }, { min: 40, label: "C" }];
+  function gradeFor(mark) {
+    if (mark == null) return "-";
+    const g = GRADE_THRESHOLDS.find((t) => mark >= t.min);
+    return g ? g.label : "-";
+  }
+
+  // Chest numbers are auto-increment only and NEVER reused, even after a student
+  // is deleted. state.chestCounters[category] always holds the next number to
+  // hand out; deletions are logged (not rolled back) in state.deletedChestNumbers.
+  function nextChestNo(category) {
+    const start = state.categoryStartNumbers[category] || 100;
+    if (!state.chestCounters[category] || state.chestCounters[category] < start) state.chestCounters[category] = start;
+    const chestNo = String(state.chestCounters[category]);
+    state.chestCounters[category] += 1;
+    return chestNo;
+  }
+  function logDeletedChestNo(student) {
+    state.deletedChestNumbers.unshift({
+      chestNo: student.chestNo, name: student.name, category: student.category, deletedAt: new Date().toISOString(),
+    });
+    if (state.deletedChestNumbers.length > 300) state.deletedChestNumbers.length = 300;
+  }
+
+  // Group-programme leader: the first student of a team registered for a given
+  // Group event is that team's "leader" for it — results only ever show the leader.
+  function isGroupLeader(eventId, studentId) {
+    const student = state.students.find((s) => s.id === studentId);
+    if (!student) return false;
+    const event = state.events.find((e) => e.id === eventId);
+    if (!event || event.type !== "Group") return true;
+    const teammates = state.students.filter((s) => s.team === student.team && s.events.includes(eventId));
+    return teammates.length ? teammates[0].id === studentId : false;
+  }
+  // Participant list for scoring/results purposes: for Group events this collapses
+  // every team down to just its leader, so each team is judged/ranked once.
+  function groupAwareParticipants(eventId) {
+    const event = state.events.find((e) => e.id === eventId);
+    const all = state.students.filter((s) => s.events.includes(eventId));
+    if (!event || event.type !== "Group") return all;
+    return all.filter((s) => isGroupLeader(eventId, s.id));
+  }
+
+  // Writes the whole app state to Firebase so every device/browser sees the same live data.
+  function persist() {
+    if (!dataRef) return;
+    suppressNextPersist = true;
+    dataRef.set(state).catch((err) => {
+      console.error("Firebase write failed:", err);
+      showToast("Could not save to Firebase \u2014 check your connection");
+    });
+  }
+
+  /* ---------------- mark-entry helpers ---------------- */
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  function codeLetterFor(eventId, studentId) {
+    const participants = state.students.filter((s) => s.events.includes(eventId));
+    const idx = participants.findIndex((s) => s.id === studentId);
+    return idx >= 0 ? LETTERS[idx % LETTERS.length] : "-";
+  }
+  function finalMarkFor(eventId, studentId) {
+    const judgeMarks = (state.marks[eventId] || {})[studentId] || {};
+    const vals = Object.values(judgeMarks).filter((v) => v !== "" && v != null && !isNaN(v)).map(Number);
+    if (!vals.length) return null;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
+  }
+  function rankedParticipants(eventId) {
+    const participants = groupAwareParticipants(eventId);
+    return participants
+      .map((s) => ({ student: s, mark: finalMarkFor(eventId, s.id) }))
+      .sort((a, b) => (b.mark ?? -Infinity) - (a.mark ?? -Infinity));
+  }
+  function publishEventResult(eventId) {
+    const ranked = rankedParticipants(eventId).filter((r) => r.mark != null);
+    const result = { first: null, second: null, third: null };
+    ["first", "second", "third"].forEach((rank, i) => {
+      if (ranked[i]) result[rank] = { studentId: ranked[i].student.id };
+    });
+    state.results[eventId] = result;
+    const ev = state.events.find((e) => e.id === eventId);
+    ev.resultStatus = "Published";
+    persist();
+  }
+  function unpublishEventResult(eventId) {
+    delete state.results[eventId];
+    const ev = state.events.find((e) => e.id === eventId);
+    ev.resultStatus = "Pending";
+    persist();
+  }
+
+  /* ---------------- toast ---------------- */
+  let toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.add("hidden"), 2800);
+  }
+
+  /* ---------------- back-navigation stack (for overlay screens) ---------------- */
+  const screenStack = [];
+  const btnBack = document.getElementById("btnBack");
+  function pushScreen(closeFn) {
+    screenStack.push(closeFn);
+    btnBack.classList.remove("hidden");
+  }
+  function popScreen() {
+    const fn = screenStack.pop();
+    if (fn) fn();
+    if (!screenStack.length) btnBack.classList.add("hidden");
+  }
+  btnBack.addEventListener("click", popScreen);
+
+  // swipe right from the left edge to go back
+  let touchStartX = 0, touchStartY = 0;
+  document.addEventListener("touchstart", (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  });
+  document.addEventListener("touchend", (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (dx > 80 && Math.abs(dy) < 60 && touchStartX < 60 && screenStack.length) popScreen();
+  });
+
+  /* ---------------- sidebar ---------------- */
+  const sidebar = document.getElementById("sidebar");
+  const sidebarOverlay = document.getElementById("sidebarOverlay");
+  function openSidebar() { sidebar.classList.add("open"); sidebarOverlay.classList.remove("hidden"); pushScreen(closeSidebar); }
+  function closeSidebar() { sidebar.classList.remove("open"); sidebarOverlay.classList.add("hidden"); }
+  document.getElementById("btnMenu").addEventListener("click", openSidebar);
+  document.getElementById("btnCloseSidebar").addEventListener("click", popScreen);
+  sidebarOverlay.addEventListener("click", popScreen);
+  document.querySelectorAll(".side-link[data-nav]").forEach((a) => a.addEventListener("click", popScreen));
+  document.getElementById("brandHome").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+  /* ---------------- live ticker ---------------- */
+  function renderTicker() {
+    const live = state.events.filter((e) => e.status === "ticked");
+    const upNext = state.events.find((e) => e.status !== "ticked");
+    const badge = document.getElementById("tickerBadge");
+    const text = document.getElementById("tickerText");
+    if (live.length) {
+      badge.textContent = "LIVE";
+      badge.classList.add("live");
+      text.textContent = live.map((e) => `${e.name} \u2014 ${e.category} (${e.gender})`).join("     \u2726     ");
+    } else if (upNext) {
+      badge.textContent = "NEXT";
+      badge.classList.remove("live");
+      text.textContent = `${upNext.name} \u2014 ${upNext.category} (${upNext.gender})`;
+    } else {
+      badge.textContent = "DONE";
+      badge.classList.remove("live");
+      text.textContent = "All programmes completed \u2014 check Live Standings for final results";
+    }
+  }
+
+  /* ---------------- hero ---------------- */
+  function renderHero() {
+    // Page Header (top bar) — independent of the poster text below, always shown
+    const headerText = state.hero.headerText || state.hero.title;
+    document.getElementById("brandTitle").textContent = headerText;
+    document.getElementById("sideBrandTitle").textContent = headerText;
+
+    // Homepage Poster Text (badge + heading + subtitle) — shown/hidden together
+    document.getElementById("posterHeading").textContent = state.hero.title;
+    document.getElementById("heroBadgeText").textContent = state.hero.badge || "ANNUAL FESTIVAL";
+    document.getElementById("heroSubText").textContent = state.hero.subtitle || "";
+
+    const showText = state.hero.showText !== false;
+    document.getElementById("heroBadge").style.display = showText ? "" : "none";
+    document.getElementById("posterHeading").style.display = showText ? "" : "none";
+    document.getElementById("heroSubText").style.display = showText ? "" : "none";
+
+    const card = document.getElementById("heroCard");
+    if (state.hero.photoUrl) {
+      card.style.backgroundImage = `url('${state.hero.photoUrl}')`;
+    } else {
+      card.style.backgroundImage = "";
+    }
+  }
+
+  /* ---------------- counters ---------------- */
+  function renderCounters() {
+    document.getElementById("cntProgrammes").textContent = state.events.length;
+    document.getElementById("cntStudents").textContent = state.students.length;
+    document.getElementById("cntTeams").textContent = state.teams.length;
+    const catCount = document.getElementById("exploreCategoryCount");
+    const partCount = document.getElementById("exploreParticipantCount");
+    if (catCount) catCount.textContent = state.categories.length;
+    if (partCount) partCount.textContent = state.students.length;
+  }
+
+  /* ---------------- team points / leaderboard ---------------- */
+  function computeTeamPoints() {
+    const pts = {};
+    state.teams.forEach((t) => (pts[t.id] = 0));
+    Object.entries(state.results).forEach(([, r]) => {
+      ["first", "second", "third"].forEach((rank) => {
+        const entry = r && r[rank];
+        if (!entry) return;
+        const st = state.students.find((s) => s.id === entry.studentId);
+        if (st) pts[st.team] = (pts[st.team] || 0) + RANK_POINTS[rank];
+      });
+    });
+    return pts;
+  }
+
+  function renderLeaderboard() {
+    const pts = computeTeamPoints();
+    const max = Math.max(1, ...Object.values(pts));
+    const sorted = [...state.teams].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+    document.getElementById("leaderboard").innerHTML = sorted.map((t, i) => `
+      <div class="leaderboard-row">
+        <div class="leaderboard-rank ${i === 0 ? "rank-1" : i === 1 ? "rank-2" : i === 2 ? "rank-3" : "rank-other"}">${i === 0 ? "\u265B" : i + 1}</div>
+        <div class="leaderboard-main">
+          <div class="leaderboard-top"><span>${escapeHtml(t.name)}</span><span class="leaderboard-pts">${pts[t.id] || 0} pts</span></div>
+          <div class="leaderboard-track"><div class="leaderboard-fill" style="width:${Math.max(4, ((pts[t.id] || 0) / max) * 100)}%;background:${t.color}"></div></div>
+        </div>
+      </div>`).join("");
+  }
+
+  /* ---------------- results portal (search + text list) ---------------- */
+  let resultsGender = "Boys";
+  document.querySelectorAll("#genderTabs .tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      resultsGender = btn.dataset.gender;
+      document.querySelectorAll("#genderTabs .tab").forEach((b) => b.classList.toggle("active", b === btn));
+      renderFilters();
+      renderResultsList();
+    });
+  });
+
+  function renderFilters() {
+    const catSel = document.getElementById("filterCategory");
+    catSel.innerHTML = state.categories.map((c) => `<option value="${c}">${c}</option>`).join("");
+    const category = catSel.value || state.categories[0];
+    catSel.value = category;
+
+    const evSel = document.getElementById("filterEvent");
+    const eligible = state.events.filter((e) => e.category === category && (e.gender === resultsGender || e.gender === "General"));
+    evSel.innerHTML = eligible.length
+      ? eligible.map((e) => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join("")
+      : `<option value="">No programmes</option>`;
+  }
+  document.getElementById("filterCategory").addEventListener("change", () => { renderFilters(); renderResultsList(); });
+  document.getElementById("filterEvent").addEventListener("change", renderResultsList);
+  document.getElementById("searchBox").addEventListener("input", renderResultsList);
+  document.getElementById("btnResultSearch").addEventListener("click", () => {
+    const eventId = document.getElementById("filterEvent").value;
+    openResultPosterModal(eventId);
+  });
+
+  function renderResultsList() {
+    const search = document.getElementById("searchBox").value.trim().toLowerCase();
+    const list = document.getElementById("resultsList");
+
+    if (search) {
+      const matches = state.students.filter((s) => s.name.toLowerCase().includes(search) || s.chestNo.toLowerCase().includes(search));
+      list.innerHTML = matches.length
+        ? matches.map((s) => {
+            const team = state.teams.find((t) => t.id === s.team);
+            return `<div class="result-row" data-student="${s.id}"><div><div class="result-name">${escapeHtml(s.name)}</div><div class="result-meta">${s.chestNo} \u00b7 ${s.category} \u00b7 ${team ? escapeHtml(team.name) : ""}</div></div><div class="result-meta">${s.events.length} events \u00b7 tap for ID card</div></div>`;
+          }).join("")
+        : `<div class="empty-note">No students found for "${escapeHtml(search)}".</div>`;
+      list.querySelectorAll(".result-row[data-student]").forEach((row) => {
+        row.addEventListener("click", () => {
+          const student = state.students.find((s) => s.id === row.dataset.student);
+          if (student) openCardModal(student);
+        });
+      });
+      return;
+    }
+
+    const eventId = document.getElementById("filterEvent").value;
+    const event = state.events.find((e) => e.id === eventId);
+    const result = eventId ? state.results[eventId] : null;
+
+    if (!event) { list.innerHTML = `<div class="empty-note">No programmes match this category/gender.</div>`; return; }
+    if (!result) { list.innerHTML = `<div class="empty-note">Results not published yet for ${escapeHtml(event.name)}.</div>`; return; }
+
+    const rows = ["first", "second", "third"].map((rank) => {
+      const entry = result[rank];
+      if (!entry) return "";
+      const st = state.students.find((s) => s.id === entry.studentId);
+      if (!st) return "";
+      const team = state.teams.find((t) => t.id === st.team);
+      return `<div class="result-row" data-rank="${rank}" data-event="${event.id}">
+        <span class="result-rank rank-${rank}">${RANK_ICON[rank]} ${RANK_LABEL[rank]}</span>
+        <span class="result-name">${escapeHtml(st.name)}</span>
+        <span class="result-meta">${st.chestNo}</span>
+      </div>`;
+    }).join("");
+
+    list.innerHTML = rows || `<div class="empty-note">Results not published yet for ${escapeHtml(event.name)}.</div>`;
+
+    list.querySelectorAll(".result-row[data-rank]").forEach((row) => {
+      row.addEventListener("click", () => {
+        const rank = row.dataset.rank;
+        const ev = state.events.find((e) => e.id === row.dataset.event);
+        const entry = state.results[ev.id][rank];
+        const st = state.students.find((s) => s.id === entry.studentId);
+        const team = state.teams.find((t) => t.id === st.team);
+        openPosterModal({ student: st, rank, event: ev, team });
+      });
+    });
+  }
+
+  /* ---------------- poster templates (canvas) ---------------- */
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  // Cover-fits the photo to the frame's canvas size, then draws the
+  // transparent-centre PNG frame on top so the photo shows through the
+  // frame's opening while its decorative border stays fixed.
+  function compositeWithFrame(photoDataUrl) {
+    const frameUrl = state.hero.galleryFrameUrl;
+    if (!frameUrl) return Promise.resolve(photoDataUrl);
+    return Promise.all([loadImage(photoDataUrl), loadImage(frameUrl)]).then(([photo, frame]) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = frame.width; canvas.height = frame.height;
+      const ctx = canvas.getContext("2d");
+      const scale = Math.max(canvas.width / photo.width, canvas.height / photo.height);
+      const w = photo.width * scale, h = photo.height * scale;
+      ctx.drawImage(photo, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.9);
+    });
+  }
+
+  function drawTextBlock(ctx, cx, y, color, rankLabel, line1, line2, line3) {
+    ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0,0,0,.65)"; ctx.shadowBlur = 12;
+    ctx.fillStyle = color; ctx.font = "bold 34px Georgia"; ctx.fillText(rankLabel, cx, y);
+    ctx.font = "bold 60px Georgia"; ctx.fillText(line1, cx, y + 74);
+    ctx.font = "31px Georgia"; ctx.fillText(line2, cx, y + 130);
+    ctx.font = "26px Georgia"; ctx.fillText(line3, cx, y + 173);
+    ctx.shadowBlur = 0;
+  }
+
+  // Returns a Promise<dataURL>. Poster templates are madrasa-designed images
+  // (uploaded via Admin → Poster Templates) — we cover-fit the image onto a
+  // fixed 1080x1350 canvas and print the winner's name/rank/team on top at
+  // the position the admin configured (textY / textColor per template).
+  function drawPoster(payload, templateOverride) {
+    const template = templateOverride || state.hero.posterTemplate;
+    const { rankLabel, line1, line2, line3 } = payload;
+    const custom = template ? state.customTemplates.find((ct) => ct.id === template) : null;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080; canvas.height = 1350;
+    const ctx = canvas.getContext("2d");
+
+    if (custom && custom.imageUrl) {
+      return loadImage(custom.imageUrl).then((img) => {
+        // cover-fit the uploaded template image into the poster canvas
+        const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+        const y = canvas.height * ((custom.textY || 78) / 100);
+        drawTextBlock(ctx, canvas.width / 2, y, custom.textColor || "#FFFFFF", rankLabel, line1, line2, line3);
+        return canvas.toDataURL("image/jpeg", 0.92);
+      });
+    }
+
+    // Fallback so nothing breaks if no template has been uploaded yet —
+    // not offered as a selectable "design", just a plain safety net.
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, "#0B3D2E"); grad.addColorStop(1, "#0A2A20");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#C9A227"; ctx.lineWidth = 6; ctx.strokeRect(36, 36, canvas.width - 72, canvas.height - 72);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#FAF6EC"; ctx.font = "bold 44px Georgia"; ctx.fillText(state.hero.title, canvas.width / 2, 300);
+    drawTextBlock(ctx, canvas.width / 2, canvas.height * 0.6, "#E4C767", rankLabel, line1, line2, line3);
+    return Promise.resolve(canvas.toDataURL("image/png"));
+  }
+
+  function getAllResultTemplates() {
+    return state.resultTemplates.map((t) => ({ id: t.id, label: t.label, imageUrl: t.imageUrl, textY: t.textY, textColor: t.textColor, rowGap: t.rowGap }));
+  }
+
+  // Combined result poster: 1st, 2nd & 3rd winners of one programme stacked
+  // together in a single frame. `winners` is up to 3 entries: {rank, student, team}.
+  function drawResultPoster(event, winners, templateOverride) {
+    const template = templateOverride || state.hero.resultTemplate;
+    const custom = template ? state.resultTemplates.find((rt) => rt.id === template) : null;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080; canvas.height = 1350;
+    const ctx = canvas.getContext("2d");
+
+    const paintBlocks = (startYPct, rowGap, color) => {
+      ctx.textAlign = "center";
+      let y = canvas.height * (startYPct / 100);
+      const gap = rowGap || 150;
+      winners.forEach((w) => {
+        ctx.shadowColor = "rgba(0,0,0,.65)"; ctx.shadowBlur = 10;
+        ctx.fillStyle = color; ctx.font = "bold 26px Georgia"; ctx.fillText(RANK_LABEL[w.rank], canvas.width / 2, y);
+        ctx.font = "bold 44px Georgia"; ctx.fillText(w.student.name, canvas.width / 2, y + 46);
+        ctx.font = "24px Georgia"; ctx.fillText(`${w.student.chestNo} \u00b7 ${w.team ? w.team.name : ""}`, canvas.width / 2, y + 84);
+        ctx.shadowBlur = 0;
+        y += gap;
+      });
+    };
+
+    if (custom && custom.imageUrl) {
+      return loadImage(custom.imageUrl).then((img) => {
+        const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+        paintBlocks(custom.textY || 55, custom.rowGap || 150, custom.textColor || "#FFFFFF");
+        return canvas.toDataURL("image/jpeg", 0.92);
+      });
+    }
+
+    // Fallback design so the feature works even before a result frame template is uploaded.
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, "#0B3D2E"); grad.addColorStop(1, "#0A2A20");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#C9A227"; ctx.lineWidth = 6; ctx.strokeRect(36, 36, canvas.width - 72, canvas.height - 72);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#FAF6EC"; ctx.font = "bold 40px Georgia";
+    wrapText(ctx, event.name, canvas.width - 160).forEach((ln, i) => ctx.fillText(ln, canvas.width / 2, 210 + i * 48));
+    ctx.font = "22px Georgia"; ctx.fillStyle = "#C9A227"; ctx.fillText(event.category.toUpperCase(), canvas.width / 2, 280);
+    paintBlocks(38, 210, "#E4C767");
+    return Promise.resolve(canvas.toDataURL("image/png"));
+  }
+
+  function downloadDataUrl(dataUrl, filename) {
+    const a = document.createElement("a");
+    a.href = dataUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  function wrapText(ctx, text, maxWidth) {
+    const words = text.split(" ");
+    const lines = [];
+    let line = "";
+    words.forEach((w) => {
+      const test = line ? line + " " + w : w;
+      if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w; }
+      else line = test;
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  /* ---- ID / Chest-No Card ----
+     Landscape card (1013x638px \u2248 CR80 badge ratio). Templates are admin-
+     uploaded images (see state.cardTemplates); we print name, chest no,
+     team and the student's registered programme names on top. */
+  function getAllCardTemplates() {
+    return state.cardTemplates.map((t) => ({
+      id: t.id, label: t.label, imageUrl: t.imageUrl, textY: t.textY, textColor: t.textColor,
+    }));
+  }
+
+  function drawIdCard(student, templateOverride) {
+    const template = templateOverride || state.hero.cardTemplate;
+    const custom = template ? state.cardTemplates.find((ct) => ct.id === template) : null;
+    const team = state.teams.find((t) => t.id === student.team);
+    const programmes = student.events.map((id) => state.events.find((e) => e.id === id)).filter(Boolean).map((e) => e.name);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1013; canvas.height = 638;
+    const ctx = canvas.getContext("2d");
+
+    const paint = (img) => {
+      if (img) {
+        const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      } else {
+        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grad.addColorStop(0, "#0B3D2E"); grad.addColorStop(1, "#0A2A20");
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#C9A227"; ctx.lineWidth = 4; ctx.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+        ctx.textAlign = "left"; ctx.fillStyle = "#FAF6EC"; ctx.font = "bold 26px Georgia";
+        ctx.fillText(state.hero.title, 40, 60);
+      }
+      const color = (custom && custom.textColor) || "#FFFFFF";
+      const startY = canvas.height * ((custom && custom.textY ? custom.textY : 55) / 100);
+      ctx.textAlign = "left";
+      ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8;
+      ctx.fillStyle = color; ctx.font = "bold 42px Georgia"; ctx.fillText(student.name, 40, startY);
+      ctx.font = "26px 'JetBrains Mono', monospace"; ctx.fillText(`Chest No: ${student.chestNo}`, 40, startY + 42);
+      ctx.font = "22px Georgia"; ctx.fillText(`${student.category} \u00b7 ${team ? team.name : ""}`, 40, startY + 76);
+      ctx.font = "20px Georgia";
+      const label = "Programmes: " + (programmes.length ? programmes.join(", ") : "\u2014");
+      const lines = wrapText(ctx, label, canvas.width - 80).slice(0, 3);
+      lines.forEach((ln, i) => ctx.fillText(ln, 40, startY + 112 + i * 26));
+      ctx.shadowBlur = 0;
+      return canvas.toDataURL("image/jpeg", 0.92);
+    };
+
+    if (custom && custom.imageUrl) return loadImage(custom.imageUrl).then(paint);
+    return Promise.resolve(paint(null));
+  }
+
+  // Builds a hidden print-only sheet (8 cards per A4 page) for every student
+  // in a category, then triggers the browser's print dialog.
+  function printCategoryCards(category) {
+    if (!category) return showToast("Choose a category first");
+    const students = state.students.filter((s) => s.category === category);
+    if (!students.length) return showToast("No students found in this category");
+    showToast(`Preparing ${students.length} card${students.length > 1 ? "s" : ""}\u2026`);
+    Promise.all(students.map((s) => drawIdCard(s))).then((urls) => {
+      const old = document.querySelector(".print-cards-sheet");
+      if (old) old.remove();
+      const sheet = document.createElement("div");
+      sheet.className = "print-cards-sheet";
+      sheet.innerHTML = urls.map((url) => `<img class="print-card-img" src="${url}" />`).join("");
+      document.body.appendChild(sheet);
+      document.body.classList.add("printing-cards");
+      const cleanup = () => {
+        document.body.classList.remove("printing-cards");
+        sheet.remove();
+        window.removeEventListener("afterprint", cleanup);
+      };
+      window.addEventListener("afterprint", cleanup);
+      setTimeout(() => { window.print(); setTimeout(cleanup, 1000); }, 200);
+    }).catch(() => showToast("Could not prepare cards for printing"));
+  }
+
+  /* ---------------- victory poster modal ---------------- */
+  const modalOverlay = document.getElementById("modalOverlay");
+  const modalBody = document.getElementById("modalBody");
+  function closeModal() { modalOverlay.classList.add("hidden"); modalBody.innerHTML = ""; }
+  modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) popScreen(); });
+
+  function openPosterModal({ student, rank, event, team }) {
+    const templates = getAllTemplates();
+    let selectedTemplate = templates.some((t) => t.id === state.hero.posterTemplate)
+      ? state.hero.posterTemplate : (templates[0] ? templates[0].id : null);
+
+    const cardHtml = (t) => `
+      <div class="poster-card ${t.id === selectedTemplate ? "active" : ""}" data-tpl="${t.id}" style="background-image:url('${t.imageUrl}')">
+        <div class="poster-card-overlay" style="top:${t.textY || 78}%;color:${t.textColor || "#fff"}">
+          <div class="poster-card-rank">${RANK_LABEL[rank]}</div>
+          <div class="poster-card-name">${escapeHtml(student.name)}</div>
+          <div class="poster-card-code">${student.chestNo}</div>
+          <div class="poster-card-team">${escapeHtml(team.name)}</div>
+        </div>
+      </div>`;
+
+    modalBody.innerHTML = `
+      <div class="poster-head arch-top">
+        <div style="font-size:1.4rem;color:var(--gold)">\u2605</div>
+        <div class="poster-rank">${RANK_LABEL[rank]}</div>
+        <div class="poster-name font-display">${escapeHtml(student.name)}</div>
+        <div class="poster-code">${student.chestNo}</div>
+        <div class="poster-event">${escapeHtml(event.name)} \u00b7 ${escapeHtml(team.name)}</div>
+      </div>
+      ${templates.length ? `
+        <div class="field-label" style="padding:.85rem 1rem 0;background:var(--surface)">Swipe to choose a poster design</div>
+        <div class="poster-carousel" id="posterCarousel">${templates.map(cardHtml).join("")}</div>
+      ` : `
+        <div class="empty-note" style="margin:1rem">No poster template has been added yet. Ask your madrasa admin to add one under Admin \u2192 Home Page \u2192 Poster Templates.</div>
+      `}
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnDownloadPoster">\u2B07 Download Poster</button>
+        <button class="btn btn-whatsapp" id="btnSharePoster">\u{1F4AC} Share</button>
+      </div>
+      <button class="modal-close" id="btnClosePoster">Close</button>`;
+    modalOverlay.classList.remove("hidden");
+    pushScreen(closeModal);
+
+    const carousel = document.getElementById("posterCarousel");
+    if (carousel) {
+      const cards = () => Array.from(carousel.querySelectorAll(".poster-card"));
+      const setActive = (tpl) => {
+        selectedTemplate = tpl;
+        cards().forEach((c) => c.classList.toggle("active", c.dataset.tpl === tpl));
+      };
+      cards().forEach((c) => c.addEventListener("click", () => {
+        c.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        setActive(c.dataset.tpl);
+      }));
+      let scrollTimer;
+      carousel.addEventListener("scroll", () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          const mid = carousel.scrollLeft + carousel.clientWidth / 2;
+          let closest = null, closestDist = Infinity;
+          cards().forEach((c) => {
+            const dist = Math.abs((c.offsetLeft + c.offsetWidth / 2) - mid);
+            if (dist < closestDist) { closestDist = dist; closest = c; }
+          });
+          if (closest) setActive(closest.dataset.tpl);
+        }, 100);
+      }, { passive: true });
+    }
+
+    document.getElementById("btnDownloadPoster").addEventListener("click", () => {
+      if (!selectedTemplate) return showToast("No poster template added yet");
+      showToast("Preparing poster\u2026");
+      drawPoster({
+        rankLabel: RANK_LABEL[rank],
+        line1: student.name, line2: student.chestNo, line3: team.name,
+      }, selectedTemplate).then((url) => {
+        downloadDataUrl(url, `${student.chestNo}-${rank}.png`);
+        showToast("Poster downloaded");
+      }).catch(() => showToast("Could not generate poster"));
+    });
+    document.getElementById("btnSharePoster").addEventListener("click", () => {
+      const text = encodeURIComponent(`Alhamdulillah! ${student.name} (${student.chestNo}) secured ${RANK_LABEL[rank]} in ${event.name} at ${state.hero.title}, representing ${team.name}!`);
+      window.open(`https://wa.me/?text=${text}`, "_blank");
+    });
+    document.getElementById("btnClosePoster").addEventListener("click", popScreen);
+  }
+
+  // Combined result modal: shows 1st, 2nd & 3rd winners of one programme together
+  // in a single poster, with a template carousel (admin-managed), download & share.
+  function openResultPosterModal(eventId) {
+    const event = state.events.find((e) => e.id === eventId);
+    if (!event) return showToast("Choose a programme first");
+    const result = state.results[eventId];
+    if (!result) return showToast(`Results not published yet for ${event.name}`);
+
+    const winners = ["first", "second", "third"].map((rank) => {
+      const entry = result[rank];
+      if (!entry) return null;
+      const student = state.students.find((s) => s.id === entry.studentId);
+      if (!student) return null;
+      const team = state.teams.find((t) => t.id === student.team);
+      return { rank, student, team };
+    }).filter(Boolean);
+    if (!winners.length) return showToast("No winners recorded for this programme yet");
+
+    const templates = getAllResultTemplates();
+    let selectedTemplate = templates.some((t) => t.id === state.hero.resultTemplate)
+      ? state.hero.resultTemplate : (templates[0] ? templates[0].id : null);
+
+    const rowsHtml = (color) => winners.map((w) => `
+      <div class="result-card-row">
+        <div class="result-card-rank">${RANK_LABEL[w.rank]}</div>
+        <div class="result-card-name">${escapeHtml(w.student.name)}</div>
+        <div class="result-card-meta">${w.student.chestNo} \u00b7 ${w.team ? escapeHtml(w.team.name) : ""}</div>
+      </div>`).join("");
+
+    const cardHtml = (t) => `
+      <div class="poster-card" data-tpl="${t.id}" style="background-image:url('${t.imageUrl}')">
+        <div class="result-card-overlay" style="top:${t.textY || 55}%;color:${t.textColor || "#fff"}">${rowsHtml()}</div>
+      </div>`;
+
+    modalBody.innerHTML = `
+      <div class="poster-head arch-top">
+        <div style="font-size:1.4rem;color:var(--gold)">\u{1F3C6}</div>
+        <div class="poster-name font-display">${escapeHtml(event.name)}</div>
+        <div class="poster-event">${escapeHtml(event.category)}${event.gender !== "General" ? " \u00b7 " + event.gender : ""}</div>
+      </div>
+      ${templates.length ? `
+        <div class="field-label" style="padding:.85rem 1rem 0;background:var(--surface)">Swipe to choose a result frame design</div>
+        <div class="poster-carousel" id="resultCarousel">${templates.map(cardHtml).join("")}</div>
+      ` : `
+        <div class="card" style="margin:1rem;background:linear-gradient(180deg,#0B3D2E,#0A2A20);border-radius:.9rem;padding:1.5rem 1rem">
+          <div style="text-align:center;color:#E4C767;font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:.75rem">${escapeHtml(state.hero.title)}</div>
+          <div style="color:#FAF6EC">${rowsHtml()}</div>
+        </div>
+        <div class="empty-note" style="margin:0 1rem 1rem">No result frame template uploaded yet. Ask your madrasa admin to add one under Admin \u2192 Home \u2192 Result Templates.</div>
+      `}
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnDownloadResult">\u2B07 Download Poster</button>
+        <button class="btn btn-whatsapp" id="btnShareResult">\u{1F4AC} Share</button>
+      </div>
+      <button class="modal-close" id="btnCloseResult">Close</button>`;
+    modalOverlay.classList.remove("hidden");
+    pushScreen(closeModal);
+
+    const carousel = document.getElementById("resultCarousel");
+    if (carousel) {
+      const cards = () => Array.from(carousel.querySelectorAll(".poster-card"));
+      const setActive = (tpl) => { selectedTemplate = tpl; cards().forEach((c) => c.classList.toggle("active", c.dataset.tpl === tpl)); };
+      setActive(selectedTemplate);
+      cards().forEach((c) => c.addEventListener("click", () => {
+        c.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        setActive(c.dataset.tpl);
+      }));
+      let scrollTimer;
+      carousel.addEventListener("scroll", () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          const mid = carousel.scrollLeft + carousel.clientWidth / 2;
+          let closest = null, closestDist = Infinity;
+          cards().forEach((c) => {
+            const dist = Math.abs((c.offsetLeft + c.offsetWidth / 2) - mid);
+            if (dist < closestDist) { closestDist = dist; closest = c; }
+          });
+          if (closest) setActive(closest.dataset.tpl);
+        }, 100);
+      }, { passive: true });
+    }
+
+    document.getElementById("btnDownloadResult").addEventListener("click", () => {
+      showToast("Preparing result poster\u2026");
+      drawResultPoster(event, winners, selectedTemplate).then((url) => {
+        downloadDataUrl(url, `${event.name.replace(/\s+/g, "-")}-result.png`);
+        showToast("Result poster downloaded");
+      }).catch(() => showToast("Could not generate poster"));
+    });
+    document.getElementById("btnShareResult").addEventListener("click", () => {
+      const summary = winners.map((w) => `${RANK_LABEL[w.rank]}: ${w.student.name} (${w.student.chestNo})`).join(", ");
+      const text = encodeURIComponent(`Alhamdulillah! Results for ${event.name} (${event.category}) at ${state.hero.title} \u2014 ${summary}`);
+      window.open(`https://wa.me/?text=${text}`, "_blank");
+    });
+    document.getElementById("btnCloseResult").addEventListener("click", popScreen);
+  }
+
+  /* ---------------- ID card modal (parent-facing) ---------------- */
+  function openCardModal(student) {
+    const team = state.teams.find((t) => t.id === student.team);
+    const programmes = student.events.map((id) => state.events.find((e) => e.id === id)).filter(Boolean).map((e) => e.name);
+    const templates = getAllCardTemplates();
+    let selectedTemplate = templates.some((t) => t.id === state.hero.cardTemplate)
+      ? state.hero.cardTemplate : (templates[0] ? templates[0].id : null);
+
+    const cardHtml = (t) => `
+      <div class="id-card ${t.id === selectedTemplate ? "active" : ""}" data-tpl="${t.id}" style="background-image:url('${t.imageUrl}')">
+        <div class="id-card-overlay" style="top:${t.textY || 55}%;color:${t.textColor || "#fff"}">
+          <div class="id-card-name">${escapeHtml(student.name)}</div>
+          <div class="id-card-code">Chest No: ${student.chestNo}</div>
+          <div class="id-card-meta">${escapeHtml(student.category)} \u00b7 ${team ? escapeHtml(team.name) : ""}</div>
+          <div class="id-card-prog">${escapeHtml(programmes.join(", ") || "\u2014")}</div>
+        </div>
+      </div>`;
+
+    modalBody.innerHTML = `
+      <div class="poster-head arch-top">
+        <div style="font-size:1.4rem;color:var(--gold)">\u{1F4B3}</div>
+        <div class="poster-name font-display">${escapeHtml(student.name)}</div>
+        <div class="poster-code">Chest No: ${student.chestNo}</div>
+        <div class="poster-event">${escapeHtml(student.category)} \u00b7 ${team ? escapeHtml(team.name) : ""}</div>
+      </div>
+      ${templates.length ? `
+        <div class="field-label" style="padding:.85rem 1rem 0;background:var(--surface)">Swipe to choose a card design</div>
+        <div class="id-card-carousel" id="idCardCarousel">${templates.map(cardHtml).join("")}</div>
+      ` : `
+        <div class="empty-note" style="margin:1rem">No ID card template has been added yet. Ask your madrasa admin to add one under Admin \u2192 ID Cards.</div>
+      `}
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnDownloadCard">\u2B07 Download Card</button>
+        <button class="btn btn-whatsapp" id="btnShareCard">\u{1F4AC} Share</button>
+      </div>
+      <button class="modal-close" id="btnCloseCard">Close</button>`;
+    modalOverlay.classList.remove("hidden");
+    pushScreen(closeModal);
+
+    const carousel = document.getElementById("idCardCarousel");
+    if (carousel) {
+      const cards = () => Array.from(carousel.querySelectorAll(".id-card"));
+      const setActive = (tpl) => {
+        selectedTemplate = tpl;
+        cards().forEach((c) => c.classList.toggle("active", c.dataset.tpl === tpl));
+      };
+      cards().forEach((c) => c.addEventListener("click", () => {
+        c.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        setActive(c.dataset.tpl);
+      }));
+      let scrollTimer;
+      carousel.addEventListener("scroll", () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          const mid = carousel.scrollLeft + carousel.clientWidth / 2;
+          let closest = null, closestDist = Infinity;
+          cards().forEach((c) => {
+            const dist = Math.abs((c.offsetLeft + c.offsetWidth / 2) - mid);
+            if (dist < closestDist) { closestDist = dist; closest = c; }
+          });
+          if (closest) setActive(closest.dataset.tpl);
+        }, 100);
+      }, { passive: true });
+    }
+
+    document.getElementById("btnDownloadCard").addEventListener("click", () => {
+      showToast("Preparing card\u2026");
+      drawIdCard(student, selectedTemplate).then((url) => {
+        downloadDataUrl(url, `${student.chestNo}-idcard.jpg`);
+        showToast("Card downloaded");
+      }).catch(() => showToast("Could not generate card"));
+    });
+    document.getElementById("btnShareCard").addEventListener("click", () => {
+      const text = encodeURIComponent(`${student.name} \u2014 Chest No ${student.chestNo}, ${student.category} at ${state.hero.title}, representing ${team ? team.name : ""}!`);
+      window.open(`https://wa.me/?text=${text}`, "_blank");
+    });
+    document.getElementById("btnCloseCard").addEventListener("click", popScreen);
+  }
+
+  /* ---------------- gallery ---------------- */
+  function renderGallery() {
+    document.getElementById("galleryGrid").innerHTML = state.gallery.map((p) => `
+      <div class="gallery-tile" data-id="${p.id}" style="${p.url ? `background-image:url('${p.url}');background-size:cover;background-position:center` : `background:linear-gradient(160deg, ${p.color}, #0B3D2E)`}">
+        <span>${escapeHtml(p.caption)}</span>
+      </div>`).join("");
+    document.querySelectorAll(".gallery-tile").forEach((tile) => {
+      tile.addEventListener("click", () => {
+        const photo = state.gallery.find((p) => p.id === tile.dataset.id);
+        openGalleryLightbox(photo);
+      });
+    });
+  }
+
+  function openGalleryLightbox(photo) {
+    modalBody.innerHTML = `
+      <div class="gallery-preview" style="${photo.url ? `background-image:url('${photo.url}');background-size:cover;background-position:center` : `background:linear-gradient(160deg, ${photo.color}, #0B3D2E)`}">
+        ${photo.url ? "" : `<div><div style="font-size:2.2rem;opacity:.7">\u{1F5BC}</div><div class="cap font-display">${escapeHtml(photo.caption)}</div></div>`}
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnDownloadPhoto">\u2B07 Download Photo</button>
+        <button class="btn btn-whatsapp" id="btnSharePhoto">\u{1F4AC} Share</button>
+      </div>
+      <button class="modal-close" id="btnCloseGallery">Close</button>`;
+    modalOverlay.classList.remove("hidden");
+    pushScreen(closeModal);
+
+    document.getElementById("btnDownloadPhoto").addEventListener("click", () => {
+      if (photo.url) {
+        downloadDataUrl(photo.url, `${photo.caption.replace(/\s+/g, "-")}.png`);
+        showToast("Photo downloaded");
+      } else {
+        drawPoster({ rankLabel: "MEMORY", line1: photo.caption, line2: "", line3: "", subtitle: "Event Gallery" }).then((url) => {
+          downloadDataUrl(url, `${photo.caption.replace(/\s+/g, "-")}.png`);
+          showToast("Photo downloaded");
+        });
+      }
+    });
+    document.getElementById("btnSharePhoto").addEventListener("click", () => {
+      const text = encodeURIComponent(`Check out this photo from ${state.hero.title} \u2014 "${photo.caption}"`);
+      window.open(`https://wa.me/?text=${text}`, "_blank");
+    });
+    document.getElementById("btnCloseGallery").addEventListener("click", popScreen);
+  }
+
+  /* ---------------- admin: login ---------------- */
+  const ADMIN_USER = "admin";
+  const ADMIN_PASS = "meelad786";
+  const loginScreen = document.getElementById("adminLoginScreen");
+  const adminScreen = document.getElementById("adminScreen");
+  const ADMIN_SESSION_KEY = "meelad_admin_session";
+  function safeStorageGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function safeStorageSet(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* ignore */ } }
+  function safeStorageRemove(key) { try { localStorage.removeItem(key); } catch (e) { /* ignore */ } }
+  let adminAuthed = safeStorageGet(ADMIN_SESSION_KEY) === "1";
+  let pendingAdminTab = "dashboard";
+
+  function closeLoginScreen() { loginScreen.classList.add("hidden"); }
+  function closeAdminScreen() { adminScreen.classList.add("hidden"); }
+
+  function setActiveAdminTab(tab) {
+    document.querySelectorAll(".admin-menu-link").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll(".side-link[data-admin-tab]").forEach((l) => l.classList.toggle("active", l.dataset.adminTab === tab));
+    renderAdminTab(tab);
+  }
+
+  function openAdminEntry(tab) {
+    popScreen(); // close the sidebar (was pushed by openSidebar)
+    pendingAdminTab = tab || "dashboard";
+    if (adminAuthed) {
+      adminScreen.classList.remove("hidden");
+      pushScreen(closeAdminScreen);
+      setActiveAdminTab(pendingAdminTab);
+      return;
+    }
+    document.getElementById("adminUser").value = "";
+    document.getElementById("adminPass").value = "";
+    document.getElementById("adminError").classList.add("hidden");
+    loginScreen.classList.remove("hidden");
+    pushScreen(closeLoginScreen);
+  }
+
+  document.querySelectorAll(".side-link[data-admin-tab]").forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      openAdminEntry(link.dataset.adminTab);
+    });
+  });
+  document.getElementById("btnAdminCancel").addEventListener("click", popScreen);
+  document.getElementById("btnAdminLogin").addEventListener("click", () => {
+    const u = document.getElementById("adminUser").value.trim();
+    const p = document.getElementById("adminPass").value;
+    const errEl = document.getElementById("adminError");
+    if (u === ADMIN_USER && p === ADMIN_PASS) {
+      adminAuthed = true;
+      safeStorageSet(ADMIN_SESSION_KEY, "1");
+      popScreen(); // close login
+      adminScreen.classList.remove("hidden");
+      pushScreen(closeAdminScreen);
+      setActiveAdminTab(pendingAdminTab);
+      showToast("Welcome, Ustadh \u2014 Admin Mode active");
+    } else {
+      errEl.textContent = "Invalid credentials. Try username 'admin' and password 'meelad786'.";
+      errEl.classList.remove("hidden");
+    }
+  });
+  document.getElementById("btnAdminExit").addEventListener("click", () => {
+    adminAuthed = false;
+    safeStorageRemove(ADMIN_SESSION_KEY);
+    popScreen();
+    showToast("Logged out");
+  });
+  document.getElementById("btnAdminGuestView").addEventListener("click", popScreen);
+
+  /* ---------------- admin: portrait drawer menu ---------------- */
+  const adminSidebar = document.getElementById("adminSidebar");
+  const adminSidebarOverlay = document.getElementById("adminSidebarOverlay");
+  function openAdminSidebar() { adminSidebar.classList.add("open"); adminSidebarOverlay.classList.remove("hidden"); pushScreen(closeAdminSidebar); }
+  function closeAdminSidebar() { adminSidebar.classList.remove("open"); adminSidebarOverlay.classList.add("hidden"); }
+  document.getElementById("btnAdminMenu").addEventListener("click", openAdminSidebar);
+  document.getElementById("btnCloseAdminSidebar").addEventListener("click", popScreen);
+  adminSidebarOverlay.addEventListener("click", popScreen);
+  document.getElementById("btnDrawerLogout").addEventListener("click", (e) => {
+    e.preventDefault();
+    adminAuthed = false;
+    safeStorageRemove(ADMIN_SESSION_KEY);
+    popScreen(); // close drawer
+    popScreen(); // close admin screen
+    showToast("Logged out");
+  });
+
+  /* ---------------- admin: tabs ---------------- */
+  const adminContent = document.getElementById("adminContent");
+  document.querySelectorAll(".admin-menu-link").forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      setActiveAdminTab(link.dataset.tab);
+      popScreen(); // close drawer
+    });
+  });
+
+  function renderAdminTab(tab) {
+    if (tab === "dashboard") return renderDashboardTab();
+    if (tab === "poster") return renderPosterTab();
+    if (tab === "idcards") return renderCardsTab();
+    if (tab === "teams") return renderTeamsTab();
+    if (tab === "events") return renderEventsTab();
+    if (tab === "markentry") return renderMarksTab();
+    if (tab === "limits") return renderLimitsTab();
+    if (tab === "students") return renderStudentsTab();
+    if (tab === "chestno") return renderChestNoTab();
+    if (tab === "gallery") return renderGalleryTab();
+    if (tab === "export") return renderExportTab();
+  }
+
+  /* ---- Dashboard tab ---- */
+  function renderDashboardTab() {
+    const marksEntered = Object.values(state.marks).reduce((sum, ev) => sum + Object.keys(ev).length, 0);
+    const resultsPublished = state.events.filter((e) => e.resultStatus === "Published").length;
+    const cards = [
+      { label: "Teams", value: state.teams.length, ic: "&#128101;", cls: "ic-green" },
+      { label: "Categories", value: state.categories.length, ic: "&#128220;", cls: "ic-blue" },
+      { label: "Events", value: state.events.length, ic: "&#127941;", cls: "ic-orange" },
+      { label: "Students", value: state.students.length, ic: "&#128100;", cls: "ic-purple" },
+      { label: "Marks Entered", value: marksEntered, ic: "&#127908;", cls: "ic-pink" },
+      { label: "Results Published", value: resultsPublished, ic: "&#127942;", cls: "ic-red" },
+    ];
+    adminContent.innerHTML = `
+      <div class="dash-grid">
+        ${cards.map((c) => `
+          <div class="dash-card">
+            <div class="atab-ic ${c.cls}" style="width:2.4rem;height:2.4rem;font-size:1.1rem;border-radius:.7rem;margin-bottom:.9rem">${c.ic}</div>
+            <div class="dash-value">${c.value}</div>
+            <div class="dash-label">${c.label}</div>
+          </div>`).join("")}
+      </div>`;
+  }
+
+  /* ---- Poster tab ---- */
+  // Templates are the madrasa's own designed posters (uploaded as images),
+  // not built-in presets — each template carries its imageUrl, textY (where
+  // the winner's name sits, as % from top) and textColor.
+  function getAllTemplates() {
+    return state.customTemplates.map((t) => ({
+      id: t.id, label: t.label, imageUrl: t.imageUrl,
+      textY: t.textY, textColor: t.textColor,
+      bg: t.imageUrl ? `url('${t.imageUrl}') center/cover` : "#0B3D2E",
+      fg: "#fff", custom: true,
+    }));
+  }
+  function renderPosterTab() {
+    const h = state.hero;
+    const allTemplates = getAllTemplates();
+    const resultTemplates = getAllResultTemplates();
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">Page Header</div>
+        <div class="field-label">Shown at the top of every page (menu bar), independent of the poster below.</div>
+        <input id="fHeaderText" class="input" style="margin:.4rem 0 .75rem" value="${escapeAttr(h.headerText || h.title)}" />
+        <button class="btn btn-primary" id="btnSaveHeader" style="width:auto;padding:.5rem .9rem">\u2713 Save Header</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Home Page Poster</div>
+        <div class="field-label">Upload your own designed poster (from Canva, Photoshop, etc.) \u2014 it replaces the whole banner at the top of the home page, exactly as you made it. Each madrasa can upload their own. No poster uploaded yet? A simple text banner is shown instead.</div>
+        <div class="field-label" style="margin-top:.4rem">Poster Heading (also used as a fallback banner, and in WhatsApp share text)</div>
+        <input id="fTitle" class="input" style="margin:.4rem 0 .75rem" value="${escapeAttr(h.title)}" />
+        ${h.photoUrl ? `<div class="hero-photo-preview" style="background-image:url('${h.photoUrl}')"></div>` : ""}
+        <input type="file" id="heroPhotoFile" accept="image/*" class="input" style="margin:.5rem 0;padding:.4rem" />
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-primary" id="btnSaveHeroPhoto" style="width:auto;padding:.5rem .9rem">${h.photoUrl ? "Replace Photo" : "Upload Photo"}</button>
+          ${h.photoUrl ? `<button class="btn btn-ghost" id="btnRemoveHeroPhoto" style="width:auto;padding:.5rem .9rem">Remove</button>` : ""}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Poster Templates</div>
+        <div class="field-label" style="margin-bottom:.5rem">Upload up to 5 of your own designed poster templates (Canva, Photoshop, etc.) \u2014 with your madrasa's name, logo and branding already on them. <b>Recommended size: 1080\u00d71350px (portrait).</b> Leave the bottom \u2248\u2153 of the image clear \u2014 that's where the winner's rank, name, chest number and team are printed automatically when a parent downloads it. Parents swipe through your templates and pick one.</div>
+        <div class="template-row" id="templateRow">
+          ${allTemplates.map((t) => `
+            <div class="template-swatch ${h.posterTemplate === t.id ? "selected" : ""}" data-tpl="${t.id}" style="background:${t.bg};color:${t.fg};text-shadow:0 1px 3px rgba(0,0,0,.6);position:relative">
+              ${t.label}
+              ${t.custom ? `<span class="template-del" data-id="${t.id}">&times;</span>` : ""}
+            </div>`).join("")}
+        </div>
+        <button class="link-btn" id="btnShowAddTemplate" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.5rem">+ Add Template ${state.customTemplates.length}/5</button>
+        <div id="addTemplateForm"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Result Templates (1st, 2nd &amp; 3rd together)</div>
+        <div class="field-label" style="margin-bottom:.5rem">Upload up to 5 result-frame designs \u2014 used on the "Result Download Options" page when someone taps the search icon to see all three winners of a programme in one poster. <b>Recommended size: 1080\u00d71350px (portrait).</b> Leave enough clear space for three stacked winner blocks.</div>
+        <div class="template-row" id="resultTemplateRow">
+          ${resultTemplates.map((t) => `
+            <div class="template-swatch result-template-swatch ${h.resultTemplate === t.id ? "selected" : ""}" data-tpl="${t.id}" style="background:${t.imageUrl ? `url('${t.imageUrl}') center/cover` : "#0B3D2E"};color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);position:relative">
+              ${escapeHtml(t.label)}
+              <span class="template-del result-template-del" data-id="${t.id}">&times;</span>
+            </div>`).join("")}
+        </div>
+        <button class="link-btn" id="btnShowAddResultTemplate" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.5rem">+ Add Result Template ${state.resultTemplates.length}/5</button>
+        <div id="addResultTemplateForm"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Homepage Poster Text</div>
+        <div class="field-label">Badge Label (small text above the heading on the home banner)</div>
+        <input id="fBadge" class="input" style="margin-bottom:.5rem" value="${escapeAttr(h.badge || "ANNUAL FESTIVAL")}" />
+        <div class="field-label">Subtitle (paragraph shown under the heading on the home banner)</div>
+        <input id="fSubtitle" class="input" style="margin-bottom:.5rem" value="${escapeAttr(h.subtitle)}" />
+        <div class="field-label">Arabic Line (reserved for future use \u2014 not shown on posters currently)</div>
+        <input id="fAyah" class="input" style="margin-bottom:.75rem;direction:rtl;font-family:'Amiri',serif" value="${escapeAttr(h.ayah)}" />
+        <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;cursor:pointer">
+          <input type="checkbox" id="fShowText" ${h.showText === false ? "" : "checked"} />
+          <span class="field-label" style="margin:0">Show badge, heading &amp; subtitle text on the home banner (turn off if your poster photo already has this text on it \u2014 the Page Header above is not affected)</span>
+        </label>
+        <button class="btn btn-primary" id="btnSavePoster" style="width:auto;padding:.6rem 1rem">\u2713 Save Poster Text</button>
+      </div>
+      <div class="muted" style="font-size:.72rem">Preview updates live on the Home page as soon as you save.</div>`;
+
+    document.getElementById("btnSaveHeader").addEventListener("click", () => {
+      state.hero.headerText = document.getElementById("fHeaderText").value || state.hero.title;
+      persist(); renderHero();
+      showToast("Page header saved");
+    });
+
+    document.getElementById("btnSaveHeroPhoto").addEventListener("click", () => {
+      const file = document.getElementById("heroPhotoFile").files[0];
+      if (!file) return showToast("Choose a photo first");
+      showToast("Uploading\u2026");
+      compressImageFile(file, 1400, 0.75).then((dataUrl) => {
+        state.hero.photoUrl = dataUrl;
+        persist(); renderHero(); renderPosterTab();
+        showToast("Home page photo updated");
+      }).catch(() => showToast("Could not process that photo"));
+    });
+    const removeBtn = document.getElementById("btnRemoveHeroPhoto");
+    if (removeBtn) removeBtn.addEventListener("click", () => {
+      delete state.hero.photoUrl;
+      persist(); renderHero(); renderPosterTab();
+      showToast("Home page photo removed");
+    });
+
+    document.querySelectorAll("#templateRow .template-swatch").forEach((sw) => {
+      sw.addEventListener("click", () => {
+        document.querySelectorAll("#templateRow .template-swatch").forEach((s) => s.classList.remove("selected"));
+        sw.classList.add("selected");
+      });
+    });
+    document.getElementById("btnShowAddTemplate").addEventListener("click", () => {
+      if (state.customTemplates.length >= 5) return showToast("Maximum 5 custom templates \u2014 delete one first");
+      const holder = document.getElementById("addTemplateForm");
+      if (holder.innerHTML) { holder.innerHTML = ""; return; }
+      holder.innerHTML = `
+        <div class="card" style="margin-bottom:.75rem">
+          <div class="field-label">Template Name</div>
+          <input id="ntName" class="input" placeholder="e.g. Gold Frame" style="margin-bottom:.5rem" />
+          <div class="field-label">Poster Image \u2014 portrait, 1080\u00d71350px recommended</div>
+          <input type="file" id="ntImage" accept="image/*" class="input" style="margin-bottom:.5rem;padding:.4rem" />
+          <div class="grid3" style="margin-bottom:.5rem">
+            <div><div class="field-label">Name Text Colour</div><input id="ntFg" type="color" class="input" value="#FFFFFF" style="padding:.25rem" /></div>
+          </div>
+          <div class="field-label">Text Position (how far down the image the rank/name/team text starts)</div>
+          <input id="ntTextY" type="range" min="30" max="90" value="78" style="width:100%;margin-bottom:.75rem" />
+          <button class="btn btn-primary" id="btnSaveTemplate" style="width:auto;padding:.5rem .9rem">Save Template</button>
+        </div>`;
+      document.getElementById("btnSaveTemplate").addEventListener("click", () => {
+        const name = document.getElementById("ntName").value.trim() || "Custom";
+        const file = document.getElementById("ntImage").files[0];
+        const textY = Number(document.getElementById("ntTextY").value);
+        const textColor = document.getElementById("ntFg").value;
+        if (!file) return showToast("Choose a poster image first");
+        showToast("Compressing template image\u2026");
+        compressImageFile(file, 1350, 0.82).then((imageUrl) => {
+          state.customTemplates.push({ id: "custom-" + uid(), label: name, imageUrl, textY, textColor });
+          persist(); showToast("Template added"); renderPosterTab();
+        }).catch(() => showToast("Could not process that image"));
+      });
+    });
+    document.querySelectorAll("#templateRow .template-del").forEach((b) => b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      state.customTemplates = state.customTemplates.filter((t) => t.id !== b.dataset.id);
+      persist(); renderPosterTab();
+    }));
+
+    document.querySelectorAll("#resultTemplateRow .result-template-swatch").forEach((sw) => {
+      sw.addEventListener("click", () => {
+        document.querySelectorAll("#resultTemplateRow .result-template-swatch").forEach((s) => s.classList.remove("selected"));
+        sw.classList.add("selected");
+      });
+    });
+    document.getElementById("btnShowAddResultTemplate").addEventListener("click", () => {
+      if (state.resultTemplates.length >= 5) return showToast("Maximum 5 result templates \u2014 delete one first");
+      const holder = document.getElementById("addResultTemplateForm");
+      if (holder.innerHTML) { holder.innerHTML = ""; return; }
+      holder.innerHTML = `
+        <div class="card" style="margin-bottom:.75rem">
+          <div class="field-label">Template Name</div>
+          <input id="rtName" class="input" placeholder="e.g. Gold Result Frame" style="margin-bottom:.5rem" />
+          <div class="field-label">Result Frame Image \u2014 portrait, 1080\u00d71350px recommended</div>
+          <input type="file" id="rtImage" accept="image/*" class="input" style="margin-bottom:.5rem;padding:.4rem" />
+          <div class="grid3" style="margin-bottom:.5rem">
+            <div><div class="field-label">Text Colour</div><input id="rtFg" type="color" class="input" value="#FFFFFF" style="padding:.25rem" /></div>
+          </div>
+          <div class="field-label">Text Start Position (how far down the image the 1st place block starts)</div>
+          <input id="rtTextY" type="range" min="20" max="70" value="45" style="width:100%;margin-bottom:.75rem" />
+          <div class="field-label">Row Spacing (gap between the 1st/2nd/3rd blocks)</div>
+          <input id="rtRowGap" type="range" min="120" max="320" value="200" style="width:100%;margin-bottom:.75rem" />
+          <button class="btn btn-primary" id="btnSaveResultTemplate" style="width:auto;padding:.5rem .9rem">Save Template</button>
+        </div>`;
+      document.getElementById("btnSaveResultTemplate").addEventListener("click", () => {
+        const name = document.getElementById("rtName").value.trim() || "Custom";
+        const file = document.getElementById("rtImage").files[0];
+        const textY = Number(document.getElementById("rtTextY").value);
+        const rowGap = Number(document.getElementById("rtRowGap").value);
+        const textColor = document.getElementById("rtFg").value;
+        if (!file) return showToast("Choose a result frame image first");
+        showToast("Compressing template image\u2026");
+        compressImageFile(file, 1350, 0.82).then((imageUrl) => {
+          state.resultTemplates.push({ id: "result-" + uid(), label: name, imageUrl, textY, rowGap, textColor });
+          persist(); showToast("Result template added"); renderPosterTab();
+        }).catch(() => showToast("Could not process that image"));
+      });
+    });
+    document.querySelectorAll("#resultTemplateRow .result-template-del").forEach((b) => b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      state.resultTemplates = state.resultTemplates.filter((t) => t.id !== b.dataset.id);
+      persist(); renderPosterTab();
+    }));
+
+    document.getElementById("btnSavePoster").addEventListener("click", () => {
+      const selectedTpl = document.querySelector("#templateRow .template-swatch.selected");
+      const selectedResultTpl = document.querySelector("#resultTemplateRow .result-template-swatch.selected");
+      state.hero = {
+        ...h,
+        title: document.getElementById("fTitle").value || h.title,
+        badge: document.getElementById("fBadge").value,
+        subtitle: document.getElementById("fSubtitle").value,
+        ayah: document.getElementById("fAyah").value,
+        showText: document.getElementById("fShowText").checked,
+        posterTemplate: selectedTpl ? selectedTpl.dataset.tpl : h.posterTemplate,
+        resultTemplate: selectedResultTpl ? selectedResultTpl.dataset.tpl : h.resultTemplate,
+      };
+      persist();
+      renderHero();
+      showToast("Home page updated");
+    });
+  }
+
+  /* ---- ID Cards tab ---- */
+  function renderCardsTab() {
+    const h = state.hero;
+    const allCards = getAllCardTemplates();
+    adminContent.innerHTML = `
+      <button class="link-btn" id="btnCardsBack" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.75rem">&larr; Back to Chess No</button>
+      <div class="card">
+        <div class="card-title">Chest-No ID Cards</div>
+        <div class="field-label" style="margin-bottom:.5rem">Upload up to 5 of your own designed ID card templates \u2014 landscape, <b>recommended size: 1013\u00d7638px</b> (standard ID-card ratio). Leave a clear area for the student's name, chest number, category/team and their list of programmes \u2014 these are printed automatically for each student.</div>
+        <div class="template-row" id="cardTemplateRow">
+          ${allCards.map((t) => `
+            <div class="template-swatch ${h.cardTemplate === t.id ? "selected" : ""}" data-tpl="${t.id}" style="background:${t.imageUrl ? `url('${t.imageUrl}') center/cover` : "#0B3D2E"};color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);position:relative;min-height:2.6rem">
+              ${escapeHtml(t.label)}
+              <span class="template-del" data-id="${t.id}">&times;</span>
+            </div>`).join("")}
+        </div>
+        <button class="link-btn" id="btnShowAddCard" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.5rem">+ Add Card Template ${state.cardTemplates.length}/5</button>
+        <div id="addCardForm"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Bulk Print by Category (A4)</div>
+        <div class="field-label" style="margin-bottom:.5rem">Pick a category \u2014 every registered student in it gets their ID card printed on A4 sheets, 8 cards per page.</div>
+        <select id="cardCategoryPick" class="input" style="margin-bottom:.5rem">
+          ${state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)} (${state.students.filter((s) => s.category === c).length} students)</option>`).join("")}
+        </select>
+        <button class="btn btn-primary" id="btnPrintCategoryCards" style="width:auto;padding:.5rem .9rem">\u{1F5A8} Print All (A4)</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Download / Test a Card</div>
+        <div class="field-label" style="margin-bottom:.5rem">Pick a registered student to preview and download their ID card with the template above.</div>
+        <select id="cardStudentPick" class="input" style="margin-bottom:.5rem">
+          <option value="">Choose a student\u2026</option>
+          ${state.students.map((s) => `<option value="${s.id}">${escapeHtml(s.name)} \u2014 ${s.chestNo}</option>`).join("")}
+        </select>
+        <button class="btn btn-primary" id="btnDownloadTestCard" style="width:auto;padding:.5rem .9rem">\u2B07 Download Card</button>
+      </div>`;
+
+    document.querySelectorAll("#cardTemplateRow .template-swatch").forEach((sw) => {
+      sw.addEventListener("click", () => {
+        document.querySelectorAll("#cardTemplateRow .template-swatch").forEach((s) => s.classList.remove("selected"));
+        sw.classList.add("selected");
+        state.hero.cardTemplate = sw.dataset.tpl;
+        persist();
+      });
+    });
+    document.getElementById("btnShowAddCard").addEventListener("click", () => {
+      if (state.cardTemplates.length >= 5) return showToast("Maximum 5 card templates \u2014 delete one first");
+      const holder = document.getElementById("addCardForm");
+      if (holder.innerHTML) { holder.innerHTML = ""; return; }
+      holder.innerHTML = `
+        <div class="card" style="margin-bottom:.75rem">
+          <div class="field-label">Template Name</div>
+          <input id="ctName" class="input" placeholder="e.g. Gold Card" style="margin-bottom:.5rem" />
+          <div class="field-label">Card Image \u2014 landscape, 1013\u00d7638px recommended</div>
+          <input type="file" id="ctImage" accept="image/*" class="input" style="margin-bottom:.5rem;padding:.4rem" />
+          <div class="grid3" style="margin-bottom:.5rem">
+            <div><div class="field-label">Text Colour</div><input id="ctFg" type="color" class="input" value="#FFFFFF" style="padding:.25rem" /></div>
+          </div>
+          <div class="field-label">Text Position (how far down the card the name block starts)</div>
+          <input id="ctTextY" type="range" min="20" max="80" value="55" style="width:100%;margin-bottom:.75rem" />
+          <button class="btn btn-primary" id="btnSaveCardTemplate" style="width:auto;padding:.5rem .9rem">Save Template</button>
+        </div>`;
+      document.getElementById("btnSaveCardTemplate").addEventListener("click", () => {
+        const name = document.getElementById("ctName").value.trim() || "Custom";
+        const file = document.getElementById("ctImage").files[0];
+        const textY = Number(document.getElementById("ctTextY").value);
+        const textColor = document.getElementById("ctFg").value;
+        if (!file) return showToast("Choose a card image first");
+        showToast("Compressing template image\u2026");
+        compressImageFile(file, 1013, 0.85).then((imageUrl) => {
+          state.cardTemplates.push({ id: "card-" + uid(), label: name, imageUrl, textY, textColor });
+          persist(); showToast("Card template added"); renderCardsTab();
+        }).catch(() => showToast("Could not process that image"));
+      });
+    });
+    document.querySelectorAll("#cardTemplateRow .template-del").forEach((b) => b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      state.cardTemplates = state.cardTemplates.filter((t) => t.id !== b.dataset.id);
+      persist(); renderCardsTab();
+    }));
+    document.getElementById("btnPrintCategoryCards").addEventListener("click", () => {
+      const category = document.getElementById("cardCategoryPick").value;
+      printCategoryCards(category);
+    });
+    document.getElementById("btnDownloadTestCard").addEventListener("click", () => {
+      const sid = document.getElementById("cardStudentPick").value;
+      const student = state.students.find((s) => s.id === sid);
+      if (!student) return showToast("Pick a student first");
+      showToast("Preparing card\u2026");
+      drawIdCard(student).then((url) => {
+        downloadDataUrl(url, `${student.chestNo}-idcard.jpg`);
+        showToast("Card downloaded");
+      }).catch(() => showToast("Could not generate card"));
+    });
+    document.getElementById("btnCardsBack").addEventListener("click", () => setActiveAdminTab("chestno"));
+  }
+
+  /* ---- Teams tab ---- */
+  function renderTeamsTab() {
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">New Team</div>
+        <div class="grid2" style="margin-bottom:.5rem">
+          <input id="tName" class="input" placeholder="Team Name" />
+          <input id="tColor" type="color" class="input" value="#155E43" style="padding:.25rem" />
+        </div>
+        <div class="grid2" style="margin-bottom:.75rem">
+          <input id="tLeader" class="input" placeholder="Team Leader" />
+          <input id="tAssistant" class="input" placeholder="Assistant Leader" />
+        </div>
+        <button class="btn btn-primary" id="btnAddTeam" style="width:auto;padding:.6rem 1rem">+ Add Team</button>
+      </div>
+      <div id="teamsListWrap"></div>`;
+    renderTeamsList();
+    document.getElementById("btnAddTeam").addEventListener("click", () => {
+      const name = document.getElementById("tName").value.trim();
+      if (!name) return showToast("Team name is required");
+      state.teams.push({
+        id: uid(), name,
+        color: document.getElementById("tColor").value,
+        leader: document.getElementById("tLeader").value,
+        assistant: document.getElementById("tAssistant").value,
+      });
+      persist(); renderCounters(); renderLeaderboard(); renderTeamsTab();
+      showToast("Team added");
+    });
+  }
+  function renderTeamsList() {
+    document.getElementById("teamsListWrap").innerHTML = state.teams.map((t) => `
+      <div class="card">
+        <div class="row-between">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span style="width:.75rem;height:.75rem;border-radius:50%;background:${t.color};display:inline-block"></span>
+            <div><div style="font-size:.85rem;font-weight:500">${escapeHtml(t.name)}</div>
+            <div class="muted" style="font-size:.7rem">Leader: ${escapeHtml(t.leader || "\u2014")} \u00b7 Asst: ${escapeHtml(t.assistant || "\u2014")}</div></div>
+          </div>
+          <button class="trash-btn" data-id="${t.id}">\u{1F5D1}</button>
+        </div>
+      </div>`).join("");
+    document.querySelectorAll("#teamsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
+      state.teams = state.teams.filter((t) => t.id !== b.dataset.id);
+      persist(); renderCounters(); renderLeaderboard(); renderTeamsTab();
+    }));
+  }
+
+  /* ---- Events tab ---- */
+  function renderEventsTab() {
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">New Programme</div>
+        <input id="evName" class="input" placeholder="Programme Name" style="margin-bottom:.5rem" />
+        <div class="grid3" style="margin-bottom:.75rem">
+          <select id="evCategory" class="input">${state.categories.map((c) => `<option>${c}</option>`).join("")}</select>
+          <select id="evType" class="input"><option>Individual</option><option>Group</option></select>
+          <select id="evGender" class="input"><option>General</option><option>Boys</option><option>Girls</option></select>
+        </div>
+        <button class="btn btn-primary" id="btnAddEvent" style="width:auto;padding:.6rem 1rem">+ Add Programme</button>
+      </div>
+      <div id="eventsListWrap"></div>`;
+    renderEventsList();
+    document.getElementById("btnAddEvent").addEventListener("click", () => {
+      const name = document.getElementById("evName").value.trim();
+      if (!name) return showToast("Programme name is required");
+      state.events.push({
+        id: uid(), name,
+        category: document.getElementById("evCategory").value,
+        type: document.getElementById("evType").value,
+        gender: document.getElementById("evGender").value,
+        status: "pending",
+      });
+      persist(); renderCounters(); renderTicker(); renderFilters(); renderResultsList(); renderEventsTab();
+      showToast("Programme added");
+    });
+  }
+  function renderEventsList() {
+    document.getElementById("eventsListWrap").innerHTML = state.events.map((e) => {
+      const participants = state.students.filter((s) => s.events.includes(e.id));
+      return `<div class="card">
+        <div class="row-between">
+          <div>
+            <div style="font-size:.85rem;font-weight:500">${escapeHtml(e.name)} ${e.status === "ticked" ? '<span class="tick">\u2713</span>' : ""}</div>
+            <div class="muted" style="font-size:.7rem">${e.category} \u00b7 ${e.type} \u00b7 ${e.gender} \u00b7 ${participants.length} registered \u00b7 <span style="color:${e.resultStatus === "Published" ? "var(--emerald-light)" : "var(--muted)"}">${e.resultStatus}</span></div>
+          </div>
+          <button class="trash-btn" data-id="${e.id}">\u{1F5D1}</button>
+        </div>
+      </div>`;
+    }).join("");
+    document.querySelectorAll("#eventsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
+      state.events = state.events.filter((e) => e.id !== b.dataset.id);
+      persist(); renderCounters(); renderTicker(); renderFilters(); renderResultsList(); renderEventsTab();
+    }));
+  }
+  /* ---- Mark Entry tab ---- */
+  function renderMarksTab() {
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">Judges Panel</div>
+        <div class="judge-chips" id="judgesChips">
+          ${state.judges.map((j) => `<span class="judge-chip">${escapeHtml(j)} <button data-judge="${escapeAttr(j)}">&times;</button></span>`).join("")}
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <input id="newJudge" class="input" placeholder="Judge name" style="flex:1" />
+          <button class="btn btn-primary" id="btnAddJudge" style="width:auto;padding:.5rem .9rem">+ Add</button>
+        </div>
+      </div>
+      <div class="marks-table-wrap">
+        <table class="marks-table">
+          <thead><tr><th>Competition</th><th>Category</th><th>Gender</th><th>Status</th><th></th></tr></thead>
+          <tbody id="marksTableBody"></tbody>
+        </table>
+      </div>`;
+
+    document.getElementById("btnAddJudge").addEventListener("click", () => {
+      const v = document.getElementById("newJudge").value.trim();
+      if (!v) return;
+      if (!state.judges.includes(v)) state.judges.push(v);
+      persist(); renderMarksTab();
+    });
+    document.querySelectorAll("#judgesChips [data-judge]").forEach((b) => b.addEventListener("click", () => {
+      state.judges = state.judges.filter((j) => j !== b.dataset.judge);
+      state.events.forEach((e) => { e.assignedJudges = e.assignedJudges.filter((j) => j !== b.dataset.judge); });
+      persist(); renderMarksTab();
+    }));
+
+    document.getElementById("marksTableBody").innerHTML = state.events.map((e) => `
+      <tr>
+        <td style="text-align:left">${escapeHtml(e.name)}</td>
+        <td>${e.category}</td>
+        <td>${e.gender}</td>
+        <td><span class="status-pill ${e.resultStatus === "Published" ? "status-published" : "status-pending"}">${e.resultStatus}</span></td>
+        <td><button class="dots-btn" data-open="${e.id}">\u22EF</button></td>
+      </tr>`).join("");
+    document.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => openMarksModal(b.dataset.open)));
+  }
+
+  function openMarksModal(eventId) {
+    const event = state.events.find((e) => e.id === eventId);
+    if (!state.marks[eventId]) state.marks[eventId] = {};
+    let sortMode = "code";
+
+    function getSortedParticipants() {
+      const participants = groupAwareParticipants(eventId);
+      if (sortMode === "marks") {
+        return [...participants].sort((a, b) => (finalMarkFor(eventId, b.id) ?? -Infinity) - (finalMarkFor(eventId, a.id) ?? -Infinity));
+      }
+      return [...participants].sort((a, b) => codeLetterFor(eventId, a.id).localeCompare(codeLetterFor(eventId, b.id)));
+    }
+
+    function draw() {
+      const rows = getSortedParticipants();
+      modalBody.innerHTML = `
+        <div class="marks-modal">
+          <div class="row-between" style="margin-bottom:.75rem">
+            <div style="font-weight:600;font-size:.95rem">${escapeHtml(event.name)} \u2014 ${event.category}${event.gender !== "General" ? " (" + event.gender + " Only)" : ""}</div>
+            <button class="dots-btn" id="meClose" style="font-size:1.2rem">&times;</button>
+          </div>
+          ${event.resultStatus === "Published" ? `<div class="warn-banner">\u26A0 Result Published. Editing marks might affect the live leaderboard.</div>` : ""}
+          ${event.type === "Group" ? `<div class="muted" style="font-size:.7rem;margin-bottom:.5rem">\u2139 Group programme \u2014 each team is scored once, under its team leader (first member registered).</div>` : ""}
+          <div class="field-label">Judges</div>
+          <div class="judge-chips">
+            ${state.judges.map((j) => `<span class="judge-chip" data-toggle-judge="${escapeAttr(j)}" style="cursor:pointer;${event.assignedJudges.includes(j) ? "" : "opacity:.4"}">${escapeHtml(j)}</span>`).join("") || '<span class="muted" style="font-size:.72rem">Add judges in the panel above first.</span>'}
+          </div>
+          <div class="marks-table-wrap" style="margin-top:.5rem">
+            <table class="marks-table">
+              <thead><tr><th>Chest #</th><th>Code</th>${event.assignedJudges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Final</th></tr></thead>
+              <tbody>
+                ${rows.map((student) => `
+                  <tr>
+                    <td>${student.chestNo}</td>
+                    <td>${codeLetterFor(eventId, student.id)}</td>
+                    ${event.assignedJudges.map((j) => `<td><input type="number" class="me-mark-input" data-student="${student.id}" data-judge="${escapeAttr(j)}" value="${(state.marks[eventId][student.id] || {})[j] ?? ""}" /></td>`).join("")}
+                    <td><b>${finalMarkFor(eventId, student.id) ?? "\u2014"}</b></td>
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>
+          <div class="sort-row">
+            <button class="sort-btn" id="sortByCode">Sort by Code Letter</button>
+            <button class="sort-btn" id="sortByMarks">Sort by Marks</button>
+          </div>
+          <div class="modal-actions" style="background:transparent;padding:0 0 .6rem">
+            <button class="btn btn-ghost" id="meCancel">Cancel</button>
+            <button class="btn btn-primary" id="meSubmit">Submit Marks</button>
+          </div>
+          <div class="modal-actions" style="background:transparent;padding:0">
+            ${event.resultStatus === "Published"
+              ? `<button class="btn" style="background:rgba(139,38,53,.12);color:var(--crimson)" id="meUnpublish">Unpublish</button>`
+              : `<button class="btn btn-primary" id="mePublish">\u2713 Publish Result</button>`}
+          </div>
+        </div>`;
+
+      document.getElementById("meClose").addEventListener("click", popScreen);
+      document.getElementById("meCancel").addEventListener("click", popScreen);
+      document.getElementById("sortByCode").addEventListener("click", () => { sortMode = "code"; draw(); });
+      document.getElementById("sortByMarks").addEventListener("click", () => { sortMode = "marks"; draw(); });
+      document.querySelectorAll("[data-toggle-judge]").forEach((chip) => chip.addEventListener("click", () => {
+        const j = chip.dataset.toggleJudge;
+        if (event.assignedJudges.includes(j)) event.assignedJudges = event.assignedJudges.filter((x) => x !== j);
+        else event.assignedJudges.push(j);
+        draw();
+      }));
+      function collectMarks() {
+        document.querySelectorAll(".me-mark-input").forEach((inp) => {
+          const sid = inp.dataset.student, j = inp.dataset.judge;
+          if (!state.marks[eventId][sid]) state.marks[eventId][sid] = {};
+          state.marks[eventId][sid][j] = inp.value === "" ? "" : Number(inp.value);
+        });
+      }
+      document.getElementById("meSubmit").addEventListener("click", () => {
+        collectMarks(); persist(); showToast("Marks saved"); draw();
+      });
+      const publishBtn = document.getElementById("mePublish");
+      if (publishBtn) publishBtn.addEventListener("click", () => {
+        collectMarks();
+        publishEventResult(eventId);
+        renderLeaderboard(); renderResultsList(); renderTicker();
+        showToast(`${event.name} result published \u2014 now live on the home page`);
+        draw(); renderMarksTab();
+      });
+      const unpublishBtn = document.getElementById("meUnpublish");
+      if (unpublishBtn) unpublishBtn.addEventListener("click", () => {
+        unpublishEventResult(eventId);
+        renderLeaderboard(); renderResultsList(); renderTicker();
+        showToast(`${event.name} result unpublished`);
+        draw(); renderMarksTab();
+      });
+    }
+
+    draw();
+    modalOverlay.classList.remove("hidden");
+    modalBody.classList.add("wide-modal");
+    pushScreen(() => { modalOverlay.classList.add("hidden"); modalBody.classList.remove("wide-modal"); modalBody.innerHTML = ""; });
+  }
+
+  /* ---- Limits tab ---- */
+  function renderLimitsTab() {
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">Global Event Limits</div>
+        <div class="grid2" style="margin-bottom:.75rem">
+          <div><div class="field-label">Max Individual Events</div><input id="limIndiv" type="number" min="0" class="input" value="${state.limits.maxIndividual}" /></div>
+          <div><div class="field-label">Max Group Events</div><input id="limGroup" type="number" min="0" class="input" value="${state.limits.maxGroup}" /></div>
+        </div>
+        <button class="btn btn-primary" id="btnSaveLimits" style="width:auto;padding:.6rem 1rem">Save Limits</button>
+      </div>`;
+    document.getElementById("btnSaveLimits").addEventListener("click", () => {
+      state.limits = {
+        maxIndividual: Number(document.getElementById("limIndiv").value) || 0,
+        maxGroup: Number(document.getElementById("limGroup").value) || 0,
+      };
+      persist(); showToast("Limits updated");
+    });
+  }
+
+  /* ---- Students / Participants tab ---- */
+  let studentForm = { name: "", cls: "", phone: "", gender: "Boys", category: state.categories[0], team: state.teams[0] ? state.teams[0].id : "", events: [] };
+  let studentsView = { mode: "list", id: null };
+
+  function eligibleEventsFor(gender, category) {
+    return state.events.filter((e) => e.category === category && (e.gender === gender || e.gender === "General"));
+  }
+
+  function renderStudentsTab() {
+    if (studentsView.mode === "profile" && state.students.some((s) => s.id === studentsView.id)) {
+      return renderStudentProfile(studentsView.id);
+    }
+    studentsView = { mode: "list", id: null };
+    studentForm.team = studentForm.team || (state.teams[0] ? state.teams[0].id : "");
+    const eligible = eligibleEventsFor(studentForm.gender, studentForm.category);
+    const selIndiv = studentForm.events.filter((id) => state.events.find((e) => e.id === id)?.type === "Individual").length;
+    const selGroup = studentForm.events.filter((id) => state.events.find((e) => e.id === id)?.type === "Group").length;
+
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">Register Student</div>
+        <div class="grid2" style="margin-bottom:.5rem">
+          <input id="sName" class="input" placeholder="Full Name" value="${escapeAttr(studentForm.name)}" />
+          <input id="sClass" class="input" placeholder="Class" value="${escapeAttr(studentForm.cls)}" />
+        </div>
+        <input id="sPhone" class="input" placeholder="Phone" style="margin-bottom:.5rem" value="${escapeAttr(studentForm.phone)}" />
+        <div class="grid3" style="margin-bottom:.6rem">
+          <select id="sGender" class="input">
+            <option ${studentForm.gender === "Boys" ? "selected" : ""}>Boys</option>
+            <option ${studentForm.gender === "Girls" ? "selected" : ""}>Girls</option>
+          </select>
+          <select id="sCategory" class="input">${state.categories.map((c) => `<option ${studentForm.category === c ? "selected" : ""}>${c}</option>`).join("")}</select>
+          <select id="sTeam" class="input">${state.teams.map((t) => `<option value="${t.id}" ${studentForm.team === t.id ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("")}</select>
+        </div>
+        <div class="row-between" style="margin-bottom:.4rem">
+          <span class="muted" style="font-size:.68rem">Eligible Programmes (${studentForm.category}, ${studentForm.gender}/General)</span>
+          <span class="muted" style="font-size:.65rem;font-family:'JetBrains Mono',monospace">${selIndiv}/${state.limits.maxIndividual} indiv \u00b7 ${selGroup}/${state.limits.maxGroup} group</span>
+        </div>
+        <div class="checkbox-list" id="checkList">
+          ${eligible.length === 0 ? `<div class="muted" style="font-size:.72rem;font-style:italic">No programmes match this category/gender.</div>` :
+            eligible.map((ev) => {
+              const checked = studentForm.events.includes(ev.id);
+              const disabled = !checked && ((ev.type === "Individual" && selIndiv >= state.limits.maxIndividual) || (ev.type === "Group" && selGroup >= state.limits.maxGroup));
+              return `<label class="checkbox-row ${checked ? "checked" : ""} ${disabled ? "disabled" : ""}">
+                <input type="checkbox" data-ev="${ev.id}" data-type="${ev.type}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} />
+                ${escapeHtml(ev.name)} <span style="margin-left:auto;font-size:.6rem;text-transform:uppercase">${ev.type}</span>
+              </label>`;
+            }).join("")}
+        </div>
+        <button class="btn btn-primary" id="btnAddStudent" style="width:auto;padding:.6rem 1rem">+ Register &amp; Generate Chest No.</button>
+      </div>
+      <div style="font-size:.75rem;font-weight:500;color:var(--gold-light);margin:1rem 0 .5rem">Registered Students (${state.students.length})</div>
+      <div class="muted" style="font-size:.68rem;margin:-.35rem 0 .6rem">Tap a student to view/edit their profile and programmes.</div>
+      <div id="studentsListWrap"></div>`;
+
+    renderStudentsList();
+
+    document.getElementById("sName").addEventListener("input", (e) => { studentForm.name = e.target.value; });
+    document.getElementById("sClass").addEventListener("input", (e) => { studentForm.cls = e.target.value; });
+    document.getElementById("sPhone").addEventListener("input", (e) => { studentForm.phone = e.target.value; });
+    document.getElementById("sGender").addEventListener("change", (e) => { studentForm.gender = e.target.value; studentForm.events = []; renderStudentsTab(); });
+    document.getElementById("sCategory").addEventListener("change", (e) => { studentForm.category = e.target.value; studentForm.events = []; renderStudentsTab(); });
+    document.getElementById("sTeam").addEventListener("change", (e) => { studentForm.team = e.target.value; });
+    document.querySelectorAll("#checkList input[type=checkbox]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const evId = cb.dataset.ev;
+        if (cb.checked) {
+          const type = cb.dataset.type;
+          const count = studentForm.events.filter((id) => state.events.find((e) => e.id === id)?.type === type).length;
+          const limit = type === "Individual" ? state.limits.maxIndividual : state.limits.maxGroup;
+          if (count >= limit) { cb.checked = false; showToast("Maximum event limit reached for this student"); return; }
+          studentForm.events.push(evId);
+        } else {
+          studentForm.events = studentForm.events.filter((id) => id !== evId);
+        }
+        renderStudentsTab();
+      });
+    });
+    document.getElementById("btnAddStudent").addEventListener("click", () => {
+      const name = studentForm.name.trim();
+      if (!name) return showToast("Student name is required");
+      if (!studentForm.team) return showToast("Please select a team");
+      const chestNo = nextChestNo(studentForm.category);
+      state.students.push({
+        id: uid(), name, cls: studentForm.cls, phone: studentForm.phone,
+        gender: studentForm.gender, team: studentForm.team, category: studentForm.category, chestNo, events: [...studentForm.events],
+      });
+      persist(); renderCounters();
+      showToast(`Student registered \u2014 chest no. ${chestNo}`);
+      studentForm.name = ""; studentForm.cls = ""; studentForm.phone = ""; studentForm.events = [];
+      renderStudentsTab();
+    });
+  }
+
+  function renderStudentsList() {
+    document.getElementById("studentsListWrap").innerHTML = state.students.map((s) => {
+      const team = state.teams.find((t) => t.id === s.team);
+      return `<div class="card student-card" data-open="${s.id}" style="cursor:pointer">
+        <div class="row-between">
+          <div>
+            <div style="font-size:.85rem;font-weight:500">${escapeHtml(s.name)} <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--gold)">${s.chestNo}</span></div>
+            <div class="muted" style="font-size:.7rem">${s.category} \u00b7 ${s.gender} \u00b7 ${team ? escapeHtml(team.name) : ""} \u00b7 ${s.events.length} events</div>
+          </div>
+          <button class="trash-btn" data-id="${s.id}">\u{1F5D1}</button>
+        </div>
+      </div>`;
+    }).join("");
+    document.querySelectorAll("#studentsListWrap .student-card").forEach((card) => card.addEventListener("click", (e) => {
+      if (e.target.closest(".trash-btn")) return;
+      studentsView = { mode: "profile", id: card.dataset.open };
+      renderStudentsTab();
+    }));
+    document.querySelectorAll("#studentsListWrap .trash-btn").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const student = state.students.find((s) => s.id === b.dataset.id);
+      if (student) logDeletedChestNo(student);
+      state.students = state.students.filter((s) => s.id !== b.dataset.id);
+      persist(); renderCounters(); renderStudentsTab();
+    }));
+  }
+
+  // Student profile screen \u2014 view/edit name, class, phone, category, team and
+  // programmes for an already-registered student, or delete them entirely.
+  function renderStudentProfile(studentId) {
+    const student = state.students.find((s) => s.id === studentId);
+    if (!student) { studentsView = { mode: "list", id: null }; return renderStudentsTab(); }
+
+    const eligible = eligibleEventsFor(student.gender, student.category);
+    const selIndiv = student.events.filter((id) => state.events.find((e) => e.id === id)?.type === "Individual").length;
+    const selGroup = student.events.filter((id) => state.events.find((e) => e.id === id)?.type === "Group").length;
+
+    adminContent.innerHTML = `
+      <button class="link-btn" id="btnProfileBack" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.75rem">&larr; Back to list</button>
+      <div class="card">
+        <div class="card-title">Student Profile \u2014 <span style="font-family:'JetBrains Mono',monospace;color:var(--gold)">${student.chestNo}</span></div>
+        <div class="grid2" style="margin-bottom:.5rem">
+          <input id="pName" class="input" placeholder="Full Name" value="${escapeAttr(student.name)}" />
+          <input id="pClass" class="input" placeholder="Class" value="${escapeAttr(student.cls || "")}" />
+        </div>
+        <input id="pPhone" class="input" placeholder="Phone" style="margin-bottom:.5rem" value="${escapeAttr(student.phone || "")}" />
+        <div class="grid3" style="margin-bottom:.6rem">
+          <select id="pGender" class="input">
+            <option ${student.gender === "Boys" ? "selected" : ""}>Boys</option>
+            <option ${student.gender === "Girls" ? "selected" : ""}>Girls</option>
+          </select>
+          <select id="pCategory" class="input">${state.categories.map((c) => `<option ${student.category === c ? "selected" : ""}>${c}</option>`).join("")}</select>
+          <select id="pTeam" class="input">${state.teams.map((t) => `<option value="${t.id}" ${student.team === t.id ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("")}</select>
+        </div>
+        <div class="muted" style="font-size:.65rem;margin-bottom:.6rem">Changing category/gender refreshes the eligible programme list below \u2014 save to apply.</div>
+        <div class="row-between" style="margin-bottom:.4rem">
+          <span class="muted" style="font-size:.68rem">Programmes (${student.category}, ${student.gender}/General)</span>
+          <span class="muted" style="font-size:.65rem;font-family:'JetBrains Mono',monospace">${selIndiv}/${state.limits.maxIndividual} indiv \u00b7 ${selGroup}/${state.limits.maxGroup} group</span>
+        </div>
+        <div class="checkbox-list" id="pCheckList">
+          ${eligible.length === 0 ? `<div class="muted" style="font-size:.72rem;font-style:italic">No programmes match this category/gender.</div>` :
+            eligible.map((ev) => {
+              const checked = student.events.includes(ev.id);
+              const disabled = !checked && ((ev.type === "Individual" && selIndiv >= state.limits.maxIndividual) || (ev.type === "Group" && selGroup >= state.limits.maxGroup));
+              const leaderBadge = ev.type === "Group" && checked
+                ? (isGroupLeader(ev.id, student.id) ? ` <span class="status-pill status-published" style="font-size:.55rem">TEAM LEADER</span>` : ` <span class="status-pill status-pending" style="font-size:.55rem">MEMBER</span>`)
+                : "";
+              return `<label class="checkbox-row ${checked ? "checked" : ""} ${disabled ? "disabled" : ""}">
+                <input type="checkbox" data-ev="${ev.id}" data-type="${ev.type}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} />
+                ${escapeHtml(ev.name)}${leaderBadge} <span style="margin-left:auto;font-size:.6rem;text-transform:uppercase">${ev.type}</span>
+              </label>`;
+            }).join("")}
+        </div>
+        <div class="muted" style="font-size:.63rem;margin:.3rem 0 .75rem">For group programmes, whichever member was registered first is the team leader \u2014 only the leader appears in published results.</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btnSaveProfile" style="width:auto;padding:.6rem 1rem">\u2713 Save Changes</button>
+          <button class="btn" id="btnDeleteProfile" style="width:auto;padding:.6rem 1rem;background:rgba(139,38,53,.12);color:var(--crimson)">\u{1F5D1} Delete Student</button>
+        </div>
+      </div>`;
+
+    // Local edit buffer so toggling checkboxes / switching category doesn't touch
+    // Firebase until "Save Changes" is pressed.
+    let draft = { name: student.name, cls: student.cls || "", phone: student.phone || "", gender: student.gender, category: student.category, team: student.team, events: [...student.events] };
+
+    document.getElementById("btnProfileBack").addEventListener("click", () => { studentsView = { mode: "list", id: null }; renderStudentsTab(); });
+    document.getElementById("pName").addEventListener("input", (e) => { draft.name = e.target.value; });
+    document.getElementById("pClass").addEventListener("input", (e) => { draft.cls = e.target.value; });
+    document.getElementById("pPhone").addEventListener("input", (e) => { draft.phone = e.target.value; });
+    document.getElementById("pTeam").addEventListener("change", (e) => { draft.team = e.target.value; });
+    document.getElementById("pGender").addEventListener("change", (e) => {
+      draft.gender = e.target.value; draft.events = [];
+      Object.assign(student, draft); renderStudentProfile(studentId); // live-refresh eligible list only, not yet saved to Firebase
+    });
+    document.getElementById("pCategory").addEventListener("change", (e) => {
+      draft.category = e.target.value; draft.events = [];
+      Object.assign(student, draft); renderStudentProfile(studentId);
+    });
+    document.querySelectorAll("#pCheckList input[type=checkbox]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const evId = cb.dataset.ev;
+        if (cb.checked) {
+          const type = cb.dataset.type;
+          const count = draft.events.filter((id) => state.events.find((e) => e.id === id)?.type === type).length;
+          const limit = type === "Individual" ? state.limits.maxIndividual : state.limits.maxGroup;
+          if (count >= limit) { cb.checked = false; showToast("Maximum event limit reached for this student"); return; }
+          draft.events.push(evId);
+        } else {
+          draft.events = draft.events.filter((id) => id !== evId);
+        }
+        Object.assign(student, draft); renderStudentProfile(studentId);
+      });
+    });
+    document.getElementById("btnSaveProfile").addEventListener("click", () => {
+      if (!draft.name.trim()) return showToast("Student name is required");
+      if (!draft.team) return showToast("Please select a team");
+      Object.assign(student, { name: draft.name.trim(), cls: draft.cls, phone: draft.phone, gender: draft.gender, category: draft.category, team: draft.team, events: [...draft.events] });
+      persist(); renderCounters();
+      showToast("Student profile updated");
+      renderStudentProfile(studentId);
+    });
+    document.getElementById("btnDeleteProfile").addEventListener("click", () => {
+      logDeletedChestNo(student);
+      state.students = state.students.filter((s) => s.id !== studentId);
+      persist(); renderCounters();
+      showToast("Student deleted");
+      studentsView = { mode: "list", id: null };
+      renderStudentsTab();
+    });
+  }
+
+  /* ---- Chess No tab ---- */
+  function renderChestNoTab() {
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">Auto Chest Numbers</div>
+        <div class="field-label" style="margin-bottom:.6rem">Numbers are auto-increment only and are <b>never reused</b>, even after a student is deleted \u2014 the next student always gets the next fresh number. Change a Start Number below and Save to apply it (it can't be set lower than numbers already in use).</div>
+        <div class="marks-table-wrap">
+          <table class="marks-table">
+            <thead><tr><th>Category Name</th><th>Active</th><th>Start Number</th><th></th></tr></thead>
+            <tbody>
+              ${state.categories.map((c) => {
+                const active = state.students.filter((s) => s.category === c).length;
+                const start = state.categoryStartNumbers[c] || 100;
+                const safeId = c.replace(/[^a-zA-Z0-9]/g, "_");
+                return `<tr>
+                  <td style="text-align:left">${escapeHtml(c)}</td>
+                  <td>${active}</td>
+                  <td><input type="number" step="1" class="input chest-start-input" data-category="${escapeAttr(c)}" id="start_${safeId}" value="${start}" style="width:5.5rem;padding:.35rem .5rem;font-family:'JetBrains Mono',monospace" /></td>
+                  <td><button class="btn btn-primary btn-save-start" data-category="${escapeAttr(c)}" style="width:auto;padding:.35rem .6rem;font-size:.7rem">Save</button></td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">+ Add Category</div>
+        <div class="field-label" style="margin-bottom:.5rem">A new category automatically starts at the next free hundred above every existing category (e.g. if the last one starts at 400, the new one starts at 500).</div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <input id="newCategoryName" class="input" placeholder="e.g. Kids" style="flex:1" />
+          <button class="btn btn-primary" id="btnAddCategory" style="width:auto;padding:.5rem .9rem">+ Add</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Search by Chest No. or Name</div>
+        <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+          <input id="chestSearch" class="input" placeholder="e.g. 103 or student name" style="flex:1" />
+          <button class="btn btn-primary" id="btnChestSearch" style="width:auto;padding:.5rem .9rem">\u{1F50D}</button>
+        </div>
+        <div id="chestSearchResults"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">ID Cards</div>
+        <div class="field-label" style="margin-bottom:.5rem">Chest-no ID cards are managed here \u2014 upload templates per category and print or download cards.</div>
+        <button class="btn btn-primary" id="btnOpenIdCards" style="width:auto;padding:.5rem .9rem">\u{1F4B3} Open ID Cards</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Deleted / Retired Numbers Log</div>
+        <div class="field-label" style="margin-bottom:.5rem">These chest numbers were assigned once and then freed up by deletion \u2014 they are kept here for record only and will not be given to anyone else.</div>
+        ${state.deletedChestNumbers.length === 0 ? `<div class="muted" style="font-size:.72rem;font-style:italic">No deletions yet.</div>` : `
+        <div class="marks-table-wrap">
+          <table class="marks-table">
+            <thead><tr><th>Chest No</th><th>Name</th><th>Category</th><th>Deleted</th></tr></thead>
+            <tbody>
+              ${state.deletedChestNumbers.map((d) => `<tr><td style="font-family:'JetBrains Mono',monospace">${d.chestNo}</td><td style="text-align:left">${escapeHtml(d.name)}</td><td>${escapeHtml(d.category)}</td><td style="font-size:.65rem">${new Date(d.deletedAt).toLocaleDateString("en-GB")}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        </div>`}
+      </div>`;
+
+    document.querySelectorAll(".btn-save-start").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const cat = btn.dataset.category;
+        const safeId = cat.replace(/[^a-zA-Z0-9]/g, "_");
+        const val = parseInt(document.getElementById(`start_${safeId}`).value, 10);
+        if (!val || val < 1) return showToast("Enter a valid start number");
+        const highestUsed = state.students.filter((s) => s.category === cat)
+          .reduce((max, s) => Math.max(max, parseInt(s.chestNo, 10) || 0), 0);
+        const highestDeleted = state.deletedChestNumbers.filter((d) => d.category === cat)
+          .reduce((max, d) => Math.max(max, parseInt(d.chestNo, 10) || 0), 0);
+        const minAllowed = Math.max(highestUsed, highestDeleted) + 1;
+        if (val < minAllowed && (highestUsed || highestDeleted)) {
+          return showToast(`Can't go below ${minAllowed} \u2014 numbers up to ${Math.max(highestUsed, highestDeleted)} are already in use for this category`);
+        }
+        state.categoryStartNumbers[cat] = val;
+        if (!state.chestCounters[cat] || state.chestCounters[cat] < val) state.chestCounters[cat] = val;
+        persist();
+        showToast(`Start number for ${cat} set to ${val}`);
+        renderChestNoTab();
+      });
+    });
+
+    document.getElementById("btnAddCategory").addEventListener("click", () => {
+      const name = document.getElementById("newCategoryName").value.trim();
+      if (!name) return showToast("Enter a category name");
+      if (state.categories.includes(name)) return showToast("That category already exists");
+      const highestStart = Object.values(state.categoryStartNumbers).reduce((m, v) => Math.max(m, v), 0);
+      const nextStart = Math.floor(highestStart / 100) * 100 + 100;
+      state.categories.push(name);
+      state.categoryStartNumbers[name] = nextStart;
+      state.chestCounters[name] = nextStart;
+      persist();
+      showToast(`"${name}" added \u2014 starts at ${nextStart}`);
+      renderChestNoTab();
+    });
+
+    function runSearch() {
+      const q = document.getElementById("chestSearch").value.trim().toLowerCase();
+      const wrap = document.getElementById("chestSearchResults");
+      if (!q) { wrap.innerHTML = ""; return; }
+      const matches = state.students.filter((s) => s.chestNo.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
+      if (!matches.length) { wrap.innerHTML = `<div class="muted" style="font-size:.72rem;font-style:italic">No student found.</div>`; return; }
+      wrap.innerHTML = matches.map((s) => {
+        const team = state.teams.find((t) => t.id === s.team);
+        return `<div class="card student-card" data-open="${s.id}" style="cursor:pointer;margin-bottom:.5rem">
+          <div style="font-size:.85rem;font-weight:500">${escapeHtml(s.name)} <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--gold)">${s.chestNo}</span></div>
+          <div class="muted" style="font-size:.7rem">${s.category} \u00b7 ${s.gender} \u00b7 ${team ? escapeHtml(team.name) : ""}</div>
+        </div>`;
+      }).join("");
+      wrap.querySelectorAll(".student-card").forEach((card) => card.addEventListener("click", () => {
+        studentsView = { mode: "profile", id: card.dataset.open };
+        setActiveAdminTab("students");
+      }));
+    }
+    document.getElementById("btnChestSearch").addEventListener("click", runSearch);
+    document.getElementById("chestSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
+    document.getElementById("btnOpenIdCards").addEventListener("click", () => setActiveAdminTab("idcards"));
+  }
+
+  /* ---- Gallery tab ---- */
+  function renderGalleryTab() {
+    const frameUrl = state.hero.galleryFrameUrl;
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">Photo Frame</div>
+        <div class="field-label" style="margin-bottom:.5rem">Upload a decorative frame with a <b>transparent centre (PNG only)</b>. Every photo you add to the gallery from now on is automatically placed inside this frame \u2014 the photo fills the transparent window, the frame's border/design stays fixed on top.</div>
+        ${frameUrl ? `<div class="hero-photo-preview" style="background-image:url('${frameUrl}');background-color:#0B3D2E"></div>` : ""}
+        <input type="file" id="gFrameFile" accept="image/png" class="input" style="margin:.5rem 0;padding:.4rem" />
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-primary" id="btnSaveFrame" style="width:auto;padding:.5rem .9rem">${frameUrl ? "Replace Frame" : "Upload Frame"}</button>
+          ${frameUrl ? `<button class="btn btn-ghost" id="btnRemoveFrame" style="width:auto;padding:.5rem .9rem">Remove Frame</button>` : ""}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Add Event Photo</div>
+        <input type="file" id="gPhotoFile" accept="image/*" class="input" style="margin-bottom:.5rem;padding:.4rem" />
+        <input id="gCaption" class="input" placeholder="Caption (e.g. Opening Ceremony)" style="margin-bottom:.75rem" />
+        <button class="btn btn-primary" id="btnAddPhoto" style="width:auto;padding:.6rem 1rem">+ Add Photo</button>
+        <div class="muted" style="font-size:.68rem;margin-top:.5rem">${frameUrl ? "Photo will be placed inside your uploaded frame automatically." : "Photos are auto-compressed (resized \u2264 1000px, ~70% quality) before saving \u2014 keeps them sharp but small so Firebase stays fast for everyone."}</div>
+      </div>
+      <div id="galleryAdminWrap" class="gallery-admin-grid"></div>`;
+
+    document.getElementById("gFrameFile").addEventListener("change", () => {
+      showToast("Frame selected \u2014 tap Upload Frame to save it");
+    });
+    document.getElementById("btnSaveFrame").addEventListener("click", () => {
+      const file = document.getElementById("gFrameFile").files[0];
+      if (!file) return showToast("Choose a PNG frame first");
+      if (file.type !== "image/png") return showToast("Please choose a PNG file (needs a transparent centre)");
+      showToast("Saving frame\u2026");
+      compressImagePngFile(file, 1400).then((dataUrl) => {
+        state.hero.galleryFrameUrl = dataUrl;
+        persist(); renderGalleryTab();
+        showToast("Frame saved \u2014 new photos will use it");
+      }).catch(() => showToast("Could not process that frame image"));
+    });
+    const removeFrameBtn = document.getElementById("btnRemoveFrame");
+    if (removeFrameBtn) removeFrameBtn.addEventListener("click", () => {
+      delete state.hero.galleryFrameUrl;
+      persist(); renderGalleryTab();
+      showToast("Frame removed");
+    });
+
+    document.getElementById("gPhotoFile").addEventListener("change", () => {
+      showToast("Photo selected \u2014 add a caption and tap Add Photo");
+    });
+    document.getElementById("btnAddPhoto").addEventListener("click", () => {
+      const fileInput = document.getElementById("gPhotoFile");
+      const caption = document.getElementById("gCaption").value.trim() || "Event Photo";
+      const file = fileInput.files[0];
+      if (!file) return showToast("Choose a photo first");
+      showToast("Compressing photo\u2026");
+      compressImageFile(file, 1000, 0.72).then((dataUrl) => compositeWithFrame(dataUrl)).then((finalUrl) => {
+        state.gallery.push({ id: uid(), caption, color: "#155E43", url: finalUrl });
+        persist(); renderGallery(); renderGalleryTab();
+        showToast("Photo added to gallery");
+      }).catch(() => showToast("Could not process that photo"));
+    });
+    renderGalleryAdminList();
+  }
+  function renderGalleryAdminList() {
+    document.getElementById("galleryAdminWrap").innerHTML = state.gallery.map((p) => `
+      <div class="gallery-admin-tile" style="${p.url ? "" : `background:linear-gradient(160deg, ${p.color}, #0B3D2E)`}">
+        ${p.url ? `<img src="${p.url}" alt="${escapeAttr(p.caption)}" />` : ""}
+        <button class="gdel" data-id="${p.id}">\u{1F5D1}</button>
+        <span class="gcap">${escapeHtml(p.caption)}</span>
+      </div>`).join("");
+    document.querySelectorAll(".gdel").forEach((b) => b.addEventListener("click", () => {
+      state.gallery = state.gallery.filter((p) => p.id !== b.dataset.id);
+      persist(); renderGallery(); renderGalleryTab();
+    }));
+  }
+
+  /* ---- Export tab ---- */
+  let pickEventKind = null;
+  function renderExportTab() {
+    const cards = [
+      { id: "Call List", icon: "\u{1F4CB}" }, { id: "Valuation Sheet", icon: "\u{1F3C5}" },
+      { id: "Green Room Sign", icon: "\u2B50" }, { id: "Results", icon: "\u{1F3C6}" },
+    ];
+    adminContent.innerHTML = `
+      <div class="export-grid">
+        ${cards.map((c) => `<button class="export-card" data-kind="${c.id}"><div class="ic">${c.icon}</div><div class="t">${c.id}</div><div class="s">Tap to generate</div></button>`).join("")}
+      </div>
+      <div id="pickWrap"></div>
+      <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Auto-Checklist Tracker</div>
+      <div id="checklistWrap"></div>
+      <button class="btn btn-primary" id="btnExportCsv" style="width:100%;margin-top:1.25rem;padding:.75rem">\u{1F4CA} Download Full Database (CSV)</button>`;
+
+    renderChecklist();
+    document.querySelectorAll(".export-card").forEach((b) => b.addEventListener("click", () => {
+      pickEventKind = b.dataset.kind;
+      document.getElementById("pickWrap").innerHTML = `
+        <div class="card">
+          <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select programme for "${pickEventKind}"</div>
+          <div style="display:flex;gap:.5rem">
+            <select id="pickEventSel" class="input" style="flex:1">
+              <option value="">Choose programme...</option>
+              ${state.events.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+            </select>
+            <button class="btn btn-primary" id="btnGenerate" style="width:auto;padding:.5rem .9rem">Generate</button>
+          </div>
+        </div>`;
+      document.getElementById("btnGenerate").addEventListener("click", () => {
+        const eid = document.getElementById("pickEventSel").value;
+        if (!eid) return showToast("Choose a programme first");
+        openPrintSheet(pickEventKind, eid);
+      });
+    }));
+    document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);
+  }
+  function renderChecklist() {
+    document.getElementById("checklistWrap").innerHTML = state.events.map((e) => `
+      <div class="checklist-row ${e.status === "ticked" ? "done" : ""}">
+        <span>${escapeHtml(e.name)} <span class="muted">\u00b7 ${e.category}</span></span>
+        ${e.status === "ticked" ? '<span class="tick">\u2713 In Progress</span>' : '<span class="muted">Pending</span>'}
+      </div>`).join("");
+  }
+
+  function openPrintSheet(kind, eventId) {
+    const event = state.events.find((e) => e.id === eventId);
+    event.status = "ticked";
+    persist(); renderTicker(); renderChecklist();
+
+    const participants = state.students.filter((s) => s.events.includes(eventId));
+    const now = new Date();
+    const timestamp = now.toLocaleDateString("en-GB") + " " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const sectorLine = `${escapeHtml(state.hero.title)} THARUVANA Sector`;
+    let body;
+
+    if (kind === "Green Room Sign") {
+      body = `
+        <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type}</span><b>${event.category.toUpperCase()}</b></div>
+        <table><thead><tr><th>Chest No</th><th>Participant</th><th>Code Letter</th><th>Participants Signature</th></tr></thead><tbody>
+          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>${codeLetterFor(eventId, s.id)}</td><td>&nbsp;</td></tr>`).join("")}
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        </tbody></table>
+        <div style="margin-top:1.25rem;font-size:.78rem">
+          <div style="margin-bottom:.4rem">Competition Start Time: ______________</div>
+          <div style="margin-bottom:1.5rem">Competition End Time: ______________</div>
+          <div style="text-align:center;font-size:.75rem;color:#444">Stage incharge's Name and Signature</div>
+        </div>`;
+    } else if (kind === "Valuation Sheet") {
+      const judges = event.assignedJudges.length ? event.assignedJudges : ["Judge 1"];
+      body = `
+        <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><b>${event.category.toUpperCase()}</b><span>${event.type}</span></div>
+        <div style="text-align:right;font-size:.7rem;color:#666;margin-bottom:.4rem">Stage No: ______</div>
+        <table><thead>
+          <tr><th>Code Letter</th>${judges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Mark out of 100</th></tr>
+        </thead><tbody>
+          ${participants.map((s) => `<tr><td>${codeLetterFor(eventId, s.id)}</td>${judges.map(() => "<td>&nbsp;</td>").join("")}<td>&nbsp;</td></tr>`).join("")}
+        </tbody></table>
+        <div style="margin-top:1.25rem;font-size:.78rem">
+          <div>Judge's Name and Signature :</div>
+          <div style="margin-top:1rem">Judging Comments:</div>
+        </div>`;
+    } else if (kind === "Results") {
+      const ranked = rankedParticipants(eventId).filter((r) => r.mark != null);
+      const legacy = ["first", "second", "third"].map((rank) => {
+        const entry = state.results[eventId] && state.results[eventId][rank];
+        const st = entry ? state.students.find((s) => s.id === entry.studentId) : null;
+        return st ? { student: st, mark: null } : null;
+      }).filter(Boolean);
+      const list = ranked.length ? ranked : legacy;
+      body = `
+        <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type} \u2013 ${event.gender}</span><b>${event.category.toUpperCase()}</b></div>
+        <table><thead><tr><th>Standing</th><th>Chest No</th><th>Candidate Name</th><th>Team</th><th>Grade</th><th>Points</th></tr></thead><tbody>
+          ${list.map((r, i) => {
+            const team = state.teams.find((t) => t.id === r.student.team);
+            const points = i === 0 ? RANK_POINTS.first : i === 1 ? RANK_POINTS.second : i === 2 ? RANK_POINTS.third : null;
+            return `<tr><td>${ORDINAL(i + 1)}</td><td>${r.student.chestNo}</td><td>${escapeHtml(r.student.name)}</td><td>${team ? escapeHtml(team.name) : ""}</td><td>${gradeFor(r.mark)}</td><td>${points ?? "-"}</td></tr>`;
+          }).join("") || `<tr><td colspan="6" style="text-align:center;color:#999">No entries recorded yet.</td></tr>`}
+        </tbody></table>
+        <div class="print-footnote">Total entries: ${list.length}</div>`;
+    } else {
+      body = `
+        <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><b>${event.category.toUpperCase()}</b><span>${event.type}</span></div>
+        <table><thead><tr><th>Sl. No</th><th>Chest No</th><th>Participant</th><th>Team Name</th></tr></thead><tbody>
+          ${participants.map((s, i) => {
+            const team = state.teams.find((t) => t.id === s.team);
+            return `<tr><td>${i + 1}</td><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>${team ? escapeHtml(team.name) : ""}</td></tr>`;
+          }).join("")}
+        </tbody></table>
+        <div class="print-footnote">Total participants: ${participants.length}</div>`;
+    }
+
+    document.getElementById("printTitle").textContent = `${kind} \u2014 ${event.name}`;
+    document.getElementById("printContent").innerHTML = `
+      <div class="print-masthead"><b>${sectorLine}</b><span>${timestamp}</span></div>
+      <div class="print-heading">${kind}</div>
+      <hr class="print-hr" />
+      ${body}`;
+    document.getElementById("printOverlay").classList.remove("hidden");
+    pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+    showToast(`${kind} generated \u2014 programme marked in progress`);
+  }
+  document.getElementById("btnPrintNow").addEventListener("click", () => window.print());
+  document.getElementById("btnPrintClose").addEventListener("click", popScreen);
+
+  function downloadCsv() {
+    const rows = [["Chest No", "Name", "Class", "Phone", "Gender", "Category", "Team", "Programmes", "Rank Won"]];
+    state.students.forEach((s) => {
+      const team = state.teams.find((t) => t.id === s.team);
+      const wonRanks = Object.entries(state.results)
+        .filter(([, r]) => ["first", "second", "third"].some((k) => r && r[k] && r[k].studentId === s.id))
+        .map(([eid, r]) => {
+          const rank = ["first", "second", "third"].find((k) => r[k] && r[k].studentId === s.id);
+          const ev = state.events.find((e) => e.id === eid);
+          return `${ev ? ev.name : eid}:${rank}`;
+        }).join("; ");
+      rows.push([
+        s.chestNo, s.name, s.cls, s.phone, s.gender, s.category, team ? team.name : "",
+        s.events.map((id) => state.events.find((e) => e.id === id)?.name).filter(Boolean).join("; "),
+        wonRanks,
+      ]);
+    });
+    const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    downloadDataUrl(URL.createObjectURL(blob), "meeladfest-full-backup.csv");
+    showToast("Full database exported as CSV");
+  }
+
+  /* ---------------- utils ---------------- */
+  function escapeHtml(str) {
+    return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function escapeAttr(str) { return escapeHtml(str); }
+
+  /* ---------------- init ---------------- */
+  function renderAll() {
+    renderTicker(); renderHero(); renderCounters(); renderLeaderboard(); renderFilters(); renderResultsList(); renderGallery();
+  }
+
+  if (dataRef) {
+    dataRef.on(
+      "value",
+      (snapshot) => {
+        if (suppressNextPersist) { suppressNextPersist = false; return; }
+        const remote = snapshot.val();
+        if (remote) {
+          state = remote;
+          ensureStateDefaults();
+        } else {
+          // first time this project is used: seed Firebase with our starter data
+          persist();
+        }
+        firebaseReady = true;
+        renderAll();
+      },
+      (err) => {
+        console.error("Firebase read failed, using local data only:", err);
+        renderAll();
+      }
+    );
+  } else {
+    renderAll();
+  }
+})();
+
+</script>
+</body>
+</html>
