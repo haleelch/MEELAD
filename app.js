@@ -164,6 +164,7 @@
   const RANK_POINTS = { first: 7, second: 5, third: 3 };
   const RANK_LABEL = { first: "1st Place", second: "2nd Place", third: "3rd Place" };
   const RANK_ICON = { first: "\u{1F947}", second: "\u{1F948}", third: "\u{1F949}" };
+  const RANK_NUMBER = { first: 1, second: 2, third: 3 };
   const ORDINAL = (n) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
   const GRADE_THRESHOLDS = [{ min: 80, label: "A" }, { min: 60, label: "B" }, { min: 40, label: "C" }];
   function gradeFor(mark) {
@@ -291,12 +292,45 @@
       .sort((a, b) => b.total - a.total);
   }
 
+  // Expands a published result into individual {rank, student, team} rows \u2014
+  // if a placement was tied, every tied student gets their own row at that
+  // same rank (instead of only the first-recorded student showing up).
+  function getWinnersForEvent(eventId) {
+    const result = state.results[eventId];
+    if (!result) return [];
+    const winners = [];
+    ["first", "second", "third"].forEach((rank) => {
+      const entry = result[rank];
+      if (!entry) return;
+      const ids = entry.tiedIds && entry.tiedIds.length ? entry.tiedIds : [entry.studentId];
+      ids.forEach((studentId) => {
+        const student = state.students.find((s) => s.id === studentId);
+        if (!student) return;
+        const team = state.teams.find((t) => t.id === student.team);
+        winners.push({ rank, student, team });
+      });
+    });
+    return winners;
+  }
+
   function publishEventResult(eventId) {
     const ranked = rankedParticipants(eventId).filter((r) => r.mark != null);
     if (!ranked.length) return false; // nothing marked yet \u2014 don't publish an empty/invisible result
+
+    // Group into placement tiers by mark, so equal marks share the same
+    // placement (e.g. two students both scoring highest both become "first",
+    // and whoever's next becomes "second" \u2014 not "third").
+    const tiers = [];
+    ranked.forEach((r) => {
+      const tier = tiers[tiers.length - 1];
+      if (tier && tier.mark === r.mark) tier.students.push(r.student);
+      else tiers.push({ mark: r.mark, students: [r.student] });
+    });
+
     const result = { first: null, second: null, third: null };
     ["first", "second", "third"].forEach((rank, i) => {
-      if (ranked[i]) result[rank] = { studentId: ranked[i].student.id };
+      const tier = tiers[i];
+      if (tier) result[rank] = { studentId: tier.students[0].id, tiedIds: tier.students.map((s) => s.id) };
     });
     state.results[eventId] = result;
     const ev = state.events.find((e) => e.id === eventId);
@@ -609,8 +643,11 @@
       ["first", "second", "third"].forEach((rank) => {
         const entry = r && r[rank];
         if (!entry) return;
-        const st = state.students.find((s) => s.id === entry.studentId);
-        if (st) pts[st.team] = (pts[st.team] || 0) + RANK_POINTS[rank];
+        const ids = entry.tiedIds && entry.tiedIds.length ? entry.tiedIds : [entry.studentId];
+        ids.forEach((studentId) => {
+          const st = state.students.find((s) => s.id === studentId);
+          if (st) pts[st.team] = (pts[st.team] || 0) + RANK_POINTS[rank];
+        });
       });
     });
     return pts;
@@ -659,7 +696,9 @@
       if (!result) return;
       ["first", "second", "third"].forEach((rank) => {
         const entry = result[rank];
-        if (entry && entry.studentId === studentId) wins.push({ eventName: e.name, rank });
+        if (!entry) return;
+        const ids = entry.tiedIds && entry.tiedIds.length ? entry.tiedIds : [entry.studentId];
+        if (ids.includes(studentId)) wins.push({ eventName: e.name, rank });
       });
     });
     return wins;
@@ -699,19 +738,11 @@
   function showResultBlock(eventId) {
     const block = document.getElementById("resultBlock");
     const event = state.events.find((e) => e.id === eventId);
-    const result = event ? state.results[event.id] : null;
-    if (!event || !result) {
+    if (!event || !state.results[event.id]) {
       block.classList.add("hidden");
       return showToast(event ? `Results not published yet for ${event.name}` : "Choose a programme first");
     }
-    const winners = ["first", "second", "third"].map((rank) => {
-      const entry = result[rank];
-      if (!entry) return null;
-      const student = state.students.find((s) => s.id === entry.studentId);
-      if (!student) return null;
-      const team = state.teams.find((t) => t.id === student.team);
-      return { rank, student, team };
-    }).filter(Boolean);
+    const winners = getWinnersForEvent(event.id);
     if (!winners.length) {
       block.classList.add("hidden");
       return showToast("No winners recorded for this programme yet");
@@ -723,7 +754,7 @@
       <div class="winners-list">
         ${winners.map((w, i) => `
         <div class="winner-item">
-          <div class="rank">${i + 1}</div>
+          <div class="rank">${RANK_NUMBER[w.rank]}</div>
           <div class="info">
             <h4>${escapeHtml(w.student.name)}</h4>
             <p>${w.team ? escapeHtml(w.team.name) : ""}</p>
@@ -731,8 +762,8 @@
         </div>`).join("")}
       </div>
       <div class="rf-footer" style="margin-top:.75rem">
-        <button class="rf-btn rf-btn-share" id="btnResultBlockShare">\u{1F4AC} Share</button>
-        <button class="rf-btn rf-btn-poster" id="btnResultBlockDownload">\u2B07 Download</button>
+        <button type="button" class="rf-btn rf-btn-share" id="btnResultBlockShare">\u{1F4AC} Share</button>
+        <button type="button" class="rf-btn rf-btn-poster" id="btnResultBlockDownload">\u2B07 Download</button>
       </div>`;
     block.classList.remove("hidden");
     document.getElementById("btnResultBlockShare").addEventListener("click", () => quickShareResult(event.id));
@@ -766,7 +797,7 @@
         </div>`;
       }).join("");
       if (matches.length > searchResultsShown) {
-        list.innerHTML += `<button class="btn btn-ghost" id="btnViewNextSearch" style="width:100%;margin-top:.6rem">View Next</button>`;
+        list.innerHTML += `<button type="button" class="btn btn-ghost" id="btnViewNextSearch" style="width:100%;margin-top:.6rem">View Next</button>`;
         const btn = document.getElementById("btnViewNextSearch");
         if (btn) btn.addEventListener("click", () => { searchResultsShown += SEARCH_RESULTS_PAGE_SIZE; renderResultsList(); });
       }
@@ -815,15 +846,7 @@
     const pageEvents = events.slice(resultsFeedPage * RESULTS_FEED_PAGE_SIZE, resultsFeedPage * RESULTS_FEED_PAGE_SIZE + RESULTS_FEED_PAGE_SIZE);
 
     list.innerHTML = pageEvents.map((event) => {
-      const result = state.results[event.id];
-      const winners = ["first", "second", "third"].map((rank) => {
-        const entry = result[rank];
-        if (!entry) return null;
-        const student = state.students.find((s) => s.id === entry.studentId);
-        if (!student) return null;
-        const team = state.teams.find((t) => t.id === student.team);
-        return { rank, student, team };
-      }).filter(Boolean);
+      const winners = getWinnersForEvent(event.id);
       if (!winners.length) return "";
 
       const first = winners[0];
@@ -866,13 +889,13 @@
       if (totalPages <= 1) { pager.innerHTML = ""; }
       else {
         pager.innerHTML = `
-          <button class="rf-page-btn" id="rfPrev" ${resultsFeedPage === 0 ? "disabled" : ""} aria-label="Previous page">&#171;</button>
+          <button type="button" class="rf-page-btn" id="rfPrev" ${resultsFeedPage === 0 ? "disabled" : ""} aria-label="Previous page">&#171;</button>
           <span class="rf-page-info">${resultsFeedPage + 1} / ${totalPages}</span>
-          <button class="rf-page-btn" id="rfNext" ${resultsFeedPage >= totalPages - 1 ? "disabled" : ""} aria-label="Next page">&#187;</button>`;
+          <button type="button" class="rf-page-btn" id="rfNext" ${resultsFeedPage >= totalPages - 1 ? "disabled" : ""} aria-label="Next page">&#187;</button>`;
         const prevBtn = document.getElementById("rfPrev");
         const nextBtn = document.getElementById("rfNext");
-        if (prevBtn) prevBtn.addEventListener("click", () => { resultsFeedPage--; expandedResultCard = null; renderResultsFeed(); });
-        if (nextBtn) nextBtn.addEventListener("click", () => { resultsFeedPage++; expandedResultCard = null; renderResultsFeed(); });
+        if (prevBtn) prevBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); resultsFeedPage--; expandedResultCard = null; renderResultsFeed(); });
+        if (nextBtn) nextBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); resultsFeedPage++; expandedResultCard = null; renderResultsFeed(); });
       }
     }
   }
@@ -882,16 +905,8 @@
   // template-choosing step, using whatever result template is currently set.
   function quickDownloadResult(eventId) {
     const event = state.events.find((e) => e.id === eventId);
-    const result = state.results[eventId];
-    if (!event || !result) return;
-    const winners = ["first", "second", "third"].map((rank) => {
-      const entry = result[rank];
-      if (!entry) return null;
-      const student = state.students.find((s) => s.id === entry.studentId);
-      if (!student) return null;
-      const team = state.teams.find((t) => t.id === student.team);
-      return { rank, student, team };
-    }).filter(Boolean);
+    if (!event) return;
+    const winners = getWinnersForEvent(eventId);
     if (!winners.length) return showToast("No winners recorded for this programme yet");
 
     const templates = getAllResultTemplates();
@@ -905,16 +920,8 @@
 
   function quickShareResult(eventId) {
     const event = state.events.find((e) => e.id === eventId);
-    const result = state.results[eventId];
-    if (!event || !result) return;
-    const winners = ["first", "second", "third"].map((rank) => {
-      const entry = result[rank];
-      if (!entry) return null;
-      const student = state.students.find((s) => s.id === entry.studentId);
-      if (!student) return null;
-      const team = state.teams.find((t) => t.id === student.team);
-      return { rank, student, team };
-    }).filter(Boolean);
+    if (!event) return;
+    const winners = getWinnersForEvent(eventId);
     if (!winners.length) return showToast("No winners recorded for this programme yet");
 
     const templates = getAllResultTemplates();
@@ -1362,17 +1369,9 @@
   function openResultPosterModal(eventId) {
     const event = state.events.find((e) => e.id === eventId);
     if (!event) return showToast("Choose a programme first");
-    const result = state.results[eventId];
-    if (!result) return showToast(`Results not published yet for ${event.name}`);
+    if (!state.results[eventId]) return showToast(`Results not published yet for ${event.name}`);
 
-    const winners = ["first", "second", "third"].map((rank) => {
-      const entry = result[rank];
-      if (!entry) return null;
-      const student = state.students.find((s) => s.id === entry.studentId);
-      if (!student) return null;
-      const team = state.teams.find((t) => t.id === student.team);
-      return { rank, student, team };
-    }).filter(Boolean);
+    const winners = getWinnersForEvent(eventId);
     if (!winners.length) return showToast("No winners recorded for this programme yet");
 
     const templates = getAllResultTemplates();
@@ -2518,6 +2517,7 @@
   function renderTopScoreTab() {
     const board = computeTopScoreLeaderboard();
     const scored = board.filter((row) => row.total > 0);
+    const topScore = scored[0] || null;
 
     let vocal = null, pen = null;
     scored.forEach((row) => {
@@ -2525,27 +2525,26 @@
       if (row.offStageTotal > 0 && (!pen || row.offStageTotal > pen.offStageTotal)) pen = row;
     });
 
+    function highlightCard(label, icon, row, value, color) {
+      if (!row) return "";
+      return `
+      <div class="card" style="background:linear-gradient(135deg,${color}2e,${color}0d);border:1px solid ${color}">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.06em;color:${color};margin-bottom:.25rem">${icon} ${label}</div>
+        <div style="font-size:1rem;font-weight:700">${escapeHtml(row.student.name)}</div>
+        <div class="muted" style="font-size:.72rem">${row.student.chestNo} \u00b7 ${row.student.category} \u00b7 ${value}</div>
+      </div>`;
+    }
+
     adminContent.innerHTML = `
-      <div class="card-title" style="margin-bottom:.5rem">\u{1F31F} Top Score \u2014 Fest Leaderboard</div>
-      <div class="field-label" style="margin-bottom:.75rem">Total marks are summed across every published/marked programme a student is registered in. Vocal of the Fest = highest total in Stage programmes. Pen of the Fest = highest total in Off-stage programmes.</div>
+      <div class="card-title" style="margin-bottom:.75rem">\u{1F31F} Top Score</div>
+      ${highlightCard("TOP SCORE", "\u{1F3C6}", topScore, `Total: <b>${topScore ? topScore.total : 0}</b>`, "#C9A227")}
+      ${highlightCard("VOCAL OF THE FEST", "\u{1F3A4}", vocal, `Stage total: <b>${vocal ? vocal.stageTotal : 0}</b>`, "#E4C767")}
+      ${highlightCard("PEN OF THE FEST", "\u270D\uFE0F", pen, `Off-stage total: <b>${pen ? pen.offStageTotal : 0}</b>`, "#1F7A57")}
 
-      ${vocal ? `
-      <div class="card" style="background:linear-gradient(135deg,rgba(201,162,39,.18),rgba(201,162,39,.05));border:1px solid var(--gold)">
-        <div style="font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--gold-light);margin-bottom:.25rem">\u{1F3A4} VOCAL OF THE FEST</div>
-        <div style="font-size:1rem;font-weight:700">${escapeHtml(vocal.student.name)}</div>
-        <div class="muted" style="font-size:.72rem">${vocal.student.chestNo} \u00b7 ${vocal.student.category} \u00b7 Stage total: <b>${vocal.stageTotal}</b></div>
-      </div>` : ""}
-
-      ${pen ? `
-      <div class="card" style="background:linear-gradient(135deg,rgba(31,122,87,.18),rgba(31,122,87,.05));border:1px solid var(--emerald-light)">
-        <div style="font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--emerald-light);margin-bottom:.25rem">\u270D\uFE0F PEN OF THE FEST</div>
-        <div style="font-size:1rem;font-weight:700">${escapeHtml(pen.student.name)}</div>
-        <div class="muted" style="font-size:.72rem">${pen.student.chestNo} \u00b7 ${pen.student.category} \u00b7 Off-stage total: <b>${pen.offStageTotal}</b></div>
-      </div>` : ""}
-
-      ${!scored.length ? `<div class="empty-note">No marks entered yet \u2014 enter marks in Mark Entry to populate the leaderboard.</div>` : `
+      ${!scored.length ? `<div class="empty-note">No marks entered yet.</div>` : `
       <div class="card" style="padding:.5rem .75rem;margin-top:.75rem">
         ${scored.map((row, i) => {
+          const isTop = topScore && row.student.id === topScore.student.id;
           const isVocal = vocal && row.student.id === vocal.student.id;
           const isPen = pen && row.student.id === pen.student.id;
           return `
@@ -2553,8 +2552,8 @@
             <div style="display:flex;align-items:center;gap:.6rem">
               <div class="rank-circle rank-other" style="width:1.7rem;height:1.7rem;font-size:.75rem">${i + 1}</div>
               <div>
-                <div class="history-row-title">${escapeHtml(row.student.name)} ${isVocal ? '<span style="color:var(--gold-light);font-weight:700;font-size:.68rem">\u2605 VOCAL</span>' : ""}${isPen ? '<span style="color:var(--emerald-light);font-weight:700;font-size:.68rem">\u2605 PEN</span>' : ""}</div>
-                <div class="muted" style="font-size:.68rem">${row.student.chestNo} \u00b7 ${row.student.category} \u00b7 Stage: ${row.stageTotal} \u00b7 Off-stage: ${row.offStageTotal}</div>
+                <div class="history-row-title">${escapeHtml(row.student.name)} ${isTop ? '<span style="color:var(--gold);font-weight:700;font-size:.68rem">\u2605 TOP</span>' : ""}${isVocal ? '<span style="color:var(--gold-light);font-weight:700;font-size:.68rem">\u2605 VOCAL</span>' : ""}${isPen ? '<span style="color:var(--emerald-light);font-weight:700;font-size:.68rem">\u2605 PEN</span>' : ""}</div>
+                <div class="muted" style="font-size:.68rem">${row.student.chestNo} \u00b7 ${row.student.category}</div>
               </div>
             </div>
             <div style="font-weight:700">${row.total}</div>
