@@ -166,11 +166,46 @@
   const RANK_ICON = { first: "\u{1F947}", second: "\u{1F948}", third: "\u{1F949}" };
   const RANK_NUMBER = { first: 1, second: 2, third: 3 };
   const ORDINAL = (n) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
-  const GRADE_THRESHOLDS = [{ min: 80, label: "A" }, { min: 60, label: "B" }, { min: 40, label: "C" }];
+  const GRADE_SCALE = [
+    { min: 91, grade: "A+", point: 10 },
+    { min: 81, grade: "A", point: 9 },
+    { min: 71, grade: "B+", point: 8 },
+    { min: 61, grade: "B", point: 7 },
+    { min: 51, grade: "C+", point: 6 },
+    { min: 41, grade: "C", point: 5 },
+    { min: 33, grade: "D", point: 4 },
+    { min: -Infinity, grade: "F", point: 0 },
+  ];
+  function gradeScaleFor(mark) {
+    if (mark == null) return null;
+    return GRADE_SCALE.find((t) => mark >= t.min) || null;
+  }
   function gradeFor(mark) {
-    if (mark == null) return "-";
-    const g = GRADE_THRESHOLDS.find((t) => mark >= t.min);
-    return g ? g.label : "-";
+    const g = gradeScaleFor(mark);
+    return g ? g.grade : "-";
+  }
+  // Grade Point out of 10, per the same scale used for the letter grade.
+  function gradePointFor(mark) {
+    const g = gradeScaleFor(mark);
+    return g ? g.point : null;
+  }
+  // Converts a mark out of 100 into the full result object: total, converted
+  // score out of 10 (straight /10), assigned grade and grade point.
+  function scoreResultFor(mark) {
+    if (mark == null) return null;
+    return {
+      total_marks_out_of_100: mark,
+      converted_score_out_of_10: Math.round((mark / 10) * 100) / 100,
+      assigned_grade: gradeFor(mark),
+      grade_point: gradePointFor(mark),
+    };
+  }
+  // CGPA-style average: sum of grade points across a set of marks / count.
+  function gradePointAverage(marks) {
+    const vals = marks.filter((m) => m != null);
+    if (!vals.length) return null;
+    const sum = vals.reduce((a, m) => a + (gradePointFor(m) || 0), 0);
+    return Math.round((sum / vals.length) * 100) / 100;
   }
 
   // Chest numbers fill the lowest available slot in a category, starting from
@@ -1354,7 +1389,7 @@
     document.getElementById("btnSharePoster").addEventListener("click", () => {
       if (!selectedTemplate) return showToast("No poster template added yet");
       showToast("Preparing poster\u2026");
-      const text = `Alhamdulillah! ${student.name} (${student.chestNo}) secured ${RANK_LABEL[rank]} in ${event.name} at ${state.hero.title}, representing ${team.name}!`;
+      const text = `Alhamdulillah! ${student.name} (${student.chestNo}) secured ${RANK_LABEL[rank]} in ${event.name} at ${state.hero.title}, representing ${team.name}!\n\nCongratulations!\n\nCheck More Results :\n${window.location.origin}\n\u00a9 Event crew`;
       drawPoster({
         rankLabel: RANK_LABEL[rank],
         line1: student.name, line2: student.chestNo, line3: team.name,
@@ -1767,7 +1802,7 @@
     screenStack.length = 0;
     btnBack.classList.add("hidden");
     history.replaceState(null, "", location.pathname + location.search);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo(0, 0);
   }
   document.getElementById("btnAdminGuestView").addEventListener("click", goFullyHome);
 
@@ -2363,6 +2398,8 @@
         </div>
       </div>`).join("");
     document.querySelectorAll("#teamsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
+      const team = state.teams.find((t) => t.id === b.dataset.id);
+      if (!confirm(`Delete ${team ? team.name : "this team"}? This can't be undone.`)) return;
       state.teams = state.teams.filter((t) => t.id !== b.dataset.id);
       persist(); renderCounters(); renderLeaderboard(); renderTeamsTab();
     }));
@@ -2420,6 +2457,8 @@
       </div>`;
     }).join("");
     document.querySelectorAll("#eventsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
+      const ev = state.events.find((e) => e.id === b.dataset.id);
+      if (!confirm(`Delete ${ev ? ev.name : "this programme"}? This can't be undone.`)) return;
       state.events = state.events.filter((e) => e.id !== b.dataset.id);
       persist(); renderCounters(); renderTicker(); renderFilters(); renderResultsList(); renderEventsTab();
     }));
@@ -2517,7 +2556,6 @@
   function renderTopScoreTab() {
     const board = computeTopScoreLeaderboard();
     const scored = board.filter((row) => row.total > 0);
-    const topScore = scored[0] || null;
 
     let vocal = null, pen = null;
     scored.forEach((row) => {
@@ -2537,14 +2575,12 @@
 
     adminContent.innerHTML = `
       <div class="card-title" style="margin-bottom:.75rem">\u{1F31F} Top Score</div>
-      ${highlightCard("TOP SCORE", "\u{1F3C6}", topScore, `Total: <b>${topScore ? topScore.total : 0}</b>`, "#C9A227")}
       ${highlightCard("VOCAL OF THE FEST", "\u{1F3A4}", vocal, `Stage total: <b>${vocal ? vocal.stageTotal : 0}</b>`, "#E4C767")}
       ${highlightCard("PEN OF THE FEST", "\u270D\uFE0F", pen, `Off-stage total: <b>${pen ? pen.offStageTotal : 0}</b>`, "#1F7A57")}
 
       ${!scored.length ? `<div class="empty-note">No marks entered yet.</div>` : `
       <div class="card" style="padding:.5rem .75rem;margin-top:.75rem">
         ${scored.map((row, i) => {
-          const isTop = topScore && row.student.id === topScore.student.id;
           const isVocal = vocal && row.student.id === vocal.student.id;
           const isPen = pen && row.student.id === pen.student.id;
           return `
@@ -2552,7 +2588,7 @@
             <div style="display:flex;align-items:center;gap:.6rem">
               <div class="rank-circle rank-other" style="width:1.7rem;height:1.7rem;font-size:.75rem">${i + 1}</div>
               <div>
-                <div class="history-row-title">${escapeHtml(row.student.name)} ${isTop ? '<span style="color:var(--gold);font-weight:700;font-size:.68rem">\u2605 TOP</span>' : ""}${isVocal ? '<span style="color:var(--gold-light);font-weight:700;font-size:.68rem">\u2605 VOCAL</span>' : ""}${isPen ? '<span style="color:var(--emerald-light);font-weight:700;font-size:.68rem">\u2605 PEN</span>' : ""}</div>
+                <div class="history-row-title">${escapeHtml(row.student.name)} ${isVocal ? '<span style="color:var(--gold-light);font-weight:700;font-size:.68rem">\u2605 VOCAL</span>' : ""}${isPen ? '<span style="color:var(--emerald-light);font-weight:700;font-size:.68rem">\u2605 PEN</span>' : ""}</div>
                 <div class="muted" style="font-size:.68rem">${row.student.chestNo} \u00b7 ${row.student.category}</div>
               </div>
             </div>
@@ -2635,18 +2671,20 @@
           </div>
           <div class="marks-table-wrap" style="margin-top:.5rem">
             <table class="marks-table">
-              <thead><tr>${event.type === "Group" ? "<th>Team</th><th>Leader</th>" : "<th>Chest #</th><th>Code</th>"}${event.assignedJudges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Final</th></tr></thead>
+              <thead><tr>${event.type === "Group" ? "<th>Team</th><th>Leader</th>" : "<th>Chest #</th><th>Code</th>"}${event.assignedJudges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Final</th><th>Grade</th></tr></thead>
               <tbody>
                 ${rows.map((student) => {
                   const team = state.teams.find((t) => t.id === student.team);
                   const marksSoFar = state.marks[eventId][student.id] || {};
+                  const finalMark = finalMarkFor(eventId, student.id);
                   return `
                   <tr>
                     ${event.type === "Group"
                       ? `<td>${team ? escapeHtml(team.name) : "\u2014"}</td><td>${escapeHtml(student.name || "")}</td>`
                       : `<td>${student.chestNo || "\u2014"}</td><td>${codeLetterFor(eventId, student.id)}</td>`}
                     ${event.assignedJudges.map((j) => `<td><input type="number" class="me-mark-input" min="0" max="100" step="0.01" inputmode="decimal" data-student="${student.id}" data-judge="${escapeAttr(j)}" value="${marksSoFar[j] ?? ""}" /></td>`).join("")}
-                    <td><b>${finalMarkFor(eventId, student.id) ?? "\u2014"}</b></td>
+                    <td><b>${finalMark ?? "\u2014"}</b></td>
+                    <td>${finalMark != null ? `${gradeFor(finalMark)} (${gradePointFor(finalMark)})` : "\u2014"}</td>
                   </tr>`;
                 }).join("")}
               </tbody>
@@ -2886,6 +2924,7 @@
     document.querySelectorAll("#studentsListWrap .trash-btn").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
       const student = state.students.find((s) => s.id === b.dataset.id);
+      if (!confirm(`Delete ${student ? student.name : "this student"}? This can't be undone.`)) return;
       state.students = state.students.filter((s) => s.id !== b.dataset.id);
       persist(); renderCounters(); renderStudentsTab();
     }));
@@ -3177,6 +3216,7 @@
         <span class="gcap">${escapeHtml(p.caption)}</span>
       </div>`).join("");
     document.querySelectorAll(".gdel").forEach((b) => b.addEventListener("click", () => {
+      if (!confirm("Delete this photo? This can't be undone.")) return;
       state.gallery = state.gallery.filter((p) => p.id !== b.dataset.id);
       persist(); renderGallery(); renderGalleryTab();
     }));
@@ -3514,12 +3554,12 @@
       const list = ranked.length ? ranked : legacy;
       body = `
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type} \u2013 ${event.gender}</span><b>${event.category.toUpperCase()}</b></div>
-        <table><thead><tr><th>Standing</th><th>Chest No</th><th>Candidate Name</th><th>Team</th><th>Grade</th><th>Points</th></tr></thead><tbody>
+        <table><thead><tr><th>Standing</th><th>Chest No</th><th>Candidate Name</th><th>Team</th><th>Grade</th><th>Grade Point</th><th>Points</th></tr></thead><tbody>
           ${list.map((r, i) => {
             const team = state.teams.find((t) => t.id === r.student.team);
             const points = i === 0 ? RANK_POINTS.first : i === 1 ? RANK_POINTS.second : i === 2 ? RANK_POINTS.third : null;
-            return `<tr><td>${ORDINAL(i + 1)}</td><td>${r.student.chestNo}</td><td>${escapeHtml(r.student.name)}</td><td>${team ? escapeHtml(team.name) : ""}</td><td>${gradeFor(r.mark)}</td><td>${points ?? "-"}</td></tr>`;
-          }).join("") || `<tr><td colspan="6" style="text-align:center;color:#999">No entries recorded yet.</td></tr>`}
+            return `<tr><td>${ORDINAL(i + 1)}</td><td>${r.student.chestNo}</td><td>${escapeHtml(r.student.name)}</td><td>${team ? escapeHtml(team.name) : ""}</td><td>${gradeFor(r.mark)}</td><td>${gradePointFor(r.mark) ?? "-"}</td><td>${points ?? "-"}</td></tr>`;
+          }).join("") || `<tr><td colspan="7" style="text-align:center;color:#999">No entries recorded yet.</td></tr>`}
         </tbody></table>
         <div class="print-footnote">Total entries: ${list.length}</div>`;
     } else {
