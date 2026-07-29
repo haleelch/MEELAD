@@ -9,16 +9,26 @@
      in both dark and light theme, doesn't follow the --gold remap below. */
   --explore-btn-color:#C9A227;
 }
-/* Light theme \u2014 palette lifted from the reference screenshot (white cards,
-   purple/pink gradient accents). Swapping data-theme on <html> is enough to
-   re-skin the whole app since every color in this file reads from a variable. */
+/* Light theme — clean white + grey palette (no purple). Swapping data-theme
+   on <html> is enough to re-skin the whole app since every color in this
+   file reads from a variable. */
 [data-theme="light"]{
-  --emerald-deep:#6D28D9; --emerald:#7C5CFC; --emerald-light:#9F7AEA;
-  --gold:#7C5CFC; --gold-light:#EC4899; --crimson:#DB2777;
-  --bg:#F3F2FA; --surface:#FFFFFF; --surface2:#F5F4FC;
-  --text:#1F2937; --muted:#6B7280; --border:rgba(17,24,39,0.10);
-  --home-primary:#7C5CFC; --home-accent:#EC4899; --home-accent-light:#F5F4FC;
+  --emerald-deep:#0b5ed7; --emerald:#0d6efd; --emerald-light:#3d8bfd;
+  --gold:#0d6efd; --gold-light:#3d8bfd; --crimson:#dc3545;
+  --bg:#ffffff; --surface:#f8f9fa; --surface2:#f8f9fa;
+  --text:#111111; --muted:#6b7280; --border:#e0e0e0;
+  --home-primary:#0d6efd; --home-accent:#0d6efd; --home-accent-light:#f8f9fa;
 }
+/* The "Competing Teams" stat card and its icon had a hardcoded pink/violet
+   accent (independent of the theme variables above) — override just those
+   in light mode so no purple/pink survives on the white background. Dark
+   theme keeps its original accent untouched. */
+[data-theme="light"] #statBoxTeams{border-color:#0d6efd;box-shadow:0 4px 20px rgba(13,110,253,.15);}
+[data-theme="light"] #statBoxTeams h2{color:#0d6efd;}
+[data-theme="light"] .stat-icon.icon-3{background:linear-gradient(145deg,#0b5ed7,#0d6efd);box-shadow:0 0 16px rgba(13,110,253,.35),inset 0 0 12px rgba(0,0,0,.15);}
+/* Bug fix: locks background scroll while the admin Dashboard overlay is
+   open. Toggled via JS (document.body.classList.add/remove("no-scroll")). */
+body.no-scroll{overflow:hidden;}
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{margin:0;background:var(--bg);color:var(--text);font-family:'Poppins',sans-serif;}

@@ -500,14 +500,31 @@
   sidebarOverlay.addEventListener("click", closeTopScreen);
   document.querySelectorAll(".side-link[data-nav]").forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
-    const target = document.getElementById(a.getAttribute("href").slice(1));
+    const id = a.getAttribute("href").slice(1);
     closeTopScreen(); // close the sidebar instantly
+    if (id === "standings") { showEventOrResultSection("standings"); return; } // bug fix: no scroll, just show
+    const target = document.getElementById(id);
     if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth" }), 50);
   }));
   document.getElementById("brandHome").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+  // Bug fix: "Result" and "Live Results" (Team Points) used scrollIntoView,
+  // which visually drifted into whichever section was above it. Now we just
+  // toggle display:block/none between the two so only the clicked one shows.
+  const standingsSection = document.getElementById("standings");
+  const resultsSection = document.getElementById("results");
+  function showEventOrResultSection(id) {
+    if (standingsSection) standingsSection.style.display = id === "standings" ? "block" : "none";
+    if (resultsSection) resultsSection.style.display = id === "results" ? "block" : "none";
+  }
+  document.querySelectorAll('a[href="#results"], a[href="#standings"]').forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    showEventOrResultSection(a.getAttribute("href").slice(1));
+  }));
   document.querySelectorAll('a.primary-button[href^="#"], a.explore-card[href^="#"], .stat-item[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
-    const target = document.getElementById(a.getAttribute("href").slice(1));
+    const id = a.getAttribute("href").slice(1);
+    if (id === "results" || id === "standings") return; // handled above, no scroll
+    const target = document.getElementById(id);
     if (target) target.scrollIntoView({ behavior: "smooth" });
   }));
 
@@ -1727,8 +1744,8 @@
   let pendingAdminTab = "dashboard";
   function isSuperAdmin() { return adminRole === "super"; }
 
-  function closeLoginScreen() { loginScreen.classList.add("hidden"); }
-  function closeAdminScreen() { adminScreen.classList.add("hidden"); }
+  function closeLoginScreen() { loginScreen.classList.add("hidden"); document.body.classList.remove("no-scroll"); }
+  function closeAdminScreen() { adminScreen.classList.add("hidden"); document.body.classList.remove("no-scroll"); }
 
   function setActiveAdminTab(tab) {
     if (SUPER_ONLY_TABS.includes(tab) && !isSuperAdmin()) tab = "dashboard";
@@ -1740,6 +1757,7 @@
   function openAdminEntry(tab) {
     closeSidebar(); // instant — we're about to swap this screen for the next one
     pendingAdminTab = tab || "dashboard";
+    document.body.classList.add("no-scroll"); // bug fix: lock background scroll while dashboard/login is open
     if (adminAuthed) {
       adminScreen.classList.remove("hidden");
       swapTopScreen(closeAdminScreen);
@@ -1776,7 +1794,7 @@
       safeStorageSet(ADMIN_SESSION_KEY, "1");
       safeStorageSet(ADMIN_ROLE_KEY, role);
       applyRoleVisibility();
-      closeLoginScreen(); // instant \u2014 goes straight to the admin panel, no message, no delay
+      loginScreen.classList.add("hidden"); // instant — no-scroll stays locked since admin panel opens next
       adminScreen.classList.remove("hidden");
       swapTopScreen(closeAdminScreen);
       setActiveAdminTab(SUPER_ONLY_TABS.includes(pendingAdminTab) && role !== "super" ? "dashboard" : pendingAdminTab);
@@ -1794,6 +1812,7 @@
   function goFullyHome() {
     adminScreen.classList.add("hidden");
     loginScreen.classList.add("hidden");
+    document.body.classList.remove("no-scroll"); // bug fix: always unlock background scroll on exit
     closeSidebar();
     closeAdminSidebar();
     modalOverlay.classList.add("hidden");
