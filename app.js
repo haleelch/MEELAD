@@ -183,6 +183,22 @@
     teamStudentIds.forEach(removeStudentEverywhere);
     state.students = state.students.filter((s) => s.team !== teamId);
   }
+  // One-time sweep for marks/results left behind by deletes made *before*
+  // the cascade cleanup above existed (e.g. old Test Data deletes). Returns
+  // how many stray entries it removed, so the Dashboard button can report it.
+  function cleanOrphanedData() {
+    const validEventIds = new Set(state.events.map((e) => e.id));
+    const validStudentIds = new Set(state.students.map((s) => s.id));
+    let removed = 0;
+    Object.keys(state.marks).forEach((eventId) => {
+      if (!validEventIds.has(eventId)) { removed += Object.keys(state.marks[eventId]).length; delete state.marks[eventId]; return; }
+      Object.keys(state.marks[eventId]).forEach((studentId) => {
+        if (!validStudentIds.has(studentId)) { delete state.marks[eventId][studentId]; removed++; }
+      });
+    });
+    Object.keys(state.results).forEach((eventId) => { if (!validEventIds.has(eventId)) delete state.results[eventId]; });
+    return removed;
+  }
 
   const GRADE_SCALE = [
     { min: 91, grade: "A+", point: 10 },
@@ -2032,12 +2048,23 @@
           ? `<div class="muted" style="font-size:.75rem;margin-bottom:.6rem">\u2705 Test data is currently loaded.</div>
              <button class="btn btn-ghost" id="btnDeleteTestData" style="width:auto;padding:.5rem .9rem">\u{1F5D1} Delete Test Data</button>`
           : `<button class="btn btn-primary" id="btnLoadTestData" style="width:auto;padding:.5rem .9rem">\u2B07 Load Test Data</button>`}
+      </div>
+      <div class="card" style="margin-top:1.25rem">
+        <div class="card-title">Clean Up Orphaned Data</div>
+        <div class="field-label" style="margin-bottom:.6rem">Marks or results left behind by a programme/student that was deleted earlier (before this cleanup existed) can make counts like "Marks Entered" look wrong. This scans for and removes anything pointing to a programme or student that no longer exists \u2014 doesn't touch anything still in use.</div>
+        <button class="btn btn-ghost" id="btnCleanOrphans" style="width:auto;padding:.5rem .9rem">\u{1F9F9} Scan &amp; Clean Up</button>
       </div>` : ""}`;
     const btnLoadTD = document.getElementById("btnLoadTestData");
     if (btnLoadTD) btnLoadTD.addEventListener("click", loadTestData);
     const btnDelTD = document.getElementById("btnDeleteTestData");
     if (btnDelTD) btnDelTD.addEventListener("click", () => {
       if (confirm("Delete all test data (3 teams, 50 students, 12 programmes)? This can't be undone.")) deleteTestData();
+    });
+    const btnCleanOrphans = document.getElementById("btnCleanOrphans");
+    if (btnCleanOrphans) btnCleanOrphans.addEventListener("click", () => {
+      const removed = cleanOrphanedData();
+      persist(); renderCounters(); renderDashboardTab();
+      showToast(removed ? `Cleaned up ${removed} orphaned mark${removed === 1 ? "" : "s"}` : "No orphaned data found \u2014 everything's clean");
     });
   }
 
@@ -2759,12 +2786,14 @@
       // on-screen instead of being silently saved as broken data.
       function collectMarks() {
         let valid = true;
+        const touchedStudents = new Set();
         document.querySelectorAll(".me-mark-input").forEach((inp) => {
           const sid = inp.dataset.student, j = inp.dataset.judge;
           if (!state.marks[eventId][sid]) state.marks[eventId][sid] = {};
+          touchedStudents.add(sid);
           const raw = inp.value.trim();
           if (raw === "") {
-            state.marks[eventId][sid][j] = "";
+            delete state.marks[eventId][sid][j]; // bug fix: clearing a mark now removes it, not just blanks it
             inp.classList.remove("input-error");
             return;
           }
@@ -2776,6 +2805,12 @@
           }
           inp.classList.remove("input-error");
           state.marks[eventId][sid][j] = Math.round(num * 100) / 100;
+        });
+        // If every judge's mark was cleared for a student, drop their empty
+        // entry entirely so Dashboard counts (e.g. Marks Entered) don't keep
+        // counting a student who no longer has any mark.
+        touchedStudents.forEach((sid) => {
+          if (state.marks[eventId][sid] && Object.keys(state.marks[eventId][sid]).length === 0) delete state.marks[eventId][sid];
         });
         return valid;
       }
