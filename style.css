@@ -26,8 +26,32 @@
 [data-theme="light"] #statBoxTeams{border-color:#0d6efd;box-shadow:0 4px 20px rgba(13,110,253,.15);}
 [data-theme="light"] #statBoxTeams h2{color:#0d6efd;}
 [data-theme="light"] .stat-icon.icon-3{background:linear-gradient(145deg,#0b5ed7,#0d6efd);box-shadow:0 0 16px rgba(13,110,253,.35),inset 0 0 12px rgba(0,0,0,.15);}
-/* Bug fix: locks background scroll while the admin Dashboard overlay is
-   open. Toggled via JS (document.body.classList.add/remove("no-scroll")). */
+/* Bug fix: text/icon color on every component whose background is the solid
+   blue --emerald-deep/--emerald (Admin topbar title, +Add / Save buttons,
+   toast, admin login badge, active tab pill, hero badge, poster rank/code)
+   used to read var(--gold-light) for contrast against the old dark-green
+   (dark theme) / purple (old light theme) background. Now that background
+   is a mid-tone blue, that same gold-light resolves to another blue, so
+   text nearly disappears. Force white specifically on these blue-background
+   components in light mode; --gold-light itself is left alone since it's
+   also used as text on light/white surfaces elsewhere (e.g. card titles),
+   where white text would be the one that's invisible. */
+[data-theme="light"] .admin-topbar-title,
+[data-theme="light"] .btn-primary,
+[data-theme="light"] .toast,
+[data-theme="light"] .admin-login-badge,
+[data-theme="light"] .atab.active,
+[data-theme="light"] .hero-badge,
+[data-theme="light"] .poster-rank,
+[data-theme="light"] .poster-code{color:#ffffff;}
+[data-theme="light"] .toast{border-color:#ffffff;}
+/* Bug fix: dashboard/admin overlay has its own internal scroll
+   (overflow-y:auto on .admin-screen) — when that content is short or the
+   user drags past its own scroll limit, the touch/scroll chains through to
+   the guest page underneath, which is what made the guest home page appear
+   to scroll behind the admin panel. overscroll-behavior:contain stops that
+   chaining; body.no-scroll (added below) is the other half of the fix. */
+.admin-screen{overscroll-behavior:contain;}
 body.no-scroll{overflow:hidden;}
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -229,6 +253,7 @@ input,select{font-family:inherit;}
 .error{color:var(--crimson);font-size:.75rem;margin-bottom:.5rem;text-align:left;}
 .link-btn{display:block;width:100%;background:none;color:var(--muted);font-size:.78rem;margin-top:.75rem;padding:.4rem;}
 .admin-topbar{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:var(--emerald-deep);z-index:2;}
+.admin-topbar-title{color:var(--gold-light);}
 .admin-tabs{display:flex;gap:.35rem;overflow-x:auto;padding:.85rem 1rem 0;}
 .atab{flex-shrink:0;padding:.5rem .8rem;border-radius:.6rem;font-size:.72rem;font-weight:500;background:var(--surface2);color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:.4rem;}
 .atab-ic{width:1.3rem;height:1.3rem;border-radius:.4rem;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;}
