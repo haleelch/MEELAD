@@ -166,6 +166,24 @@
   const RANK_ICON = { first: "\u{1F947}", second: "\u{1F948}", third: "\u{1F949}" };
   const RANK_NUMBER = { first: 1, second: 2, third: 3 };
   const ORDINAL = (n) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
+  // Bug fix: deleting a student/event/team used to leave that student's mark
+  // entries behind in state.marks, so counts like "Marks Entered" on the
+  // Dashboard kept counting data that had supposedly been deleted. These
+  // helpers scrub every trace of the deleted record before persist().
+  function removeStudentEverywhere(studentId) {
+    Object.keys(state.marks).forEach((eventId) => { delete state.marks[eventId][studentId]; });
+  }
+  function removeEventEverywhere(eventId) {
+    delete state.marks[eventId];
+    delete state.results[eventId];
+    state.students.forEach((s) => { s.events = (s.events || []).filter((id) => id !== eventId); });
+  }
+  function removeTeamEverywhere(teamId) {
+    const teamStudentIds = state.students.filter((s) => s.team === teamId).map((s) => s.id);
+    teamStudentIds.forEach(removeStudentEverywhere);
+    state.students = state.students.filter((s) => s.team !== teamId);
+  }
+
   const GRADE_SCALE = [
     { min: 91, grade: "A+", point: 10 },
     { min: 81, grade: "A", point: 9 },
@@ -712,7 +730,7 @@
     document.getElementById("leaderboard").innerHTML = sorted.map((t, i) => {
       const rankClass = i === 0 ? "rank1" : i === 1 ? "rank2" : i === 2 ? "rank3" : "rank-other";
       const ptsClass = i === 0 ? "points-one" : i === 1 ? "points-two" : i === 2 ? "points-three" : "points-other";
-      const barColor = i === 0 ? "#059669" : i === 1 ? "#4B5563" : i === 2 ? "#DC2626" : t.color;
+      const barColor = i === 0 ? "linear-gradient(90deg,#F5B301,#FFD966)" : i === 1 ? "linear-gradient(90deg,#2563EB,#60A5FA)" : i === 2 ? "linear-gradient(90deg,#7C3AED,#A78BFA)" : t.color;
       const barPct = Math.round(((pts[t.id] || 0) / maxPts) * 100);
       return `
       <div class="team-row">
@@ -2419,6 +2437,7 @@
     document.querySelectorAll("#teamsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
       const team = state.teams.find((t) => t.id === b.dataset.id);
       if (!confirm(`Delete ${team ? team.name : "this team"}? This can't be undone.`)) return;
+      removeTeamEverywhere(b.dataset.id);
       state.teams = state.teams.filter((t) => t.id !== b.dataset.id);
       persist(); renderCounters(); renderLeaderboard(); renderTeamsTab();
     }));
@@ -2478,6 +2497,7 @@
     document.querySelectorAll("#eventsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
       const ev = state.events.find((e) => e.id === b.dataset.id);
       if (!confirm(`Delete ${ev ? ev.name : "this programme"}? This can't be undone.`)) return;
+      removeEventEverywhere(b.dataset.id);
       state.events = state.events.filter((e) => e.id !== b.dataset.id);
       persist(); renderCounters(); renderTicker(); renderFilters(); renderResultsList(); renderEventsTab();
     }));
@@ -2944,6 +2964,7 @@
       e.stopPropagation();
       const student = state.students.find((s) => s.id === b.dataset.id);
       if (!confirm(`Delete ${student ? student.name : "this student"}? This can't be undone.`)) return;
+      removeStudentEverywhere(b.dataset.id);
       state.students = state.students.filter((s) => s.id !== b.dataset.id);
       persist(); renderCounters(); renderStudentsTab();
     }));
@@ -3044,6 +3065,7 @@
     });
     document.getElementById("btnDeleteProfile").addEventListener("click", () => {
       if (!confirm(`Delete ${student.name}? This can't be undone.`)) return;
+      removeStudentEverywhere(studentId);
       state.students = state.students.filter((s) => s.id !== studentId);
       persist(); renderCounters();
       showToast("Student deleted");
@@ -3266,7 +3288,8 @@
       <div id="checklistWrap"></div>
       <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Sheet History</div>
       <div class="card" style="padding:.5rem .75rem"><div id="historyListWrap"></div></div>
-      <button class="btn btn-primary" id="btnExportCsv" style="width:100%;margin-top:1.25rem;padding:.75rem">\u{1F4CA} Download Full Database (CSV)</button>`;
+      <button class="btn btn-primary" id="btnExportCsv" style="width:100%;margin-top:1.25rem;padding:.75rem">\u{1F4CA} Download Full Database (CSV)</button>
+      <button class="btn btn-primary" id="btnExportExcel" style="width:100%;margin-top:.6rem;padding:.75rem">\u{1F4C8} Download Full Database (Excel)</button>`;
 
     if (isSuperAdmin()) {
       document.getElementById("btnSavePrintHeader").addEventListener("click", () => {
@@ -3298,6 +3321,7 @@
       });
     }));
     document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);
+    document.getElementById("btnExportExcel").addEventListener("click", downloadExcel);
   }
   function renderChecklist() {
     document.getElementById("checklistWrap").innerHTML = state.events.map((e) => `
@@ -3691,6 +3715,70 @@
   });
   document.getElementById("btnPrintNow").addEventListener("click", () => window.print());
   document.getElementById("btnPrintClose").addEventListener("click", closeTopScreen);
+
+  // Full database export as a real multi-sheet .xlsx (via SheetJS, loaded in
+  // index.html). Complements downloadCsv() above, which is students-only.
+  function downloadExcel() {
+    if (typeof XLSX === "undefined") return showToast("Excel library failed to load \u2014 check your connection and try again");
+    const wb = XLSX.utils.book_new();
+    const teamName = (id) => state.teams.find((t) => t.id === id)?.name || "";
+    const eventName = (id) => state.events.find((e) => e.id === id)?.name || "";
+    const studentById = (id) => state.students.find((s) => s.id === id);
+
+    // Teams
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.teams.map((t) => ({
+      "Team Name": t.name, Leader: t.leader || "", Assistant: t.assistant || "", Color: t.color || "",
+    }))), "Teams");
+
+    // Students
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.students.map((s) => ({
+      "Chest No": s.chestNo, Name: s.name, Class: s.cls, Phone: s.phone, Gender: s.gender,
+      Category: s.category, Team: teamName(s.team),
+      Programmes: (s.events || []).map(eventName).filter(Boolean).join("; "),
+    }))), "Students");
+
+    // Programmes
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.events.map((e) => ({
+      Programme: e.name, Category: e.category, Type: e.type, Gender: e.gender,
+      "Stage Type": e.stageType || "", "Result Status": e.resultStatus,
+      Judges: (e.assignedJudges || []).join("; "),
+    }))), "Programmes");
+
+    // Marks — one row per judge mark, plus the computed final mark/grade/point
+    const markRows = [];
+    Object.keys(state.marks).forEach((eventId) => {
+      Object.keys(state.marks[eventId]).forEach((studentId) => {
+        const student = studentById(studentId);
+        const finalMark = finalMarkFor(eventId, studentId);
+        Object.entries(state.marks[eventId][studentId]).forEach(([judge, mark]) => {
+          markRows.push({
+            Programme: eventName(eventId), "Chest No": student?.chestNo || "", Student: student?.name || "",
+            Judge: judge, Mark: mark, "Final Mark": finalMark,
+            Grade: finalMark != null ? gradeFor(finalMark) : "", "Grade Point": finalMark != null ? gradePointFor(finalMark) : "",
+          });
+        });
+      });
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(markRows), "Marks");
+
+    // Results — published rank winners per programme
+    const resultRows = [];
+    Object.entries(state.results).forEach(([eventId, r]) => {
+      ["first", "second", "third"].forEach((rankKey, i) => {
+        const win = r && r[rankKey];
+        if (!win) return;
+        const student = studentById(win.studentId);
+        resultRows.push({
+          Programme: eventName(eventId), Rank: i + 1, "Chest No": student?.chestNo || "",
+          Student: student?.name || "", Team: teamName(student?.team),
+        });
+      });
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resultRows), "Results");
+
+    XLSX.writeFile(wb, "meeladfest-full-database.xlsx");
+    showToast("Full database exported as Excel");
+  }
 
   function downloadCsv() {
     const rows = [["Chest No", "Name", "Class", "Phone", "Gender", "Category", "Team", "Programmes", "Rank Won"]];

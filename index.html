@@ -431,8 +431,13 @@
 
     <!-- STANDINGS -->
     <section id="standings" class="section">
-      <div class="section-heading"><div class="heading-badge">&#127942;</div><div><div class="font-display heading-title">Team Points</div></div></div>
-      <div id="leaderboard" class="team-list"></div>
+      <div class="lb-card">
+        <div class="lb-card-head">
+          <h2 class="lb-title">Team Points</h2>
+          <span class="lb-badge">&#127942; Leaderboard</span>
+        </div>
+        <div id="leaderboard" class="team-list"></div>
+      </div>
     </section>
 
     <!-- RESULTS SEARCH -->
@@ -561,6 +566,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
     // Applied before app.js so there's no flash of the wrong theme on load.
     (function(){
