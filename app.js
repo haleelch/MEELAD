@@ -79,6 +79,7 @@
     state.results = state.results || {};
     state.gallery = state.gallery || [];
     state.marks = state.marks || {};
+    state.codes = state.codes || {};
     state.judges = state.judges || ["Judge 1"];
     state.customTemplates = state.customTemplates || [];
     state.cardTemplates = state.cardTemplates || [];
@@ -315,6 +316,8 @@
   /* ---------------- mark-entry helpers ---------------- */
   const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   function codeLetterFor(eventId, studentId) {
+    const override = state.codes[eventId] && state.codes[eventId][studentId];
+    if (override) return override;
     const participants = state.students.filter((s) => s.events.includes(eventId));
     const idx = participants.findIndex((s) => s.id === studentId);
     return idx >= 0 ? LETTERS[idx % LETTERS.length] : "-";
@@ -1801,6 +1804,7 @@
     renderAdminTab(tab);
   }
 
+  let currentAdminTab = null; // which admin tab is currently showing, so tab switches can push a proper back-navigation step
   function openAdminEntry(tab) {
     closeSidebar(); // instant — we're about to swap this screen for the next one
     pendingAdminTab = tab || "dashboard";
@@ -1808,6 +1812,7 @@
     if (adminAuthed) {
       adminScreen.classList.remove("hidden");
       swapTopScreen(closeAdminScreen);
+      currentAdminTab = pendingAdminTab;
       setActiveAdminTab(pendingAdminTab);
       return;
     }
@@ -1844,7 +1849,8 @@
       loginScreen.classList.add("hidden"); // instant — no-scroll stays locked since admin panel opens next
       adminScreen.classList.remove("hidden");
       swapTopScreen(closeAdminScreen);
-      setActiveAdminTab(SUPER_ONLY_TABS.includes(pendingAdminTab) && role !== "super" ? "dashboard" : pendingAdminTab);
+      currentAdminTab = SUPER_ONLY_TABS.includes(pendingAdminTab) && role !== "super" ? "dashboard" : pendingAdminTab;
+      setActiveAdminTab(currentAdminTab);
     } else {
       errEl.textContent = "Invalid username or password.";
       errEl.classList.remove("hidden");
@@ -1866,6 +1872,7 @@
     document.getElementById("fullGalleryOverlay").classList.add("hidden");
     document.getElementById("printOverlay").classList.add("hidden");
     screenStack.length = 0;
+    currentAdminTab = null;
     btnBack.classList.add("hidden");
     history.replaceState(null, "", location.pathname + location.search);
     window.scrollTo(0, 0);
@@ -1903,8 +1910,17 @@
   document.querySelectorAll(".admin-menu-link").forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
-      setActiveAdminTab(link.dataset.tab);
+      const newTab = link.dataset.tab;
+      const prevTab = currentAdminTab;
       closeTopScreen(); // close drawer instantly
+      if (prevTab && prevTab !== newTab) {
+        // Push one back-nav step per tab switch, so pressing back walks
+        // through the tabs the admin actually visited (one step at a time)
+        // instead of jumping straight out to the public home page.
+        pushScreen(() => { currentAdminTab = prevTab; setActiveAdminTab(prevTab); });
+      }
+      currentAdminTab = newTab;
+      setActiveAdminTab(newTab);
     });
   });
 
@@ -2060,7 +2076,7 @@
         <div class="field-label" style="margin-bottom:.6rem">Loads a demo dataset for trying things out \u2014 12 programmes, 3 teams (Red/Blue/Green), 50 students. Fully reversible: Delete removes exactly what Load added, nothing else.</div>
         ${isTestDataLoaded()
           ? `<div class="muted" style="font-size:.75rem;margin-bottom:.6rem">\u2705 Test data is currently loaded.</div>
-             <button class="btn btn-ghost" id="btnDeleteTestData" style="width:auto;padding:.5rem .9rem">\u{1F5D1} Delete Test Data</button>`
+             <button class="btn btn-ghost" id="btnDeleteTestData" style="width:auto;padding:.5rem .9rem">Delete Test Data</button>`
           : `<button class="btn btn-primary" id="btnLoadTestData" style="width:auto;padding:.5rem .9rem">\u2B07 Load Test Data</button>`}
       </div>
       <div class="card" style="margin-top:1.25rem">
@@ -2492,9 +2508,9 @@
             <button class="dots-btn" data-team-menu="${t.id}">\u22EF</button>
             ${openTeamMenuId === t.id ? `
             <div class="card" style="position:absolute;right:0;top:1.8rem;z-index:5;width:10rem;padding:.35rem;box-shadow:0 8px 20px rgba(0,0,0,.25)">
-              <button class="btn btn-ghost" data-edit-team="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;margin-bottom:.25rem">\u270F\uFE0F Edit Team</button>
-              <button class="btn btn-ghost" data-change-leader="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;margin-bottom:.25rem">\u{1F451} Change Leader</button>
-              <button class="btn btn-ghost trash-btn" data-id="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;color:var(--crimson)">\u{1F5D1} Delete Team</button>
+              <button class="btn btn-ghost" data-edit-team="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;margin-bottom:.25rem">Edit Team</button>
+              <button class="btn btn-ghost" data-change-leader="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;margin-bottom:.25rem">Change Leader</button>
+              <button class="btn btn-ghost trash-btn" data-id="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;color:var(--crimson)">Delete Team</button>
             </div>` : ""}
           </div>
         </div>
@@ -2608,17 +2624,27 @@
         <div class="row-between">
           <div>
             <div style="font-size:.85rem;font-weight:500">${escapeHtml(e.name)} ${e.status === "ticked" ? '<span class="tick">\u2713</span>' : ""}</div>
-            <div class="muted" style="font-size:.7rem">${e.category} \u00b7 ${e.type} \u00b7 ${e.stageType || "Stage"} \u00b7 ${e.gender} \u00b7 ${participants.length} registered \u00b7 <span style="color:${e.resultStatus === "Published" ? "var(--emerald-light)" : "var(--muted)"}">${e.resultStatus}</span></div>
+            <div class="muted" style="font-size:.7rem">${e.category} \u00b7 ${e.type} \u00b7 ${e.stageType || "Stage"} \u00b7 ${e.gender} \u00b7 ${participants.length} registered \u00b7 <span style="color:${getResultStatus(e) === "Published" ? "var(--emerald-light)" : getResultStatus(e) === "Submitted" ? "var(--gold-light)" : "var(--muted)"}">${getResultStatus(e)}</span></div>
           </div>
-          <button class="trash-btn" data-id="${e.id}">\u{1F5D1}</button>
+          <div class="history-dots-wrap">
+            <button class="history-dots-btn" data-id="${e.id}">&#8942;</button>
+            <div class="history-dots-menu hidden" data-id="${e.id}">
+              <button class="history-menu-item danger" data-del-event="${e.id}">Delete</button>
+            </div>
+          </div>
         </div>
       </div>`;
     }).join("");
-    document.querySelectorAll("#eventsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
-      const ev = state.events.find((e) => e.id === b.dataset.id);
+    document.querySelectorAll("#eventsListWrap .history-dots-btn").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.querySelectorAll("#eventsListWrap .history-dots-menu").forEach((m) => { if (m.dataset.id !== b.dataset.id) m.classList.add("hidden"); });
+      document.querySelector(`#eventsListWrap .history-dots-menu[data-id="${b.dataset.id}"]`).classList.toggle("hidden");
+    }));
+    document.querySelectorAll("#eventsListWrap [data-del-event]").forEach((b) => b.addEventListener("click", () => {
+      const ev = state.events.find((e) => e.id === b.dataset.delEvent);
       if (!confirm(`Delete ${ev ? ev.name : "this programme"}? This can't be undone.`)) return;
-      removeEventEverywhere(b.dataset.id);
-      state.events = state.events.filter((e) => e.id !== b.dataset.id);
+      removeEventEverywhere(b.dataset.delEvent);
+      state.events = state.events.filter((e) => e.id !== b.dataset.delEvent);
       persist(); renderCounters(); renderTicker(); renderFilters(); renderResultsList(); renderEventsTab();
     }));
   }
@@ -2795,7 +2821,7 @@
         <td>${e.category}</td>
         <td>${e.gender}</td>
         <td>${e.status === "ticked" ? '<span class="tick" title="Green Room Sign already generated">\u2713</span>' : '<span class="muted">\u2014</span>'}</td>
-        <td>${(() => { const s = getResultStatus(e); const cls = s === "Published" ? "status-published" : s === "Submitted" ? "status-submitted" : "status-pending"; return `<span class="status-pill ${cls}">${s}</span>`; })()}</td>
+        <td>${(() => { const s = (state.marks[e.id] && Object.keys(state.marks[e.id]).length) ? "Submitted" : "Pending"; const cls = s === "Submitted" ? "status-submitted" : "status-pending"; return `<span class="status-pill ${cls}">${s}</span>`; })()}</td>
         <td><button class="dots-btn" data-open="${e.id}">\u22EF</button></td>
       </tr>`).join("");
     document.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => openMarksModal(b.dataset.open)));
@@ -2840,7 +2866,7 @@
                   <tr>
                     ${event.type === "Group"
                       ? `<td>${team ? escapeHtml(team.name) : "\u2014"}</td><td>${escapeHtml(student.name || "")}</td>`
-                      : `<td>${student.chestNo || "\u2014"}</td><td>${codeLetterFor(eventId, student.id)}</td>`}
+                      : `<td>${student.chestNo || "\u2014"}</td><td><input type="text" maxlength="3" class="me-code-input" data-student="${student.id}" value="${escapeAttr(codeLetterFor(eventId, student.id))}" style="width:2.6rem;text-align:center;text-transform:uppercase" /></td>`}
                     ${event.assignedJudges.map((j) => `<td><input type="number" class="me-mark-input" min="0" max="100" step="0.01" inputmode="decimal" data-student="${student.id}" data-judge="${escapeAttr(j)}" value="${marksSoFar[j] ?? ""}" /></td>`).join("")}
                     <td><b>${finalMark ?? "\u2014"}</b></td>
                     <td>${finalMark != null ? `${gradeFor(finalMark)} (${gradePointFor(finalMark)})` : "\u2014"}</td>
@@ -2875,6 +2901,13 @@
       function collectMarks() {
         let valid = true;
         const touchedStudents = new Set();
+        if (!state.codes[eventId]) state.codes[eventId] = {};
+        document.querySelectorAll(".me-code-input").forEach((inp) => {
+          const sid = inp.dataset.student;
+          const v = inp.value.trim().toUpperCase();
+          if (v) state.codes[eventId][sid] = v;
+          else delete state.codes[eventId][sid];
+        });
         document.querySelectorAll(".me-mark-input").forEach((inp) => {
           const sid = inp.dataset.student, j = inp.dataset.judge;
           if (!state.marks[eventId][sid]) state.marks[eventId][sid] = {};
@@ -3103,16 +3136,16 @@
             <div style="font-size:.85rem;font-weight:500">${escapeHtml(s.name)} <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--gold)">${s.chestNo}</span></div>
             <div class="muted" style="font-size:.7rem">${s.category} \u00b7 ${s.gender} \u00b7 ${team ? escapeHtml(team.name) : ""} \u00b7 ${s.events.length} events</div>
           </div>
-          <button class="trash-btn" data-id="${s.id}">\u{1F5D1}</button>
+          <button class="delete-text-btn" data-id="${s.id}">Delete</button>
         </div>
       </div>`;
     }).join("");
     document.querySelectorAll("#studentsListWrap .student-card").forEach((card) => card.addEventListener("click", (e) => {
-      if (e.target.closest(".trash-btn")) return;
+      if (e.target.closest(".delete-text-btn")) return;
       studentsView = { mode: "profile", id: card.dataset.open };
       renderStudentsTab();
     }));
-    document.querySelectorAll("#studentsListWrap .trash-btn").forEach((b) => b.addEventListener("click", (e) => {
+    document.querySelectorAll("#studentsListWrap .delete-text-btn").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
       const student = state.students.find((s) => s.id === b.dataset.id);
       if (!confirm(`Delete ${student ? student.name : "this student"}? This can't be undone.`)) return;
@@ -3171,7 +3204,7 @@
         <div class="muted" style="font-size:.63rem;margin:.3rem 0 .75rem">For group programmes, whichever member was registered first is the team leader \u2014 only the leader appears in published results.</div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap">
           <button class="btn btn-primary" id="btnSaveProfile" style="width:auto;padding:.6rem 1rem">\u2713 Save Changes</button>
-          <button class="btn" id="btnDeleteProfile" style="width:auto;padding:.6rem 1rem;background:rgba(139,38,53,.12);color:var(--crimson)">\u{1F5D1} Delete Student</button>
+          <button class="btn" id="btnDeleteProfile" style="width:auto;padding:.6rem 1rem;background:rgba(139,38,53,.12);color:var(--crimson)">Delete Student</button>
         </div>
       </div>`;
 
@@ -3244,7 +3277,7 @@
                   <td>${active}</td>
                   <td><input type="number" step="1" class="input chest-start-input" data-category="${escapeAttr(c)}" id="start_${safeId}" value="${start}" style="width:5.5rem;padding:.35rem .5rem;font-family:'JetBrains Mono',monospace" /></td>
                   <td><button class="btn btn-primary btn-save-start" data-category="${escapeAttr(c)}" style="width:auto;padding:.35rem .6rem;font-size:.7rem">Save</button></td>
-                  <td><button class="btn btn-ghost btn-delete-category" data-category="${escapeAttr(c)}" style="width:auto;padding:.35rem .6rem;font-size:.7rem;border-color:var(--crimson);color:var(--crimson)" title="Delete category">\u{1F5D1}</button></td>
+                  <td><button class="btn btn-ghost btn-delete-category" data-category="${escapeAttr(c)}" style="width:auto;padding:.35rem .6rem;font-size:.68rem;border-color:var(--crimson);color:var(--crimson)">Delete</button></td>
                 </tr>`;
               }).join("")}
             </tbody>
@@ -3270,7 +3303,7 @@
       <div class="card">
         <div class="card-title" style="color:var(--crimson)">Reset Sample Data</div>
         <div class="field-label" style="margin-bottom:.5rem">Removes <b>every registered student</b> and their chest numbers so real registrations can start fresh from each category's Start Number. Teams, programmes and categories themselves are kept. This cannot be undone.</div>
-        <button class="btn btn-ghost" id="btnResetStudents" style="width:auto;padding:.5rem .9rem;border-color:var(--crimson);color:var(--crimson)">\u{1F5D1} Delete All Students &amp; Reset Numbers</button>
+        <button class="btn btn-ghost" id="btnResetStudents" style="width:auto;padding:.5rem .9rem;border-color:var(--crimson);color:var(--crimson)">Delete All Students &amp; Reset Numbers</button>
       </div>`;
 
     document.querySelectorAll(".btn-save-start").forEach((btn) => {
@@ -3405,7 +3438,7 @@
     document.getElementById("galleryAdminWrap").innerHTML = state.gallery.map((p) => `
       <div class="gallery-admin-tile" style="${p.url ? "" : `background:linear-gradient(160deg, ${p.color}, #0B3D2E)`}">
         ${p.url ? `<img src="${p.url}" alt="${escapeAttr(p.caption)}" />` : ""}
-        <button class="gdel" data-id="${p.id}">\u{1F5D1}</button>
+        <button class="gdel" data-id="${p.id}">Delete</button>
         <span class="gcap">${escapeHtml(p.caption)}</span>
       </div>`).join("");
     document.querySelectorAll(".gdel").forEach((b) => b.addEventListener("click", () => {
@@ -3476,16 +3509,21 @@
     document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);
     document.getElementById("btnExportExcel").addEventListener("click", downloadExcel);
   }
-  /* ---- Results tab (moved out of Green Room \u2014 now its own top-level tab).
-     Lets the admin publish/unpublish each programme's result, and generate
-     the printable Results sheet (1st/2nd/3rd), with the same sheet history
-     as Green Room. ---- */
+  /* ---- Results tab: publish/unpublish each programme's result and preview
+     it (for the announcer) before publishing. Sheet generation lives in
+     Green Room only \u2014 this tab is purely about result status. ---- */
   function renderResultsTab() {
     let searchQuery = "";
 
+    // "In Progress" = Green Room Sign already generated for this programme
+    // (i.e. it's on stage / underway) but marks haven't been entered yet.
     function computeStats() {
-      const stats = { Pending: 0, Submitted: 0, Published: 0 };
-      state.events.forEach((e) => { stats[getResultStatus(e)]++; });
+      const stats = { Pending: 0, "In Progress": 0, Submitted: 0, Published: 0 };
+      state.events.forEach((e) => {
+        const status = getResultStatus(e);
+        if (status === "Pending" && e.status === "ticked") stats["In Progress"]++;
+        else stats[status]++;
+      });
       return stats;
     }
 
@@ -3499,9 +3537,10 @@
       const stats = computeStats();
       const statsWrap = document.getElementById("resultsStatsWrap");
       if (statsWrap) statsWrap.innerHTML = `
-        <div class="results-stat-card"><span class="label">Pending</span><span class="num">${stats.Pending}</span></div>
-        <div class="results-stat-card"><span class="label">Submitted</span><span class="num" style="color:var(--gold-light)">${stats.Submitted}</span></div>
-        <div class="results-stat-card"><span class="label">Published</span><span class="num" style="color:#6FD6A8">${stats.Published}</span></div>`;
+        <div class="results-stat-card pending"><span class="label">Pending</span><span class="num">${stats.Pending}</span></div>
+        <div class="results-stat-card inprogress"><span class="label">In Progress</span><span class="num">${stats["In Progress"]}</span></div>
+        <div class="results-stat-card submitted"><span class="label">Submitted</span><span class="num">${stats.Submitted}</span></div>
+        <div class="results-stat-card published"><span class="label">Published</span><span class="num">${stats.Published}</span></div>`;
 
       const filtered = getFilteredEvents();
       const listWrap = document.getElementById("resultsCardListWrap");
@@ -3523,12 +3562,10 @@
           <div class="history-dots-wrap">
             <button class="history-dots-btn" data-id="${e.id}">&#8942;</button>
             <div class="history-dots-menu hidden" data-id="${e.id}">
+              <button class="history-menu-item" data-action="view" data-id="${e.id}">View</button>
               ${status === "Published"
                 ? `<button class="history-menu-item" data-action="unpublish" data-id="${e.id}">Unpublish</button>`
-                : status === "Submitted"
-                  ? `<button class="history-menu-item" data-action="publish" data-id="${e.id}">Publish</button>`
-                  : ""}
-              <button class="history-menu-item" data-action="enter" data-id="${e.id}">Enter Marks</button>
+                : `<button class="history-menu-item" data-action="publish" data-id="${e.id}">Publish</button>`}
             </div>
           </div>
         </div>`;
@@ -3547,18 +3584,23 @@
           const id = item.dataset.id, action = item.dataset.action;
           listWrap.querySelectorAll(".history-dots-menu").forEach((m) => m.classList.add("hidden"));
           const ev = state.events.find((x) => x.id === id);
-          if (action === "publish") {
+          if (action === "view") {
+            openResultViewModal(id);
+          } else if (action === "publish") {
             if (!publishEventResult(id)) { showToast("Enter at least one mark before publishing"); return; }
             renderLeaderboard(); renderResultsList(); renderTicker();
             showToast(`${ev.name} result published \u2014 now live on the home page`);
-            renderList();
+            goFullyHome();
+            showEventOrResultSection("results");
+            setTimeout(() => {
+              const el = document.getElementById("results");
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            }, 60);
           } else if (action === "unpublish") {
             unpublishEventResult(id);
             renderLeaderboard(); renderResultsList(); renderTicker();
             showToast(`${ev.name} result unpublished`);
             renderList();
-          } else if (action === "enter") {
-            openMarksModal(id);
           }
         });
       });
@@ -3567,43 +3609,55 @@
     adminContent.innerHTML = `
       <div class="card">
         <div class="card-title">Results</div>
-        <div class="muted" style="font-size:.75rem;margin-bottom:.75rem">Manage and publish competition results</div>
+        <div class="muted" style="font-size:.75rem;margin-bottom:.75rem">Manage and reorder competition results, and view team points</div>
         <div class="results-stats" id="resultsStatsWrap"></div>
-        <input id="resultsSearchInput" class="input" placeholder="Search programmes..." style="margin-bottom:.6rem" />
-        <button class="btn btn-ghost" id="btnPublishAllResults" style="margin-bottom:.75rem">&#128226; Publish All</button>
-        <div id="resultsCardListWrap"></div>
-      </div>
-      <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Generate Results Sheet</div>
-      <div class="card">
-        <div class="field-label" style="margin-bottom:.5rem">Pick a programme to generate its printable Results sheet (1st, 2nd &amp; 3rd place).</div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          <select id="resultsEventSel" class="input" style="flex:1;min-width:10rem">
-            <option value="">Choose programme...</option>
-            ${state.events.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
-          </select>
-          <button class="btn btn-primary" id="btnGenerateResults" style="width:auto;padding:.5rem .9rem">Generate</button>
+        <div class="results-search-wrap">
+          <span class="results-search-icon">&#128269;</span>
+          <input id="resultsSearchInput" class="input results-search-input" placeholder="Search results..." />
         </div>
-      </div>
-      <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Sheet History</div>
-      <div class="card" style="padding:.5rem .75rem"><div id="historyListWrap"></div></div>`;
+        <div id="resultsCardListWrap"></div>
+      </div>`;
 
     renderList();
-    renderPrintHistoryList();
-
     document.getElementById("resultsSearchInput").addEventListener("input", (e) => { searchQuery = e.target.value; renderList(); });
-    document.getElementById("btnPublishAllResults").addEventListener("click", () => {
-      let count = 0;
-      state.events.forEach((e) => { if (getResultStatus(e) === "Submitted" && publishEventResult(e.id)) count++; });
-      if (!count) { showToast("No submitted results to publish"); return; }
-      renderLeaderboard(); renderResultsList(); renderTicker();
-      showToast(`${count} result${count > 1 ? "s" : ""} published`);
-      renderList();
-    });
-    document.getElementById("btnGenerateResults").addEventListener("click", () => {
-      const eid = document.getElementById("resultsEventSel").value;
-      if (!eid) return showToast("Choose a programme first");
-      openPrintSheet("Results", eid);
-    });
+  }
+
+  // Read-only preview of a programme's top placements \u2014 for the person
+  // announcing results on stage to check before hitting Publish.
+  function openResultViewModal(eventId) {
+    const event = state.events.find((e) => e.id === eventId);
+    if (!event) return;
+    const ranked = rankedParticipants(eventId).filter((r) => r.mark != null).slice(0, 3);
+    const rankKeys = ["first", "second", "third"];
+    const rowsHtml = ranked.length
+      ? ranked.map((r, i) => {
+          const team = state.teams.find((t) => t.id === r.student.team);
+          return `
+          <div class="history-row">
+            <div class="history-row-main">
+              <div class="history-row-title">${RANK_LABEL[rankKeys[i]]} \u2014 ${escapeHtml(r.student.name)}</div>
+              <div class="muted" style="font-size:.7rem">${r.student.chestNo || "\u2014"} \u00b7 ${team ? escapeHtml(team.name) : "\u2014"} \u00b7 Mark: ${r.mark}</div>
+            </div>
+          </div>`;
+        }).join("")
+      : `<div class="empty-note">No marks entered yet for this programme.</div>`;
+
+    modalBody.innerHTML = `
+      <div class="marks-modal">
+        <div class="row-between" style="margin-bottom:.75rem">
+          <div style="font-weight:600;font-size:.95rem">${escapeHtml(event.name)} \u2014 ${event.category}</div>
+          <button class="dots-btn" id="rvClose" style="font-size:1.2rem">&times;</button>
+        </div>
+        <div class="muted" style="font-size:.72rem;margin-bottom:.6rem">Preview for announcing on stage</div>
+        ${rowsHtml}
+        <div class="modal-actions" style="background:transparent;padding:.75rem 0 0">
+          <button class="btn btn-ghost" id="rvClose2" style="flex:1">Close</button>
+        </div>
+      </div>`;
+    document.getElementById("rvClose").addEventListener("click", closeTopScreen);
+    document.getElementById("rvClose2").addEventListener("click", closeTopScreen);
+    modalOverlay.classList.remove("hidden");
+    pushScreen(() => { modalOverlay.classList.add("hidden"); modalBody.innerHTML = ""; });
   }
 
   function renderChecklist() {
@@ -3698,7 +3752,7 @@
                 <div style="font-size:.85rem;font-weight:600">${ev ? escapeHtml(ev.name) : "(programme deleted)"}</div>
                 <div style="font-size:.72rem;color:var(--muted)">${ev ? escapeHtml(ev.category) : ""} \u00b7 ${formatTimeRange(s.start, s.end)} \u00b7 <span style="color:var(--gold-light)">Tap to edit</span></div>
               </div>
-              <button class="icon-btn" data-del-sched="${s.id}" style="width:2rem;height:2rem;color:#EF4444" title="Delete">&#128465;</button>
+              <button class="delete-text-btn" data-del-sched="${s.id}">Delete</button>
             </div>`;
           }).join("")}
         </div>`).join("");
