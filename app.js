@@ -417,6 +417,16 @@
     persist();
   }
 
+  // Three-state status for the admin Results section: Pending (no marks
+  // entered yet), Submitted (marks saved via Mark Entry but not published),
+  // Published (live on the home page).
+  function getResultStatus(event) {
+    if (event.resultStatus === "Published") return "Published";
+    const marks = state.marks[event.id];
+    if (marks && Object.keys(marks).length) return "Submitted";
+    return "Pending";
+  }
+
   /* ---------------- toast ---------------- */
   let toastTimer;
   function showToast(msg) {
@@ -2785,7 +2795,7 @@
         <td>${e.category}</td>
         <td>${e.gender}</td>
         <td>${e.status === "ticked" ? '<span class="tick" title="Green Room Sign already generated">\u2713</span>' : '<span class="muted">\u2014</span>'}</td>
-        <td><span class="status-pill ${e.resultStatus === "Published" ? "status-published" : "status-pending"}">${e.resultStatus}</span></td>
+        <td>${(() => { const s = getResultStatus(e); const cls = s === "Published" ? "status-published" : s === "Submitted" ? "status-submitted" : "status-pending"; return `<span class="status-pill ${cls}">${s}</span>`; })()}</td>
         <td><button class="dots-btn" data-open="${e.id}">\u22EF</button></td>
       </tr>`).join("");
     document.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => openMarksModal(b.dataset.open)));
@@ -2812,7 +2822,7 @@
             <div style="font-weight:600;font-size:.95rem">${escapeHtml(event.name)} \u2014 ${event.category}${event.gender !== "General" ? " (" + event.gender + " Only)" : ""}</div>
             <button class="dots-btn" id="meClose" style="font-size:1.2rem">&times;</button>
           </div>
-          ${event.resultStatus === "Published" ? `<div class="warn-banner">\u26A0 Result Published. Editing marks might affect the live leaderboard.</div>` : ""}
+          ${event.resultStatus === "Published" ? `<div class="warn-banner">\u26A0 Result already published. Go to the Results section to re-publish after changing marks.</div>` : ""}
           ${event.type === "Group" ? `<div class="muted" style="font-size:.7rem;margin-bottom:.5rem">\u2139 Group programme \u2014 each team is scored once, under its team leader (first member registered).</div>` : ""}
           <div class="field-label">Judges</div>
           <div class="judge-chips">
@@ -2846,11 +2856,6 @@
           <div class="modal-actions" style="background:transparent;padding:0 0 .6rem">
             <button class="btn btn-ghost" id="meCancel">Cancel</button>
             <button class="btn btn-primary" id="meSubmit">Submit Marks</button>
-          </div>
-          <div class="modal-actions" style="background:transparent;padding:0">
-            ${event.resultStatus === "Published"
-              ? `<button class="btn" style="background:rgba(139,38,53,.12);color:var(--crimson)" id="meUnpublish">Unpublish</button>`
-              : `<button class="btn btn-primary" id="mePublish">\u2713 Publish Result</button>`}
           </div>
         </div>`;
 
@@ -2899,22 +2904,7 @@
       }
       document.getElementById("meSubmit").addEventListener("click", () => {
         if (!collectMarks()) { showToast("Marks must be numbers between 0 and 100 \u2014 check the highlighted boxes"); return; }
-        persist(); showToast("Marks saved"); draw();
-      });
-      const publishBtn = document.getElementById("mePublish");
-      if (publishBtn) publishBtn.addEventListener("click", () => {
-        if (!collectMarks()) { showToast("Marks must be numbers between 0 and 100 \u2014 check the highlighted boxes"); return; }
-        if (!publishEventResult(eventId)) { showToast("Enter at least one mark before publishing"); return; }
-        renderLeaderboard(); renderResultsList(); renderTicker();
-        showToast(`${event.name} result published \u2014 now live on the home page`);
-        draw(); renderMarksTab();
-      });
-      const unpublishBtn = document.getElementById("meUnpublish");
-      if (unpublishBtn) unpublishBtn.addEventListener("click", () => {
-        unpublishEventResult(eventId);
-        renderLeaderboard(); renderResultsList(); renderTicker();
-        showToast(`${event.name} result unpublished`);
-        draw(); renderMarksTab();
+        persist(); showToast("Marks saved"); draw(); renderMarksTab();
       });
     }
 
@@ -3487,12 +3477,104 @@
     document.getElementById("btnExportExcel").addEventListener("click", downloadExcel);
   }
   /* ---- Results tab (moved out of Green Room \u2014 now its own top-level tab).
-     Lets the admin generate the printable Results sheet (1st/2nd/3rd) for
-     any programme, and shows the same sheet history as Green Room. ---- */
+     Lets the admin publish/unpublish each programme's result, and generate
+     the printable Results sheet (1st/2nd/3rd), with the same sheet history
+     as Green Room. ---- */
   function renderResultsTab() {
+    let searchQuery = "";
+
+    function computeStats() {
+      const stats = { Pending: 0, Submitted: 0, Published: 0 };
+      state.events.forEach((e) => { stats[getResultStatus(e)]++; });
+      return stats;
+    }
+
+    function getFilteredEvents() {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return state.events;
+      return state.events.filter((e) => e.name.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
+    }
+
+    function renderList() {
+      const stats = computeStats();
+      const statsWrap = document.getElementById("resultsStatsWrap");
+      if (statsWrap) statsWrap.innerHTML = `
+        <div class="results-stat-card"><span class="label">Pending</span><span class="num">${stats.Pending}</span></div>
+        <div class="results-stat-card"><span class="label">Submitted</span><span class="num" style="color:var(--gold-light)">${stats.Submitted}</span></div>
+        <div class="results-stat-card"><span class="label">Published</span><span class="num" style="color:#6FD6A8">${stats.Published}</span></div>`;
+
+      const filtered = getFilteredEvents();
+      const listWrap = document.getElementById("resultsCardListWrap");
+      if (!listWrap) return;
+      if (!filtered.length) {
+        listWrap.innerHTML = `<div class="empty-note">No programmes found.</div>`;
+        return;
+      }
+      listWrap.innerHTML = filtered.map((e, i) => {
+        const status = getResultStatus(e);
+        const pillClass = status === "Published" ? "status-published" : status === "Submitted" ? "status-submitted" : "status-pending";
+        return `
+        <div class="history-row" data-id="${e.id}">
+          <div class="history-row-main">
+            <div class="history-row-title"><span class="muted">#${i + 1}</span> ${escapeHtml(e.name)}</div>
+            <div class="muted" style="font-size:.68rem;margin:.15rem 0 .35rem">${escapeHtml(e.category)}</div>
+            <span class="status-pill ${pillClass}">${status}</span>
+          </div>
+          <div class="history-dots-wrap">
+            <button class="history-dots-btn" data-id="${e.id}">&#8942;</button>
+            <div class="history-dots-menu hidden" data-id="${e.id}">
+              ${status === "Published"
+                ? `<button class="history-menu-item" data-action="unpublish" data-id="${e.id}">Unpublish</button>`
+                : status === "Submitted"
+                  ? `<button class="history-menu-item" data-action="publish" data-id="${e.id}">Publish</button>`
+                  : ""}
+              <button class="history-menu-item" data-action="enter" data-id="${e.id}">Enter Marks</button>
+            </div>
+          </div>
+        </div>`;
+      }).join("");
+
+      listWrap.querySelectorAll(".history-dots-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          listWrap.querySelectorAll(".history-dots-menu").forEach((m) => { if (m.dataset.id !== btn.dataset.id) m.classList.add("hidden"); });
+          listWrap.querySelector(`.history-dots-menu[data-id="${btn.dataset.id}"]`).classList.toggle("hidden");
+        });
+      });
+      listWrap.querySelectorAll(".history-menu-item").forEach((item) => {
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const id = item.dataset.id, action = item.dataset.action;
+          listWrap.querySelectorAll(".history-dots-menu").forEach((m) => m.classList.add("hidden"));
+          const ev = state.events.find((x) => x.id === id);
+          if (action === "publish") {
+            if (!publishEventResult(id)) { showToast("Enter at least one mark before publishing"); return; }
+            renderLeaderboard(); renderResultsList(); renderTicker();
+            showToast(`${ev.name} result published \u2014 now live on the home page`);
+            renderList();
+          } else if (action === "unpublish") {
+            unpublishEventResult(id);
+            renderLeaderboard(); renderResultsList(); renderTicker();
+            showToast(`${ev.name} result unpublished`);
+            renderList();
+          } else if (action === "enter") {
+            openMarksModal(id);
+          }
+        });
+      });
+    }
+
     adminContent.innerHTML = `
       <div class="card">
-        <div class="card-title">Generate Results Sheet</div>
+        <div class="card-title">Results</div>
+        <div class="muted" style="font-size:.75rem;margin-bottom:.75rem">Manage and publish competition results</div>
+        <div class="results-stats" id="resultsStatsWrap"></div>
+        <input id="resultsSearchInput" class="input" placeholder="Search programmes..." style="margin-bottom:.6rem" />
+        <button class="btn btn-ghost" id="btnPublishAllResults" style="margin-bottom:.75rem">&#128226; Publish All</button>
+        <div id="resultsCardListWrap"></div>
+      </div>
+      <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Generate Results Sheet</div>
+      <div class="card">
         <div class="field-label" style="margin-bottom:.5rem">Pick a programme to generate its printable Results sheet (1st, 2nd &amp; 3rd place).</div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap">
           <select id="resultsEventSel" class="input" style="flex:1;min-width:10rem">
@@ -3504,7 +3586,19 @@
       </div>
       <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Sheet History</div>
       <div class="card" style="padding:.5rem .75rem"><div id="historyListWrap"></div></div>`;
+
+    renderList();
     renderPrintHistoryList();
+
+    document.getElementById("resultsSearchInput").addEventListener("input", (e) => { searchQuery = e.target.value; renderList(); });
+    document.getElementById("btnPublishAllResults").addEventListener("click", () => {
+      let count = 0;
+      state.events.forEach((e) => { if (getResultStatus(e) === "Submitted" && publishEventResult(e.id)) count++; });
+      if (!count) { showToast("No submitted results to publish"); return; }
+      renderLeaderboard(); renderResultsList(); renderTicker();
+      showToast(`${count} result${count > 1 ? "s" : ""} published`);
+      renderList();
+    });
     document.getElementById("btnGenerateResults").addEventListener("click", () => {
       const eid = document.getElementById("resultsEventSel").value;
       if (!eid) return showToast("Choose a programme first");
