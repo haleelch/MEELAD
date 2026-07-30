@@ -51,7 +51,22 @@
     cardTemplates: seed.cardTemplates || [],
     resultTemplates: seed.resultTemplates || [],
     printHistory: seed.printHistory || [],
+    gradeScale: seed.gradeScale || null, // null = use the default DEFAULT_GRADE_SCALE below
   };
+
+  // Default grade \u2192 point scale, used only until the admin configures their
+  // own via LIMITS \u2192 Grading (state.gradeScale). Must be declared here, before
+  // ensureStateDefaults() below runs for the first time.
+  const DEFAULT_GRADE_SCALE = [
+    { min: 91, grade: "A+", point: 10 },
+    { min: 81, grade: "A", point: 9 },
+    { min: 71, grade: "B+", point: 8 },
+    { min: 61, grade: "B", point: 7 },
+    { min: 51, grade: "C+", point: 6 },
+    { min: 41, grade: "C", point: 5 },
+    { min: 33, grade: "D", point: 4 },
+    { min: -Infinity, grade: "F", point: 0 },
+  ];
 
   function ensureStateDefaults() {
     state.hero = state.hero || seed.hero;
@@ -72,6 +87,7 @@
     state.printHistory = state.printHistory || [];
     state.schedule = state.schedule || [];
     state.printHeaderName = state.printHeaderName || "";
+    state.gradeScale = (state.gradeScale && state.gradeScale.length) ? state.gradeScale : JSON.parse(JSON.stringify(DEFAULT_GRADE_SCALE));
     state.events.forEach((e) => {
       if (!e.resultStatus) e.resultStatus = state.results[e.id] ? "Published" : "Pending";
       if (!e.assignedJudges) e.assignedJudges = [...state.judges];
@@ -200,19 +216,10 @@
     return removed;
   }
 
-  const GRADE_SCALE = [
-    { min: 91, grade: "A+", point: 10 },
-    { min: 81, grade: "A", point: 9 },
-    { min: 71, grade: "B+", point: 8 },
-    { min: 61, grade: "B", point: 7 },
-    { min: 51, grade: "C+", point: 6 },
-    { min: 41, grade: "C", point: 5 },
-    { min: 33, grade: "D", point: 4 },
-    { min: -Infinity, grade: "F", point: 0 },
-  ];
   function gradeScaleFor(mark) {
     if (mark == null) return null;
-    return GRADE_SCALE.find((t) => mark >= t.min) || null;
+    const scale = (state.gradeScale && state.gradeScale.length ? state.gradeScale : DEFAULT_GRADE_SCALE);
+    return [...scale].sort((a, b) => b.min - a.min).find((t) => mark >= t.min) || null;
   }
   function gradeFor(mark) {
     const g = gradeScaleFor(mark);
@@ -336,13 +343,9 @@
     (student.events || []).forEach((eventId) => {
       const event = state.events.find((e) => e.id === eventId);
       if (!event) return;
+      if (event.type === "Group") return; // Group programme points count toward the team only, not individual Top Score
       if (stageTypeFilter && (event.stageType || "Stage") !== stageTypeFilter) return;
-      let scoringId = studentId;
-      if (event.type === "Group") {
-        const teammates = state.students.filter((s) => s.team === student.team && (s.events || []).includes(eventId));
-        scoringId = teammates.length ? teammates[0].id : studentId;
-      }
-      const mark = finalMarkFor(eventId, scoringId);
+      const mark = finalMarkFor(eventId, studentId);
       if (mark != null) total += mark;
     });
     return Math.round(total * 100) / 100;
@@ -1909,6 +1912,7 @@
     if (tab === "chestno") return renderChestNoTab();
     if (tab === "gallery") return renderGalleryTab();
     if (tab === "export") return renderExportTab();
+    if (tab === "results") return renderResultsTab();
     if (tab === "schedule") return renderScheduleTab();
   }
 
@@ -2449,18 +2453,97 @@
       showToast("Team added");
     });
   }
+  let openTeamMenuId = null; // which team's 3-dot menu is open
+  let teamEditId = null;     // which team is showing its inline edit form
+  let teamLeaderPickId = null; // which team is showing its Change Leader dropdown
+
   function renderTeamsList() {
-    document.getElementById("teamsListWrap").innerHTML = state.teams.map((t) => `
+    document.getElementById("teamsListWrap").innerHTML = state.teams.map((t) => {
+      const teamStudents = state.students.filter((s) => s.team === t.id);
+      return `
       <div class="card">
+        ${teamEditId === t.id ? `
+        <div class="grid2" style="margin-bottom:.5rem">
+          <input class="input" data-edit-name value="${escapeAttr(t.name)}" placeholder="Team Name" />
+          <input type="color" class="input" data-edit-color value="${t.color}" style="padding:.25rem" />
+        </div>
+        <input class="input" data-edit-assistant value="${escapeAttr(t.assistant || "")}" placeholder="Assistant Leader" style="margin-bottom:.5rem" />
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-primary" data-save-team="${t.id}" style="width:auto;padding:.45rem .9rem">Save</button>
+          <button class="btn btn-ghost" data-cancel-edit style="width:auto;padding:.45rem .9rem">Cancel</button>
+        </div>` : `
         <div class="row-between">
           <div style="display:flex;align-items:center;gap:.5rem">
             <span style="width:.75rem;height:.75rem;border-radius:50%;background:${t.color};display:inline-block"></span>
             <div><div style="font-size:.85rem;font-weight:500">${escapeHtml(t.name)}</div>
             <div class="muted" style="font-size:.7rem">Leader: ${escapeHtml(t.leader || "\u2014")} \u00b7 Asst: ${escapeHtml(t.assistant || "\u2014")}</div></div>
           </div>
-          <button class="trash-btn" data-id="${t.id}">\u{1F5D1}</button>
+          <div style="position:relative">
+            <button class="dots-btn" data-team-menu="${t.id}">\u22EF</button>
+            ${openTeamMenuId === t.id ? `
+            <div class="card" style="position:absolute;right:0;top:1.8rem;z-index:5;width:10rem;padding:.35rem;box-shadow:0 8px 20px rgba(0,0,0,.25)">
+              <button class="btn btn-ghost" data-edit-team="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;margin-bottom:.25rem">\u270F\uFE0F Edit Team</button>
+              <button class="btn btn-ghost" data-change-leader="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;margin-bottom:.25rem">\u{1F451} Change Leader</button>
+              <button class="btn btn-ghost trash-btn" data-id="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;color:var(--crimson)">\u{1F5D1} Delete Team</button>
+            </div>` : ""}
+          </div>
         </div>
-      </div>`).join("");
+        ${teamLeaderPickId === t.id ? `
+        <div style="margin-top:.6rem;display:flex;gap:.5rem">
+          ${teamStudents.length ? `
+          <select class="input" data-leader-select="${t.id}" style="flex:1">
+            <option value="">Select leader...</option>
+            ${teamStudents.map((s) => `<option value="${escapeAttr(s.name)}" ${s.name === t.leader ? "selected" : ""}>${escapeHtml(s.name)}</option>`).join("")}
+          </select>
+          <button class="btn btn-primary" data-save-leader="${t.id}" style="width:auto;padding:.5rem .9rem">Set</button>` : `
+          <div class="muted" style="font-size:.72rem">No students registered in this team yet \u2014 add students first, or type a name below.</div>`}
+        </div>
+        ${!teamStudents.length ? `
+        <div style="margin-top:.4rem;display:flex;gap:.5rem">
+          <input class="input" data-leader-text="${t.id}" placeholder="Leader name" value="${escapeAttr(t.leader || "")}" style="flex:1" />
+          <button class="btn btn-primary" data-save-leader="${t.id}" style="width:auto;padding:.5rem .9rem">Set</button>
+        </div>` : ""}` : ""}`}
+      </div>`;
+    }).join("");
+
+    document.querySelectorAll("[data-team-menu]").forEach((b) => b.addEventListener("click", () => {
+      openTeamMenuId = openTeamMenuId === b.dataset.teamMenu ? null : b.dataset.teamMenu;
+      teamEditId = null; teamLeaderPickId = null;
+      renderTeamsList();
+    }));
+    document.querySelectorAll("[data-edit-team]").forEach((b) => b.addEventListener("click", () => {
+      teamEditId = b.dataset.editTeam; openTeamMenuId = null; teamLeaderPickId = null;
+      renderTeamsList();
+    }));
+    document.querySelectorAll("[data-cancel-edit]").forEach((b) => b.addEventListener("click", () => {
+      teamEditId = null; renderTeamsList();
+    }));
+    document.querySelectorAll("[data-save-team]").forEach((b) => b.addEventListener("click", () => {
+      const team = state.teams.find((t) => t.id === b.dataset.saveTeam);
+      const name = document.querySelector("[data-edit-name]").value.trim();
+      if (!name) return showToast("Team name is required");
+      team.name = name;
+      team.color = document.querySelector("[data-edit-color]").value;
+      team.assistant = document.querySelector("[data-edit-assistant]").value.trim();
+      teamEditId = null;
+      persist(); renderLeaderboard(); renderTeamsList();
+      showToast("Team updated");
+    }));
+    document.querySelectorAll("[data-change-leader]").forEach((b) => b.addEventListener("click", () => {
+      teamLeaderPickId = b.dataset.changeLeader; openTeamMenuId = null; teamEditId = null;
+      renderTeamsList();
+    }));
+    document.querySelectorAll("[data-save-leader]").forEach((b) => b.addEventListener("click", () => {
+      const team = state.teams.find((t) => t.id === b.dataset.saveLeader);
+      const select = document.querySelector(`[data-leader-select="${b.dataset.saveLeader}"]`);
+      const text = document.querySelector(`[data-leader-text="${b.dataset.saveLeader}"]`);
+      const newLeader = (select ? select.value : "") || (text ? text.value.trim() : "");
+      if (!newLeader) return showToast("Choose or enter a leader name");
+      team.leader = newLeader;
+      teamLeaderPickId = null;
+      persist(); renderTeamsList();
+      showToast("Team leader updated");
+    }));
     document.querySelectorAll("#teamsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
       const team = state.teams.find((t) => t.id === b.dataset.id);
       if (!confirm(`Delete ${team ? team.name : "this team"}? This can't be undone.`)) return;
@@ -2865,6 +2948,23 @@
             <input type="number" min="1" class="input" data-group-limit="${e.id}" value="${e.groupLimit || 4}" style="width:4.5rem;text-align:center" />
           </div>`).join("") : `<div class="muted" style="font-size:.8rem">No Group-type programmes yet \u2014 add one in the Programme tab first.</div>`}
         ${groupEvents.length ? `<button class="btn btn-primary" id="btnSaveGroupLimits" style="width:auto;padding:.6rem 1rem;margin-top:.85rem">Save Group Limits</button>` : ""}
+      </div>
+      <div class="card">
+        <div class="card-title">Grading</div>
+        <div class="muted" style="font-size:.75rem;margin-bottom:.75rem">A mark's Grade and Grade Point (used in Mark Entry and printed sheets) come from this scale \u2014 the highest row whose Min Mark the score meets or beats. Edit or add rows as needed.</div>
+        <div id="gradeScaleRows">
+          ${state.gradeScale.sort((a, b) => b.min - a.min).map((g, i) => `
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.5rem;align-items:center;padding:.4rem 0;${i ? "border-top:1px solid var(--border)" : ""}">
+            <input class="input" data-grade-field="grade" data-grade-idx="${i}" value="${escapeAttr(g.grade)}" placeholder="A+" style="text-align:center" />
+            <input class="input" type="number" data-grade-field="min" data-grade-idx="${i}" value="${g.min === -Infinity ? "" : g.min}" placeholder="Min mark" style="text-align:center" />
+            <input class="input" type="number" data-grade-field="point" data-grade-idx="${i}" value="${g.point}" placeholder="Points" style="text-align:center" />
+            <button class="dots-btn" data-remove-grade="${i}" title="Remove grade">\u2715</button>
+          </div>`).join("")}
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.85rem">
+          <button class="btn btn-ghost" id="btnAddGradeRow" style="width:auto;padding:.5rem .9rem">+ Add Grade</button>
+          <button class="btn btn-primary" id="btnSaveGradeScale" style="width:auto;padding:.5rem .9rem">Save Grading</button>
+        </div>
       </div>`;
     document.getElementById("btnSaveLimits").addEventListener("click", () => {
       state.limits = {
@@ -2880,6 +2980,33 @@
         if (ev) ev.groupLimit = Math.max(1, Number(input.value) || 1);
       });
       persist(); showToast("Group limits updated");
+    });
+    document.getElementById("btnAddGradeRow").addEventListener("click", () => {
+      state.gradeScale.push({ grade: "", min: 0, point: 0 });
+      renderLimitsTab();
+    });
+    document.querySelectorAll("[data-remove-grade]").forEach((b) => b.addEventListener("click", () => {
+      if (state.gradeScale.length <= 1) return showToast("Keep at least one grade");
+      state.gradeScale.splice(Number(b.dataset.removeGrade), 1);
+      renderLimitsTab();
+    }));
+    document.getElementById("btnSaveGradeScale").addEventListener("click", () => {
+      const rows = {};
+      document.querySelectorAll("[data-grade-idx]").forEach((inp) => {
+        const idx = inp.dataset.gradeIdx;
+        rows[idx] = rows[idx] || {};
+        rows[idx][inp.dataset.gradeField] = inp.value;
+      });
+      const newScale = Object.values(rows).map((r) => ({
+        grade: (r.grade || "").trim() || "-",
+        min: r.min === "" || r.min == null ? -Infinity : Number(r.min),
+        point: Number(r.point) || 0,
+      }));
+      if (!newScale.length) return showToast("Add at least one grade first");
+      state.gradeScale = newScale;
+      persist();
+      showToast("Grading scale saved");
+      renderLimitsTab();
     });
   }
 
@@ -3303,7 +3430,7 @@
   function renderExportTab() {
     const cards = [
       { id: "Call List", icon: "\u{1F4CB}" }, { id: "Valuation Sheet", icon: "\u{1F3C5}" },
-      { id: "Green Room Sign", icon: "\u2B50" }, { id: "Results", icon: "\u{1F3C6}" },
+      { id: "Green Room Sign", icon: "\u2B50" },
     ];
     adminContent.innerHTML = `
       ${isSuperAdmin() ? `
@@ -3338,6 +3465,7 @@
     renderPrintHistoryList();
     document.querySelectorAll(".export-card").forEach((b) => b.addEventListener("click", () => {
       pickEventKind = b.dataset.kind;
+      document.querySelectorAll(".export-card").forEach((c) => c.classList.toggle("active", c === b)); // bug fix: highlight the selected card
       document.getElementById("pickWrap").innerHTML = `
         <div class="card">
           <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select programme for "${pickEventKind}"</div>
@@ -3358,12 +3486,53 @@
     document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);
     document.getElementById("btnExportExcel").addEventListener("click", downloadExcel);
   }
+  /* ---- Results tab (moved out of Green Room \u2014 now its own top-level tab).
+     Lets the admin generate the printable Results sheet (1st/2nd/3rd) for
+     any programme, and shows the same sheet history as Green Room. ---- */
+  function renderResultsTab() {
+    adminContent.innerHTML = `
+      <div class="card">
+        <div class="card-title">Generate Results Sheet</div>
+        <div class="field-label" style="margin-bottom:.5rem">Pick a programme to generate its printable Results sheet (1st, 2nd &amp; 3rd place).</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <select id="resultsEventSel" class="input" style="flex:1;min-width:10rem">
+            <option value="">Choose programme...</option>
+            ${state.events.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+          </select>
+          <button class="btn btn-primary" id="btnGenerateResults" style="width:auto;padding:.5rem .9rem">Generate</button>
+        </div>
+      </div>
+      <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Sheet History</div>
+      <div class="card" style="padding:.5rem .75rem"><div id="historyListWrap"></div></div>`;
+    renderPrintHistoryList();
+    document.getElementById("btnGenerateResults").addEventListener("click", () => {
+      const eid = document.getElementById("resultsEventSel").value;
+      if (!eid) return showToast("Choose a programme first");
+      openPrintSheet("Results", eid);
+    });
+  }
+
   function renderChecklist() {
     document.getElementById("checklistWrap").innerHTML = state.events.map((e) => `
       <div class="checklist-row ${e.status === "ticked" ? "done" : ""}">
         <span>${escapeHtml(e.name)} <span class="muted">\u00b7 ${e.category}</span></span>
         ${e.status === "ticked" ? '<span class="tick">\u2713 In Progress</span>' : '<span class="muted">Pending</span>'}
       </div>`).join("");
+  }
+
+  // Bug fix: stage groups used to render in whatever order they were first
+  // added in (Object.keys insertion order), so "Stage 2" could appear above
+  // "Stage 1" if it happened to be created first. Sort by the number inside
+  // the stage name instead, so Stage 1 always comes before Stage 2, etc.
+  function sortStageKeys(keys) {
+    return [...keys].sort((a, b) => {
+      const na = parseInt((a.match(/\d+/) || [])[0], 10);
+      const nb = parseInt((b.match(/\d+/) || [])[0], 10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+      if (!isNaN(na) && isNaN(nb)) return -1;
+      if (isNaN(na) && !isNaN(nb)) return 1;
+      return a.localeCompare(b);
+    });
   }
 
   function formatTimeRange(start, end) {
@@ -3424,7 +3593,7 @@
       }
       const groups = {};
       state.schedule.forEach((s) => { (groups[s.stage] = groups[s.stage] || []).push(s); });
-      wrap.innerHTML = Object.keys(groups).map((stage) => `
+      wrap.innerHTML = sortStageKeys(Object.keys(groups)).map((stage) => `
         <div class="card" style="padding:.7rem .85rem;margin-bottom:.6rem">
           <div style="font-weight:700;font-size:.8rem;color:var(--gold-light);margin-bottom:.4rem">${escapeHtml(stage)}</div>
           ${groups[stage].map((s) => {
@@ -3535,7 +3704,7 @@
     const groups = {};
     state.schedule.forEach((s) => { (groups[s.stage] = groups[s.stage] || []).push(s); });
 
-    const stageBlocksHtml = Object.keys(groups).map((stage) => {
+    const stageBlocksHtml = sortStageKeys(Object.keys(groups)).map((stage) => {
       const rows = groups[stage].map((s, i) => {
         const ev = state.events.find((e) => e.id === s.eventId);
         return `<tr><td>${String(i + 1).padStart(2, "0")}</td><td>${ev ? escapeHtml(ev.name) : ""}</td><td>${ev ? escapeHtml(ev.category) : ""}</td><td>${formatTimeRange(s.start, s.end)}</td></tr>`;
@@ -3584,12 +3753,12 @@
     if (kind === "Green Room Sign" && event.type === "Group") {
       body = `
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type}</span><b>${event.category.toUpperCase()}</b></div>
-        <table><thead><tr><th>Team</th><th>Leader Name</th><th>Code Letter</th><th>Leader Signature</th></tr></thead><tbody>
+        <table><thead><tr><th>Team</th><th>Leader Name</th><th>Leader Signature</th></tr></thead><tbody>
           ${participants.map((s) => {
             const team = state.teams.find((t) => t.id === s.team);
-            return `<tr><td>${team ? escapeHtml(team.name) : ""}</td><td>${escapeHtml(s.name)}</td><td>${codeLetterFor(eventId, s.id)}</td><td>&nbsp;</td></tr>`;
+            return `<tr><td>${team ? escapeHtml(team.name) : ""}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td></tr>`;
           }).join("")}
-          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
         </tbody></table>
         <div style="margin-top:1.25rem;font-size:.78rem">
           <div style="margin-bottom:.4rem">Competition Start Time: ______________</div>
@@ -3599,9 +3768,9 @@
     } else if (kind === "Green Room Sign") {
       body = `
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type}</span><b>${event.category.toUpperCase()}</b></div>
-        <table><thead><tr><th>Chest No</th><th>Participant</th><th>Code Letter</th><th>Participants Signature</th></tr></thead><tbody>
-          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>${codeLetterFor(eventId, s.id)}</td><td>&nbsp;</td></tr>`).join("")}
-          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <table><thead><tr><th>Chest No</th><th>Participant</th><th>Participants Signature</th></tr></thead><tbody>
+          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td></tr>`).join("")}
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
         </tbody></table>
         <div style="margin-top:1.25rem;font-size:.78rem">
           <div style="margin-bottom:.4rem">Competition Start Time: ______________</div>
@@ -3614,10 +3783,11 @@
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><b>${event.category.toUpperCase()}</b><span>${event.type}</span></div>
         <div style="text-align:right;font-size:.7rem;color:#666;margin-bottom:.4rem">Stage No: ______</div>
         <table><thead>
-          <tr><th>Code Letter</th>${judges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Mark out of 100</th></tr>
+          <tr><th>Chest No</th><th>Participant</th>${judges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Total</th></tr>
         </thead><tbody>
-          ${participants.map((s) => `<tr><td>${codeLetterFor(eventId, s.id)}</td>${judges.map(() => "<td>&nbsp;</td>").join("")}<td>&nbsp;</td></tr>`).join("")}
+          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td>${judges.map(() => "<td>&nbsp;</td>").join("")}<td>&nbsp;</td></tr>`).join("")}
         </tbody></table>
+        <div style="margin-top:.4rem;font-size:.68rem;color:#666">Total Out of 100</div>
         <div style="margin-top:1.25rem;font-size:.78rem">
           <div>Judge's Name and Signature :</div>
           <div style="margin-top:1rem">Judging Comments:</div>
