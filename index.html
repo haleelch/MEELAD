@@ -383,15 +383,14 @@
 
     <div class="side-section-label">Festival</div>
     <a href="#top" class="side-link active" data-nav="top"><span class="atab-ic ic-mono">&#8962;</span> Home <span class="side-chevron">&#8250;</span></a>
-    <a href="#standings" class="side-link" data-nav="standings"><span class="atab-ic ic-mono">&#127942;</span> Live Results</a>
-    <a href="#gallery" class="side-link" data-nav="gallery"><span class="atab-ic ic-mono">&#128247;</span> Posters &amp; Gallery</a>
-
-    <div class="side-divider"></div>
-    <a href="#" class="side-link" data-admin-tab="dashboard"><span class="atab-ic ic-mono">&#128274;</span> Admin Login</a>
+    <a href="#standings" class="side-link" data-nav="standings"><span class="atab-ic ic-mono">&#127942;</span> Live Results <span class="side-chevron">&#8250;</span></a>
+    <a href="#gallery" class="side-link" data-nav="gallery"><span class="atab-ic ic-mono">&#128247;</span> Posters &amp; Gallery <span class="side-chevron">&#8250;</span></a>
+    <a href="#" class="side-link" data-admin-tab="dashboard"><span class="atab-ic ic-mono">&#128274;</span> Admin Login <span class="side-chevron">&#8250;</span></a>
 
     <div class="sidebar-bottom">
       <div class="tiraz" style="margin-bottom:.75rem"></div>
       <div style="font-size:.75rem;text-align:center" id="sideVersionLine">Festival Admin v1.0</div>
+      <div class="sidebar-credit">CH HUB<br>ALL RIGHTS RESERVED</div>
     </div>
   </nav>
 
@@ -406,25 +405,45 @@
           <div class="hero-badge" id="heroBadge" style="display:none"><span>&#9733;</span> <span id="heroBadgeText"></span></div>
           <h1 class="hero-card-title" id="posterHeading"></h1>
           <p class="hero-card-sub" id="heroSubText"></p>
-          <a href="#standings" class="primary-button"><span>&#65291;</span> Explore Festival</a>
+          <a href="#standings" id="exploreFestivalBtn" class="primary-button"><span>&#65291;</span> Explore Festival</a>
         </div>
       </div>
     </section>
 
     <!-- STATS (at-a-glance card) -->
     <section class="stats-section">
-      <div class="stats-card" id="statBoxWrap">
-        <a href="#results" class="stat-item" id="statBoxProgrammes">
-          <div class="stat-icon icon-1">&#127942;</div>
-          <div class="stat-text"><p>Total<br>Programmes</p><h2 id="cntProgrammes">0</h2></div>
+      <div class="dash-cards-grid" id="statBoxWrap">
+        <a href="#results" class="dash-card dash-red" id="statBoxParticipants">
+          <div class="dash-card-body">
+            <div class="dash-card-icon">&#128101;</div>
+            <div class="dash-card-title">REGISTERED PARTICIPANTS</div>
+            <div class="dash-card-count" id="cntStudents">0</div>
+          </div>
+          <div class="dash-card-footer">View All <span class="dash-card-arrow">&#8594;</span></div>
         </a>
-        <a href="#results" class="stat-item" id="statBoxParticipants">
-          <div class="stat-icon icon-2">&#128101;</div>
-          <div class="stat-text"><p>Registered<br>Participants</p><h2 id="cntStudents">0</h2></div>
+        <a href="#results" class="dash-card dash-blue" id="statBoxProgrammes">
+          <div class="dash-card-body">
+            <div class="dash-card-icon">&#128197;</div>
+            <div class="dash-card-title">TOTAL EVENTS</div>
+            <div class="dash-card-count" id="cntProgrammes">0</div>
+          </div>
+          <div class="dash-card-footer">View All <span class="dash-card-arrow">&#8594;</span></div>
         </a>
-        <a href="#standings" class="stat-item" id="statBoxTeams">
-          <div class="stat-icon icon-3">&#127941;</div>
-          <div class="stat-text"><p>Competing<br>Teams</p><h2 id="cntTeams">0</h2></div>
+        <a href="#standings" class="dash-card dash-green" id="statBoxTeams">
+          <div class="dash-card-body">
+            <div class="dash-card-icon">&#127942;</div>
+            <div class="dash-card-title">TEAM LIVE STANDINGS</div>
+            <div class="dash-card-count">Live</div>
+          </div>
+          <div class="dash-card-footer">View Points <span class="dash-card-arrow">&#8594;</span></div>
+        </a>
+        <a href="#results" class="dash-card dash-purple">
+          <div class="dash-card-body">
+            <div class="dash-card-icon">&#128202;</div>
+            <div class="dash-card-title">LIVE RESULTS</div>
+            <div class="dash-card-count">Updates</div>
+          </div>
+          <div class="dash-card-footer">View Results <span class="dash-card-arrow">&#8594;</span></div>
         </a>
       </div>
     </section>
@@ -518,6 +537,7 @@
     <div class="admin-topbar">
       <button id="btnAdminMenu" class="icon-btn" aria-label="Admin Menu">&#9776;</button>
       <div class="font-display admin-topbar-title">&#128737; Admin Control Panel</div>
+      <button id="btnAdminTheme" class="btn btn-ghost" aria-label="Toggle dark/light mode">&#127769;</button>
       <button id="btnAdminGuestView" class="btn btn-ghost">Guest Mode</button>
     </div>
     <div id="adminContent" class="admin-content"></div>

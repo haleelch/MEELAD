@@ -23,9 +23,6 @@
    accent (independent of the theme variables above) — override just those
    in light mode so no purple/pink survives on the white background. Dark
    theme keeps its original accent untouched. */
-[data-theme="light"] #statBoxTeams{border-color:#0d6efd;box-shadow:0 4px 20px rgba(13,110,253,.15);}
-[data-theme="light"] #statBoxTeams h2{color:#0d6efd;}
-[data-theme="light"] .stat-icon.icon-3{background:linear-gradient(145deg,#0b5ed7,#0d6efd);box-shadow:0 0 16px rgba(13,110,253,.35),inset 0 0 12px rgba(0,0,0,.15);}
 /* Bug fix: text/icon color on every component whose background is the solid
    blue --emerald-deep/--emerald (Admin topbar title, +Add / Save buttons,
    toast, admin login badge, active tab pill, hero badge, poster rank/code)
@@ -90,23 +87,24 @@ input,select{font-family:inherit;}
 
 /* ---- sidebar ---- */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45;}
-.sidebar{position:fixed;top:0;left:0;height:100%;width:50vw;max-width:22rem;min-width:15rem;background:#020617;z-index:50;transform:translateX(-100%);transition:transform .3s ease;display:flex;flex-direction:column;padding:1rem 0;overflow-y:auto;}
+.sidebar{position:fixed;top:0;left:0;height:100%;width:50vw;max-width:22rem;min-width:15rem;background:#0F172A;z-index:50;transform:translateX(-100%);transition:transform .3s ease;display:flex;flex-direction:column;padding:1rem 0;overflow-y:auto;}
 .sidebar.open{transform:translateX(0);}
 #adminSidebar{z-index:90;}
 #adminSidebarOverlay{z-index:89;}
-.sidebar-head{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.25rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:.5rem;}
-.sidebar-logo-box{width:2.6rem;height:2.6rem;border-radius:.85rem;background:linear-gradient(145deg,#0f172a,#10213c);display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#fff;box-shadow:5px 6px 0 #1f9d55;flex-shrink:0;}
-.side-section-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#53627b;font-weight:700;padding:1.1rem 1.25rem .5rem;}
-.side-link{display:flex;align-items:center;gap:.85rem;padding:.85rem 1rem;color:#9aa8c2;font-size:.9rem;border-radius:.9rem;margin:.2rem .6rem;background:transparent;transition:.2s;}
-.side-link:hover{background:#092c2e;color:#7bd99a;}
-.side-link.active{background:#062d2f;color:#80d99c;}
-.side-link .atab-ic{width:2.3rem;height:2.3rem;border-radius:.6rem;font-size:1.05rem;}
-.side-chevron{margin-left:auto;font-size:1.2rem;color:#4fc276;opacity:1;}
+.sidebar-head{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.25rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:.5rem;}
+.sidebar-logo-box{width:2.6rem;height:2.6rem;border-radius:.85rem;background:#2563EB;display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#fff;flex-shrink:0;}
+.side-section-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#64748B;font-weight:700;padding:1.1rem 1.25rem .5rem;}
+.side-link{display:flex;align-items:center;gap:.85rem;padding:.85rem 1rem;color:#CBD5E1;font-size:.9rem;font-weight:500;border-radius:.9rem;margin:.35rem .75rem;background:#1E293B;transition:.2s;}
+.side-link:hover{background:#2D3748;}
+.side-link.active{background:#2563EB;color:#fff;}
+.side-link .atab-ic{width:2.3rem;height:2.3rem;border-radius:.6rem;font-size:1.05rem;background:rgba(0,0,0,.25);}
+.side-chevron{margin-left:auto;font-size:1.15rem;color:#64748B;opacity:1;}
 .side-divider{height:1px;background:rgba(255,255,255,.07);margin:1.25rem 1rem;}
 .sidebar-bottom{margin-top:auto;padding:0 .75rem;}
 .sidebar-bottom div{color:#1e2a43;}
+.sidebar-credit{font-size:.66rem;text-align:center;color:#475569;line-height:1.5;margin-top:.6rem;letter-spacing:.03em;}
 .ic-mono{background:#0b1024;color:#9aa8c2;}
-.side-link.active .atab-ic{background:#168c4b;color:#fff;}
+.side-link.active .atab-ic{background:rgba(255,255,255,.2);color:#fff;}
 
 /* ---- hero ---- */
 .hero-card-section{padding:1.25rem 1rem 0;}
@@ -134,36 +132,52 @@ input,select{font-family:inherit;}
   100%{opacity:1;transform:translateY(0) scale(1);text-shadow:0 0 0 rgba(255,193,61,0);}
 }
 
-/* ---- stats card (home page "at a glance" row, matches user's reference design) ---- */
-.stats-section{max-width:720px;margin:1.5rem auto 0;position:relative;z-index:5;padding:0 1.5rem;}
-.stats-card{background:transparent;border:none;box-shadow:none;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:.85rem;position:relative;}
-.stat-item{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;text-align:center;position:relative;
-  background:var(--surface);border:1px solid;border-radius:1.1rem;padding:1.1rem .75rem;box-shadow:0 4px 20px rgba(0,0,0,.35);
-  background-size:cover;background-position:center;transition:background-image .2s ease,transform .2s ease;
-}
-.stat-item:hover{transform:translateY(-2px);}
-.stat-item:not(:last-child)::after{display:none;}
-#statBoxProgrammes{border-color:#10B981;box-shadow:0 4px 20px rgba(16,185,129,.15);}
-#statBoxParticipants{border-color:#F59E0B;box-shadow:0 4px 20px rgba(245,158,11,.15);}
-#statBoxTeams{border-color:#EC4899;box-shadow:0 4px 20px rgba(236,72,153,.15);grid-column:1/span 2;justify-self:center;width:calc(50% - .425rem);}
-#statBoxProgrammes h2{color:#10B981;}
-#statBoxParticipants h2{color:#D97706;}
-#statBoxTeams h2{color:#BE185D;}
-.stat-item .stat-icon{width:52px;height:52px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.25rem;box-shadow:inset 0 0 12px rgba(0,0,0,.3);}
-.stat-icon.icon-1{background:linear-gradient(145deg,#059669,#10B981);color:#FBBF24;box-shadow:0 0 16px rgba(16,185,129,.55),inset 0 0 12px rgba(0,0,0,.25);}
-.stat-icon.icon-2{background:linear-gradient(145deg,#D97706,#F59E0B);box-shadow:0 0 16px rgba(245,158,11,.55),inset 0 0 12px rgba(0,0,0,.25);}
-.stat-icon.icon-3{background:linear-gradient(145deg,#BE185D,#EC4899);box-shadow:0 0 16px rgba(236,72,153,.55),inset 0 0 12px rgba(0,0,0,.25);}
-.stat-item p{font-size:.62rem;color:var(--muted);font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:1.3;}
-.stat-item h2{font-family:'Poppins',sans-serif;font-size:1.85rem;font-weight:800;line-height:1;margin-top:.15rem;}
-#statBoxProgrammes h2{color:#10B981;}
-#statBoxParticipants h2{color:#FBBF24;}
-#statBoxTeams h2{color:#EC4899;}
-.stats-card.has-bg-photo .stat-item h2{color:#fff;}
-.stats-card.has-bg-photo .stat-item p{color:#F2F5F3;}
-.stats-card.has-bg-photo .stat-icon{box-shadow:0 0 0 2px rgba(255,255,255,.4);}
-.stats-card.has-bg-photo .stat-item:not(:last-child)::after{background:rgba(255,255,255,.35);}
-@media(max-width:480px){.stat-item{padding:.9rem .5rem;}}
+/* ---- dashboard cards (home page "at a glance" row — red/blue/green/purple reference design) ---- */
+.stats-section{max-width:760px;margin:1.5rem auto 0;position:relative;z-index:5;padding:0 1.5rem;}
+.dash-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;}
+.dash-card{border-radius:1.1rem;border:1px solid;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;transition:transform .15s ease;}
+.dash-card:hover{transform:translateY(-2px);}
+.dash-card-body{padding:1.1rem 1.1rem .6rem;flex:1;}
+.dash-card-icon{width:2.5rem;height:2.5rem;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;color:#fff;margin-bottom:.6rem;}
+.dash-card-title{font-size:.64rem;font-weight:700;letter-spacing:.03em;line-height:1.25;}
+.dash-card-count{font-size:1.7rem;font-weight:800;margin-top:.5rem;font-family:'Poppins',sans-serif;}
+.dash-card-footer{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.1rem;border-top:1px solid;font-size:.72rem;font-weight:700;}
+.dash-card-arrow{font-size:.85rem;}
+/* Dark theme (default): deep translucent tint per color. Light theme: soft pastel, matching the reference. */
+.dash-red{background:rgba(220,38,38,.13);border-color:rgba(220,38,38,.35);}
+.dash-red .dash-card-icon{background:#DC2626;}
+.dash-red .dash-card-title,.dash-red .dash-card-count,.dash-red .dash-card-footer{color:#FCA5A5;}
+.dash-red .dash-card-footer{border-color:rgba(220,38,38,.3);}
+[data-theme="light"] .dash-red{background:#FEF2F2;border-color:#FECACA;}
+[data-theme="light"] .dash-red .dash-card-title,[data-theme="light"] .dash-red .dash-card-count,[data-theme="light"] .dash-red .dash-card-footer{color:#991B1B;}
+[data-theme="light"] .dash-red .dash-card-footer{border-color:#FECACA;}
+
+.dash-blue{background:rgba(37,99,235,.13);border-color:rgba(37,99,235,.35);}
+.dash-blue .dash-card-icon{background:#2563EB;}
+.dash-blue .dash-card-title,.dash-blue .dash-card-count,.dash-blue .dash-card-footer{color:#93C5FD;}
+.dash-blue .dash-card-footer{border-color:rgba(37,99,235,.3);}
+[data-theme="light"] .dash-blue{background:#EFF6FF;border-color:#BFDBFE;}
+[data-theme="light"] .dash-blue .dash-card-title,[data-theme="light"] .dash-blue .dash-card-count,[data-theme="light"] .dash-blue .dash-card-footer{color:#1E40AF;}
+[data-theme="light"] .dash-blue .dash-card-footer{border-color:#BFDBFE;}
+
+.dash-green{background:rgba(22,163,74,.13);border-color:rgba(22,163,74,.35);}
+.dash-green .dash-card-icon{background:#16A34A;}
+.dash-green .dash-card-title,.dash-green .dash-card-count,.dash-green .dash-card-footer{color:#86EFAC;}
+.dash-green .dash-card-footer{border-color:rgba(22,163,74,.3);}
+[data-theme="light"] .dash-green{background:#F0FDF4;border-color:#BBF7D0;}
+[data-theme="light"] .dash-green .dash-card-title,[data-theme="light"] .dash-green .dash-card-count,[data-theme="light"] .dash-green .dash-card-footer{color:#166534;}
+[data-theme="light"] .dash-green .dash-card-footer{border-color:#BBF7D0;}
+
+.dash-purple{background:rgba(147,51,234,.13);border-color:rgba(147,51,234,.35);}
+.dash-purple .dash-card-icon{background:#9333EA;}
+.dash-purple .dash-card-title,.dash-purple .dash-card-count,.dash-purple .dash-card-footer{color:#D8B4FE;}
+.dash-purple .dash-card-footer{border-color:rgba(147,51,234,.3);}
+[data-theme="light"] .dash-purple{background:#FAF5FF;border-color:#E9D5FF;}
+[data-theme="light"] .dash-purple .dash-card-title,[data-theme="light"] .dash-purple .dash-card-count,[data-theme="light"] .dash-purple .dash-card-footer{color:#6B21A8;}
+[data-theme="light"] .dash-purple .dash-card-footer{border-color:#E9D5FF;}
+
+@media(min-width:640px){.dash-cards-grid{grid-template-columns:repeat(4,1fr);}}
+@media(max-width:480px){.dash-card-body{padding:.9rem .85rem .5rem;}}
 
 /* ---- sections ---- */
 .section{max-width:720px;margin:0 auto;padding:2.5rem 1.5rem 0;}

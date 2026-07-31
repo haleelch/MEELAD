@@ -523,12 +523,15 @@
 
   /* ---------------- theme toggle (light/dark, saved per device) ---------------- */
   const themeToggleBtn = document.getElementById("themeToggleBtn");
+  const adminThemeToggleBtn = document.getElementById("btnAdminTheme");
   function applyThemeIcon() {
     const isLight = document.documentElement.getAttribute("data-theme") === "light";
-    if (themeToggleBtn) themeToggleBtn.textContent = isLight ? "\u2600\uFE0F" : "\u{1F319}";
+    const icon = isLight ? "\u2600\uFE0F" : "\u{1F319}";
+    if (themeToggleBtn) themeToggleBtn.textContent = icon;
+    if (adminThemeToggleBtn) adminThemeToggleBtn.textContent = icon;
   }
   applyThemeIcon();
-  if (themeToggleBtn) themeToggleBtn.addEventListener("click", () => {
+  function toggleTheme() {
     const isLight = document.documentElement.getAttribute("data-theme") === "light";
     if (isLight) {
       document.documentElement.removeAttribute("data-theme");
@@ -538,7 +541,9 @@
       safeStorageSet("meelad-theme", "light");
     }
     applyThemeIcon();
-  });
+  }
+  if (themeToggleBtn) themeToggleBtn.addEventListener("click", toggleTheme);
+  if (adminThemeToggleBtn) adminThemeToggleBtn.addEventListener("click", toggleTheme);
 
   /* ---------------- sidebar ---------------- */
   const sidebar = document.getElementById("sidebar");
@@ -570,13 +575,25 @@
     e.preventDefault();
     showEventOrResultSection(a.getAttribute("href").slice(1));
   }));
-  document.querySelectorAll('a.primary-button[href^="#"], a.explore-card[href^="#"], .stat-item[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
+  document.querySelectorAll('a.primary-button[href^="#"], a.explore-card[href^="#"], .dash-card[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
     const id = a.getAttribute("href").slice(1);
     if (id === "results" || id === "standings") return; // handled above, no scroll
     const target = document.getElementById(id);
     if (target) target.scrollIntoView({ behavior: "smooth" });
   }));
+  // Explore Festival sits up in the hero, far above Team Points/Live Standings,
+  // so (unlike the small nearby dash-card links) it needs an actual scroll —
+  // the generic handler above deliberately skips scrolling for #standings.
+  const exploreFestivalBtn = document.getElementById("exploreFestivalBtn");
+  if (exploreFestivalBtn) exploreFestivalBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    showEventOrResultSection("standings");
+    requestAnimationFrame(() => {
+      const el = document.getElementById("standings");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    });
+  });
 
   /* ---------------- live ticker ---------------- */
   function renderTicker() {
@@ -724,13 +741,10 @@
   function renderCounters() {
     const cntP = document.getElementById("cntProgrammes");
     const cntS = document.getElementById("cntStudents");
-    const cntT = document.getElementById("cntTeams");
-    cntP.textContent = state.events.length;
-    cntS.textContent = state.students.length;
-    cntT.textContent = state.teams.length;
-    pulseCounter(cntP, state.events.length);
-    pulseCounter(cntS, state.students.length);
-    pulseCounter(cntT, state.teams.length);
+    const cntT = document.getElementById("cntTeams"); // may not exist \u2014 Team Standings card shows "Live" instead of a count now
+    if (cntP) { cntP.textContent = state.events.length; pulseCounter(cntP, state.events.length); }
+    if (cntS) { cntS.textContent = state.students.length; pulseCounter(cntS, state.students.length); }
+    if (cntT) { cntT.textContent = state.teams.length; pulseCounter(cntT, state.teams.length); }
     const catCount = document.getElementById("exploreCategoryCount");
     const partCount = document.getElementById("exploreParticipantCount");
     if (catCount) catCount.textContent = state.categories.length;
@@ -920,6 +934,14 @@
       searchBoxEl.value = "";
       searchResultsShown = SEARCH_RESULTS_PAGE_SIZE;
       renderResultsList();
+    }
+  });
+
+  // Clicking outside an expanded result card collapses it back down.
+  document.addEventListener("click", (e) => {
+    if (expandedResultCard && !e.target.closest(`.rf-card[data-event="${expandedResultCard}"]`)) {
+      expandedResultCard = null;
+      renderResultsFeed();
     }
   });
 
@@ -2450,17 +2472,14 @@
   }
 
   /* ---- Teams tab ---- */
+  const TEAM_COLOR_PALETTE = ["#155E43", "#8B2635", "#1F5FA8", "#C9A227", "#6B3FA0", "#B85C1E", "#0E7C7B", "#A6303F"];
   function renderTeamsTab() {
     adminContent.innerHTML = `
       <div class="card">
         <div class="card-title">New Team</div>
-        <div class="grid2" style="margin-bottom:.5rem">
-          <input id="tName" class="input" placeholder="Team Name" />
-          <input id="tColor" type="color" class="input" value="#155E43" style="padding:.25rem" />
-        </div>
         <div class="grid2" style="margin-bottom:.75rem">
+          <input id="tName" class="input" placeholder="Team Name" />
           <input id="tLeader" class="input" placeholder="Team Leader" />
-          <input id="tAssistant" class="input" placeholder="Assistant Leader" />
         </div>
         <button class="btn btn-primary" id="btnAddTeam" style="width:auto;padding:.6rem 1rem">+ Add Team</button>
       </div>
@@ -2471,15 +2490,14 @@
       if (!name) return showToast("Team name is required");
       state.teams.push({
         id: uid(), name,
-        color: document.getElementById("tColor").value,
+        color: TEAM_COLOR_PALETTE[state.teams.length % TEAM_COLOR_PALETTE.length],
         leader: document.getElementById("tLeader").value,
-        assistant: document.getElementById("tAssistant").value,
+        assistant: "",
       });
       persist(); renderCounters(); renderLeaderboard(); renderTeamsTab();
       showToast("Team added");
     });
   }
-  let openTeamMenuId = null; // which team's 3-dot menu is open
   let teamEditId = null;     // which team is showing its inline edit form
   let teamLeaderPickId = null; // which team is showing its Change Leader dropdown
 
@@ -2504,14 +2522,13 @@
             <div><div style="font-size:.85rem;font-weight:500">${escapeHtml(t.name)}</div>
             <div class="muted" style="font-size:.7rem">Leader: ${escapeHtml(t.leader || "\u2014")} \u00b7 Asst: ${escapeHtml(t.assistant || "\u2014")}</div></div>
           </div>
-          <div style="position:relative">
-            <button class="dots-btn" data-team-menu="${t.id}">\u22EF</button>
-            ${openTeamMenuId === t.id ? `
-            <div class="card" style="position:absolute;right:0;top:1.8rem;z-index:5;width:10rem;padding:.35rem;box-shadow:0 8px 20px rgba(0,0,0,.25)">
-              <button class="btn btn-ghost" data-edit-team="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;margin-bottom:.25rem">Edit Team</button>
-              <button class="btn btn-ghost" data-change-leader="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;margin-bottom:.25rem">Change Leader</button>
-              <button class="btn btn-ghost trash-btn" data-id="${t.id}" style="width:100%;justify-content:flex-start;padding:.5rem .6rem;color:var(--crimson)">Delete Team</button>
-            </div>` : ""}
+          <div class="history-dots-wrap">
+            <button class="history-dots-btn" data-team-menu="${t.id}">\u22EF</button>
+            <div class="history-dots-menu hidden" data-id="${t.id}">
+              <button class="history-menu-item" data-edit-team="${t.id}">Edit Team</button>
+              <button class="history-menu-item" data-change-leader="${t.id}">Change Leader</button>
+              <button class="history-menu-item danger" data-id="${t.id}">Delete Team</button>
+            </div>
           </div>
         </div>
         ${teamLeaderPickId === t.id ? `
@@ -2532,13 +2549,14 @@
       </div>`;
     }).join("");
 
-    document.querySelectorAll("[data-team-menu]").forEach((b) => b.addEventListener("click", () => {
-      openTeamMenuId = openTeamMenuId === b.dataset.teamMenu ? null : b.dataset.teamMenu;
-      teamEditId = null; teamLeaderPickId = null;
-      renderTeamsList();
+    document.querySelectorAll("[data-team-menu]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = b.dataset.teamMenu;
+      document.querySelectorAll("#teamsListWrap .history-dots-menu").forEach((m) => { if (m.dataset.id !== id) m.classList.add("hidden"); });
+      document.querySelector(`#teamsListWrap .history-dots-menu[data-id="${id}"]`).classList.toggle("hidden");
     }));
     document.querySelectorAll("[data-edit-team]").forEach((b) => b.addEventListener("click", () => {
-      teamEditId = b.dataset.editTeam; openTeamMenuId = null; teamLeaderPickId = null;
+      teamEditId = b.dataset.editTeam; teamLeaderPickId = null;
       renderTeamsList();
     }));
     document.querySelectorAll("[data-cancel-edit]").forEach((b) => b.addEventListener("click", () => {
@@ -2556,7 +2574,7 @@
       showToast("Team updated");
     }));
     document.querySelectorAll("[data-change-leader]").forEach((b) => b.addEventListener("click", () => {
-      teamLeaderPickId = b.dataset.changeLeader; openTeamMenuId = null; teamEditId = null;
+      teamLeaderPickId = b.dataset.changeLeader; teamEditId = null;
       renderTeamsList();
     }));
     document.querySelectorAll("[data-save-leader]").forEach((b) => b.addEventListener("click", () => {
