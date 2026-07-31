@@ -370,6 +370,35 @@
   // Expands a published result into individual {rank, student, team} rows \u2014
   // if a placement was tied, every tied student gets their own row at that
   // same rank (instead of only the first-recorded student showing up).
+  // Shared table format for showing a single programme's result to guests \u2014
+  // used by both the search-icon result block and the results feed's expanded
+  // card, so a "result" always looks the same no matter how you got to it.
+  function renderResultTable(eventId) {
+    const event = state.events.find((e) => e.id === eventId);
+    if (!event) return "";
+    const ranked = rankedParticipants(eventId).filter((r) => r.mark != null);
+    if (!ranked.length) return `<div class="empty-note">No marks recorded for this programme yet.</div>`;
+    return `
+      <div style="overflow-x:auto">
+      <table class="result-detail-table"><thead><tr>
+        <th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Team</th><th>Grade</th><th>Points</th>
+      </tr></thead><tbody>
+        ${ranked.map((r, i) => {
+          const team = state.teams.find((t) => t.id === r.student.team);
+          return `<tr>
+            <td>${i + 1}</td>
+            <td>${r.student.chestNo}</td>
+            <td>${escapeHtml(r.student.name)}</td>
+            <td>${codeLetterFor(eventId, r.student.id)}</td>
+            <td>${team ? escapeHtml(team.name) : ""}</td>
+            <td>${gradeFor(r.mark)}</td>
+            <td>${gradePointFor(r.mark) ?? "-"}</td>
+          </tr>`;
+        }).join("")}
+      </tbody></table>
+      </div>`;
+  }
+
   function getWinnersForEvent(eventId) {
     const result = state.results[eventId];
     if (!result) return [];
@@ -575,7 +604,7 @@
     e.preventDefault();
     showEventOrResultSection(a.getAttribute("href").slice(1));
   }));
-  document.querySelectorAll('a.primary-button[href^="#"], a.explore-card[href^="#"], .dash-card[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
+  document.querySelectorAll('a.primary-button[href^="#"], a.explore-card[href^="#"], .stat-card[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
     const id = a.getAttribute("href").slice(1);
     if (id === "results" || id === "standings") return; // handled above, no scroll
@@ -583,7 +612,7 @@
     if (target) target.scrollIntoView({ behavior: "smooth" });
   }));
   // Explore Festival sits up in the hero, far above Team Points/Live Standings,
-  // so (unlike the small nearby dash-card links) it needs an actual scroll —
+  // so (unlike the small nearby stat-card links) it needs an actual scroll —
   // the generic handler above deliberately skips scrolling for #standings.
   const exploreFestivalBtn = document.getElementById("exploreFestivalBtn");
   if (exploreFestivalBtn) exploreFestivalBtn.addEventListener("click", (e) => {
@@ -867,16 +896,7 @@
     block.innerHTML = `
       <div class="category">${escapeHtml(event.category)}</div>
       <div class="item-name">${escapeHtml(event.name)}</div>
-      <div class="winners-list">
-        ${winners.map((w, i) => `
-        <div class="winner-item">
-          <div class="rank">${RANK_NUMBER[w.rank]}</div>
-          <div class="info">
-            <h4>${escapeHtml(w.student.name)}</h4>
-            <p>${w.team ? escapeHtml(w.team.name) : ""}</p>
-          </div>
-        </div>`).join("")}
-      </div>
+      ${renderResultTable(event.id)}
       <div class="rf-footer" style="margin-top:.75rem">
         <button type="button" class="rf-btn rf-btn-share" id="btnResultBlockShare">\u{1F4AC} Share</button>
         <button type="button" class="rf-btn rf-btn-poster" id="btnResultBlockDownload">\u2B07 Download</button>
@@ -925,15 +945,20 @@
   }
 
   // Clicking outside the results/search section resets the search box and
-  // collapses back to the default published-results feed.
+  // collapses back to the default published-results feed. Also closes the
+  // search-icon result block (#resultBlock), which never auto-closed before.
   document.addEventListener("click", (e) => {
     const section = document.getElementById("results");
     const searchBoxEl = document.getElementById("searchBox");
+    const block = document.getElementById("resultBlock");
     if (!section || !searchBoxEl) return;
-    if (searchBoxEl.value.trim() && !section.contains(e.target)) {
-      searchBoxEl.value = "";
-      searchResultsShown = SEARCH_RESULTS_PAGE_SIZE;
-      renderResultsList();
+    if (!section.contains(e.target)) {
+      if (searchBoxEl.value.trim()) {
+        searchBoxEl.value = "";
+        searchResultsShown = SEARCH_RESULTS_PAGE_SIZE;
+        renderResultsList();
+      }
+      if (block && !block.classList.contains("hidden")) block.classList.add("hidden");
     }
   });
 
@@ -987,12 +1012,7 @@
         </div>
         ${expanded ? `
         <div class="rf-winners-list">
-          ${winners.map((w) => `
-            <div class="rf-winner-item">
-              <div class="rf-medal">${RANK_ICON[w.rank]}</div>
-              <div class="rf-winner-info"><h3>${escapeHtml(w.student.name)}</h3><p>${w.team ? escapeHtml(w.team.name) : ""}</p></div>
-              <div class="rf-hash">${escapeHtml(w.student.chestNo)}</div>
-            </div>`).join("")}
+          ${renderResultTable(event.id)}
         </div>
         <div class="rf-footer">
           <button class="rf-btn rf-btn-share" data-share="${event.id}">\u{1F4AC} Share</button>

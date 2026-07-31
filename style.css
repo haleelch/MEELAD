@@ -42,7 +42,9 @@
 [data-theme="light"] .poster-rank,
 [data-theme="light"] .poster-code,
 [data-theme="light"] .export-card.active .t,
-[data-theme="light"] .export-card.active .s{color:#ffffff;}
+[data-theme="light"] .export-card.active .s,
+[data-theme="light"] #btnAdminGuestView{color:#ffffff;}
+[data-theme="light"] #btnAdminGuestView{background:rgba(255,255,255,.15);}
 [data-theme="light"] .toast{border-color:#ffffff;}
 /* Bug fix: dashboard/admin overlay has its own internal scroll
    (overflow-y:auto on .admin-screen) — when that content is short or the
@@ -134,50 +136,50 @@ input,select{font-family:inherit;}
 
 /* ---- dashboard cards (home page "at a glance" row — red/blue/green/purple reference design) ---- */
 .stats-section{max-width:760px;margin:1.5rem auto 0;position:relative;z-index:5;padding:0 1.5rem;}
-.dash-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;}
-.dash-card{border-radius:1.1rem;border:1px solid;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;transition:transform .15s ease;}
-.dash-card:hover{transform:translateY(-2px);}
-.dash-card-body{padding:1.1rem 1.1rem .6rem;flex:1;}
-.dash-card-icon{width:2.5rem;height:2.5rem;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;color:#fff;margin-bottom:.6rem;}
-.dash-card-title{font-size:.64rem;font-weight:700;letter-spacing:.03em;line-height:1.25;}
-.dash-card-count{font-size:1.7rem;font-weight:800;margin-top:.5rem;font-family:'Poppins',sans-serif;}
-.dash-card-footer{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.1rem;border-top:1px solid;font-size:.72rem;font-weight:700;}
-.dash-card-arrow{font-size:.85rem;}
+.stat-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;}
+.stat-card{border-radius:1.1rem;border:1px solid;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;transition:transform .15s ease;}
+a.stat-card:hover{transform:translateY(-2px);}
+.stat-card-body{padding:1.1rem 1.1rem .6rem;flex:1;}
+.stat-card-icon{width:2.5rem;height:2.5rem;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;color:#fff;margin-bottom:.6rem;}
+.stat-card-title{font-size:.64rem;font-weight:700;letter-spacing:.03em;line-height:1.25;}
+.stat-card-count{font-size:1.7rem;font-weight:800;margin-top:.5rem;font-family:'Poppins',sans-serif;}
+.stat-card-footer{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.1rem;border-top:1px solid;font-size:.72rem;font-weight:700;}
+.stat-card-arrow{font-size:.85rem;}
 /* Dark theme (default): deep translucent tint per color. Light theme: soft pastel, matching the reference. */
-.dash-red{background:rgba(220,38,38,.13);border-color:rgba(220,38,38,.35);}
-.dash-red .dash-card-icon{background:#DC2626;}
-.dash-red .dash-card-title,.dash-red .dash-card-count,.dash-red .dash-card-footer{color:#FCA5A5;}
-.dash-red .dash-card-footer{border-color:rgba(220,38,38,.3);}
-[data-theme="light"] .dash-red{background:#FEF2F2;border-color:#FECACA;}
-[data-theme="light"] .dash-red .dash-card-title,[data-theme="light"] .dash-red .dash-card-count,[data-theme="light"] .dash-red .dash-card-footer{color:#991B1B;}
-[data-theme="light"] .dash-red .dash-card-footer{border-color:#FECACA;}
+.stat-red{background:rgba(220,38,38,.13);border-color:rgba(220,38,38,.35);}
+.stat-red .stat-card-icon{background:#DC2626;}
+.stat-red .stat-card-title,.stat-red .stat-card-count,.stat-red .stat-card-footer{color:#FCA5A5;}
+.stat-red .stat-card-footer{border-color:rgba(220,38,38,.3);}
+[data-theme="light"] .stat-red{background:#FEF2F2;border-color:#FECACA;}
+[data-theme="light"] .stat-red .stat-card-title,[data-theme="light"] .stat-red .stat-card-count,[data-theme="light"] .stat-red .stat-card-footer{color:#991B1B;}
+[data-theme="light"] .stat-red .stat-card-footer{border-color:#FECACA;}
 
-.dash-blue{background:rgba(37,99,235,.13);border-color:rgba(37,99,235,.35);}
-.dash-blue .dash-card-icon{background:#2563EB;}
-.dash-blue .dash-card-title,.dash-blue .dash-card-count,.dash-blue .dash-card-footer{color:#93C5FD;}
-.dash-blue .dash-card-footer{border-color:rgba(37,99,235,.3);}
-[data-theme="light"] .dash-blue{background:#EFF6FF;border-color:#BFDBFE;}
-[data-theme="light"] .dash-blue .dash-card-title,[data-theme="light"] .dash-blue .dash-card-count,[data-theme="light"] .dash-blue .dash-card-footer{color:#1E40AF;}
-[data-theme="light"] .dash-blue .dash-card-footer{border-color:#BFDBFE;}
+.stat-blue{background:rgba(37,99,235,.13);border-color:rgba(37,99,235,.35);}
+.stat-blue .stat-card-icon{background:#2563EB;}
+.stat-blue .stat-card-title,.stat-blue .stat-card-count,.stat-blue .stat-card-footer{color:#93C5FD;}
+.stat-blue .stat-card-footer{border-color:rgba(37,99,235,.3);}
+[data-theme="light"] .stat-blue{background:#EFF6FF;border-color:#BFDBFE;}
+[data-theme="light"] .stat-blue .stat-card-title,[data-theme="light"] .stat-blue .stat-card-count,[data-theme="light"] .stat-blue .stat-card-footer{color:#1E40AF;}
+[data-theme="light"] .stat-blue .stat-card-footer{border-color:#BFDBFE;}
 
-.dash-green{background:rgba(22,163,74,.13);border-color:rgba(22,163,74,.35);}
-.dash-green .dash-card-icon{background:#16A34A;}
-.dash-green .dash-card-title,.dash-green .dash-card-count,.dash-green .dash-card-footer{color:#86EFAC;}
-.dash-green .dash-card-footer{border-color:rgba(22,163,74,.3);}
-[data-theme="light"] .dash-green{background:#F0FDF4;border-color:#BBF7D0;}
-[data-theme="light"] .dash-green .dash-card-title,[data-theme="light"] .dash-green .dash-card-count,[data-theme="light"] .dash-green .dash-card-footer{color:#166534;}
-[data-theme="light"] .dash-green .dash-card-footer{border-color:#BBF7D0;}
+.stat-green{background:rgba(22,163,74,.13);border-color:rgba(22,163,74,.35);}
+.stat-green .stat-card-icon{background:#16A34A;}
+.stat-green .stat-card-title,.stat-green .stat-card-count,.stat-green .stat-card-footer{color:#86EFAC;}
+.stat-green .stat-card-footer{border-color:rgba(22,163,74,.3);}
+[data-theme="light"] .stat-green{background:#F0FDF4;border-color:#BBF7D0;}
+[data-theme="light"] .stat-green .stat-card-title,[data-theme="light"] .stat-green .stat-card-count,[data-theme="light"] .stat-green .stat-card-footer{color:#166534;}
+[data-theme="light"] .stat-green .stat-card-footer{border-color:#BBF7D0;}
 
-.dash-purple{background:rgba(147,51,234,.13);border-color:rgba(147,51,234,.35);}
-.dash-purple .dash-card-icon{background:#9333EA;}
-.dash-purple .dash-card-title,.dash-purple .dash-card-count,.dash-purple .dash-card-footer{color:#D8B4FE;}
-.dash-purple .dash-card-footer{border-color:rgba(147,51,234,.3);}
-[data-theme="light"] .dash-purple{background:#FAF5FF;border-color:#E9D5FF;}
-[data-theme="light"] .dash-purple .dash-card-title,[data-theme="light"] .dash-purple .dash-card-count,[data-theme="light"] .dash-purple .dash-card-footer{color:#6B21A8;}
-[data-theme="light"] .dash-purple .dash-card-footer{border-color:#E9D5FF;}
+.stat-purple{background:rgba(147,51,234,.13);border-color:rgba(147,51,234,.35);}
+.stat-purple .stat-card-icon{background:#9333EA;}
+.stat-purple .stat-card-title,.stat-purple .stat-card-count,.stat-purple .stat-card-footer{color:#D8B4FE;}
+.stat-purple .stat-card-footer{border-color:rgba(147,51,234,.3);}
+[data-theme="light"] .stat-purple{background:#FAF5FF;border-color:#E9D5FF;}
+[data-theme="light"] .stat-purple .stat-card-title,[data-theme="light"] .stat-purple .stat-card-count,[data-theme="light"] .stat-purple .stat-card-footer{color:#6B21A8;}
+[data-theme="light"] .stat-purple .stat-card-footer{border-color:#E9D5FF;}
 
-@media(min-width:640px){.dash-cards-grid{grid-template-columns:repeat(4,1fr);}}
-@media(max-width:480px){.dash-card-body{padding:.9rem .85rem .5rem;}}
+@media(min-width:640px){.stat-cards-grid{grid-template-columns:repeat(4,1fr);}}
+@media(max-width:480px){.stat-card-body{padding:.9rem .85rem .5rem;}}
 
 /* ---- sections ---- */
 .section{max-width:720px;margin:0 auto;padding:2.5rem 1.5rem 0;}
@@ -535,6 +537,14 @@ input,select{font-family:inherit;}
 .winner-item .rank{font-size:16px;font-weight:800;color:#EC4899;min-width:20px;padding-top:2px;}
 .winner-item .info h4{font-size:16px;font-weight:700;color:#F9FAFB;margin:0;text-transform:uppercase;letter-spacing:.5px;}
 .winner-item .info p{font-size:13px;color:#9CA3AF;margin:3px 0 0;}
+
+/* Shared result table (Sl No / Chest No / Name / Code Letter / Team / Grade /
+   Points) \u2014 used inside .result-block and .rf-card, both fixed dark cards
+   regardless of site theme, so this is styled dark-only to match. */
+.result-detail-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.result-detail-table th{text-align:left;padding:.5rem .5rem;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:#9CA3AF;border-bottom:1px solid rgba(255,255,255,.12);white-space:nowrap;}
+.result-detail-table td{padding:.55rem .5rem;color:#F1F5F9;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
+.result-detail-table tr:last-child td{border-bottom:none;}
 
 /* ---- explore section ---- */
 html{scroll-behavior:smooth;}

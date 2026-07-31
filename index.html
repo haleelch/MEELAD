@@ -388,7 +388,6 @@
     <a href="#" class="side-link" data-admin-tab="dashboard"><span class="atab-ic ic-mono">&#128274;</span> Admin Login <span class="side-chevron">&#8250;</span></a>
 
     <div class="sidebar-bottom">
-      <div class="tiraz" style="margin-bottom:.75rem"></div>
       <div style="font-size:.75rem;text-align:center" id="sideVersionLine">Festival Admin v1.0</div>
       <div class="sidebar-credit">CH HUB<br>ALL RIGHTS RESERVED</div>
     </div>
@@ -412,38 +411,35 @@
 
     <!-- STATS (at-a-glance card) -->
     <section class="stats-section">
-      <div class="dash-cards-grid" id="statBoxWrap">
-        <a href="#results" class="dash-card dash-red" id="statBoxParticipants">
-          <div class="dash-card-body">
-            <div class="dash-card-icon">&#128101;</div>
-            <div class="dash-card-title">REGISTERED PARTICIPANTS</div>
-            <div class="dash-card-count" id="cntStudents">0</div>
+      <div class="stat-cards-grid" id="statBoxWrap">
+        <div class="stat-card stat-red" id="statBoxParticipants">
+          <div class="stat-card-body">
+            <div class="stat-card-icon">&#128101;</div>
+            <div class="stat-card-title">REGISTERED PARTICIPANTS</div>
+            <div class="stat-card-count" id="cntStudents">0</div>
           </div>
-          <div class="dash-card-footer">View All <span class="dash-card-arrow">&#8594;</span></div>
+        </div>
+        <div class="stat-card stat-blue" id="statBoxProgrammes">
+          <div class="stat-card-body">
+            <div class="stat-card-icon">&#128203;</div>
+            <div class="stat-card-title">TOTAL EVENTS</div>
+            <div class="stat-card-count" id="cntProgrammes">0</div>
+          </div>
+        </div>
+        <a href="#standings" class="stat-card stat-green" id="statBoxTeams">
+          <div class="stat-card-body">
+            <div class="stat-card-icon">&#127942;</div>
+            <div class="stat-card-title">TEAM LIVE STANDINGS</div>
+            <div class="stat-card-count">Live</div>
+          </div>
+          <div class="stat-card-footer">View Points <span class="stat-card-arrow">&#8594;</span></div>
         </a>
-        <a href="#results" class="dash-card dash-blue" id="statBoxProgrammes">
-          <div class="dash-card-body">
-            <div class="dash-card-icon">&#128197;</div>
-            <div class="dash-card-title">TOTAL EVENTS</div>
-            <div class="dash-card-count" id="cntProgrammes">0</div>
+        <a href="#results" class="stat-card stat-purple">
+          <div class="stat-card-body">
+            <div class="stat-card-icon">&#128202;</div>
+            <div class="stat-card-title">RESULT UPDATES</div>
           </div>
-          <div class="dash-card-footer">View All <span class="dash-card-arrow">&#8594;</span></div>
-        </a>
-        <a href="#standings" class="dash-card dash-green" id="statBoxTeams">
-          <div class="dash-card-body">
-            <div class="dash-card-icon">&#127942;</div>
-            <div class="dash-card-title">TEAM LIVE STANDINGS</div>
-            <div class="dash-card-count">Live</div>
-          </div>
-          <div class="dash-card-footer">View Points <span class="dash-card-arrow">&#8594;</span></div>
-        </a>
-        <a href="#results" class="dash-card dash-purple">
-          <div class="dash-card-body">
-            <div class="dash-card-icon">&#128202;</div>
-            <div class="dash-card-title">LIVE RESULTS</div>
-            <div class="dash-card-count">Updates</div>
-          </div>
-          <div class="dash-card-footer">View Results <span class="dash-card-arrow">&#8594;</span></div>
+          <div class="stat-card-footer">View Results <span class="stat-card-arrow">&#8594;</span></div>
         </a>
       </div>
     </section>
@@ -475,7 +471,7 @@
       </div>
 
       <div class="search-wrap">
-        <input id="searchBox" class="input" placeholder="Search by student name or chest number..." />
+        <input id="searchBox" class="input" placeholder="Search by student name or chest number..." type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="meelad-result-search-not-a-login" data-lpignore="true" data-form-type="other" />
       </div>
 
       <div id="resultBlock" class="result-block hidden"></div>
