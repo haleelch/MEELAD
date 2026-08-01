@@ -311,6 +311,33 @@ a.stat-card:hover{transform:translateY(-2px);}
 .ic-teal{background:rgba(45,180,170,.35);}
 .atab.active{background:var(--emerald-deep);color:var(--gold-light);}
 .admin-content{max-width:700px;margin:0 auto;padding:1.25rem;}
+
+/* ---- Participant Dashboard ---- */
+.sd-profile-card{background:var(--surface);border:1px solid var(--border);border-radius:1rem;padding:1.25rem;margin-bottom:1rem;display:flex;flex-wrap:wrap;align-items:center;gap:1.25rem;}
+.sd-avatar{width:4.2rem;height:4.2rem;border-radius:50%;background:var(--emerald);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.35rem;flex-shrink:0;border:2.5px solid var(--gold);font-family:'JetBrains Mono',monospace;}
+.sd-profile-info{flex:1;min-width:10rem;}
+.sd-profile-info p{font-size:.82rem;margin:.2rem 0;color:var(--text);}
+.sd-label{color:var(--gold-light);font-weight:700;font-size:.72rem;letter-spacing:.02em;margin-right:.3rem;}
+.sd-points-box{display:flex;align-items:center;gap:.75rem;background:var(--surface2);border:1px solid var(--gold);border-radius:.8rem;padding:.85rem 1.25rem;margin-left:auto;}
+.sd-points-label{font-size:.68rem;font-weight:700;letter-spacing:.06em;color:var(--muted);}
+.sd-points-value{font-size:2.1rem;font-weight:800;line-height:1;color:var(--gold-light);font-family:'JetBrains Mono',monospace;}
+.sd-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.1rem;}
+@media (min-width:640px){ .sd-stats-grid{grid-template-columns:repeat(4,1fr);} }
+.sd-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:.9rem;padding:.85rem;display:flex;align-items:center;gap:.65rem;}
+.sd-stat-icon{width:2.4rem;height:2.4rem;flex-shrink:0;border-radius:50%;background:rgba(201,162,39,.14);display:flex;align-items:center;justify-content:center;font-size:1.1rem;}
+.sd-stat-value{font-size:1.35rem;font-weight:700;line-height:1.1;font-family:'JetBrains Mono',monospace;color:var(--gold-light);}
+.sd-stat-label{font-size:.62rem;color:var(--muted);letter-spacing:.02em;}
+.sd-two-col{display:grid;grid-template-columns:1fr;gap:1rem;}
+@media (min-width:760px){ .sd-two-col{grid-template-columns:1fr 1fr;} }
+.sd-panel{background:var(--surface);border:1px solid var(--border);border-radius:1rem;padding:1.1rem;}
+.sd-panel-title{color:var(--gold-light);font-weight:700;font-size:.85rem;letter-spacing:.03em;margin-bottom:.75rem;}
+.sd-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem .75rem;border-radius:.6rem;background:var(--surface2);border:1px solid var(--border);}
+.sd-row-title{font-size:.82rem;font-weight:600;color:var(--text);}
+.sd-row-sub{font-size:.68rem;color:var(--muted);}
+.sd-chip{padding:.25rem .55rem;border-radius:.4rem;font-size:.62rem;font-weight:700;white-space:nowrap;}
+.sd-chip-out{background:var(--emerald-light);color:#fff;}
+.sd-chip-done{background:var(--gold-light);color:#111;}
+.sd-chip-upcoming{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:.9rem;padding:1rem;margin-bottom:.75rem;}
 .card-title{font-size:.85rem;font-weight:600;color:var(--gold-light);margin-bottom:.75rem;}
 .field-label{font-size:.7rem;color:var(--muted);margin-bottom:.25rem;}
@@ -432,6 +459,8 @@ a.stat-card:hover{transform:translateY(-2px);}
 .marks-table-wrap{overflow-x:auto;margin-bottom:.75rem;}
 .marks-table{width:100%;border-collapse:collapse;font-size:.72rem;}
 .marks-table th,.marks-table td{padding:.4rem;border:1px solid var(--border);text-align:center;white-space:nowrap;}
+.marks-table td.p0{padding:0;}
+.marks-table td.p0 input{border:none;border-radius:0;width:100%;padding:.4rem;}
 .marks-table th{background:var(--surface2);color:var(--gold-light);}
 .marks-table input{width:3.5rem;padding:.3rem;border-radius:.4rem;border:1px solid var(--gold);text-align:center;}
 .marks-table input.input-error{border-color:#EF4444;background:#FEF2F2;box-shadow:0 0 0 1px #EF4444;}
@@ -566,6 +595,15 @@ a.stat-card:hover{transform:translateY(-2px);}
 .result-detail-table th{text-align:left;padding:.5rem .5rem;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:#9CA3AF;border-bottom:1px solid rgba(255,255,255,.12);white-space:nowrap;}
 .result-detail-table td{padding:.55rem .5rem;color:#F1F5F9;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
 .result-detail-table tr:last-child td{border-bottom:none;}
+
+/* The winners list (.result-row / .result-name / .win-rank) is normally
+   theme-adaptive, but here it's rendered inside .result-block and .rf-card,
+   which are ALWAYS dark regardless of site theme. Pin these instances to
+   dark-compatible colors so text doesn't go invisible in light mode. */
+.result-block .result-row,.rf-winners-list .result-row{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);}
+.result-block .result-name,.rf-winners-list .result-name{color:#F8FAFC;}
+.result-block .result-meta,.rf-winners-list .result-meta{color:#9CA3AF;}
+.result-block .win-rank,.rf-winners-list .win-rank{color:#FCD34D;}
 
 /* ---- explore section ---- */
 html{scroll-behavior:smooth;}
