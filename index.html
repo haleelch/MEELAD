@@ -374,8 +374,8 @@
       <div style="display:flex;align-items:center;gap:.85rem">
         <div class="sidebar-logo-box">&#9733;</div>
         <div>
-          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1.15rem;color:#F2F5F3;line-height:1.15" id="sideBrandTitle"></div>
-          <div style="font-size:.72rem;color:#8FA6A0;margin-top:.15rem">Madrasa Programme</div>
+          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1.15rem;color:#1E293B;line-height:1.15" id="sideBrandTitle"></div>
+          <div style="font-size:.72rem;color:#64748B;margin-top:.15rem">Madrasa Programme</div>
         </div>
       </div>
       <button id="btnCloseSidebar" class="icon-btn" aria-label="Close">&times;</button>
@@ -521,11 +521,13 @@
       <div class="admin-login-badge">&#128737;</div>
       <div class="font-display" style="font-size:1.4rem;color:var(--emerald-deep)">Admin Mode</div>
       <div class="muted" style="font-size:.75rem;margin-bottom:1rem">Usthads' Control Panel</div>
-      <input id="adminUser" class="input" placeholder="Username" style="margin-bottom:.5rem" />
-      <input id="adminPass" type="password" class="input" placeholder="Password" style="margin-bottom:.5rem" />
-      <div id="adminError" class="error hidden"></div>
-      <button id="btnAdminLogin" class="btn btn-primary" style="width:100%">Sign In</button>
-      <button id="btnAdminCancel" class="link-btn">Cancel</button>
+      <form id="adminLoginForm" autocomplete="off" onsubmit="return false">
+        <input id="adminUser" class="input" placeholder="Username" autocomplete="off" style="margin-bottom:.5rem" />
+        <input id="adminPass" type="password" class="input" placeholder="Password" autocomplete="off" style="margin-bottom:.5rem" />
+        <div id="adminError" class="error hidden"></div>
+        <button id="btnAdminLogin" type="button" class="btn btn-primary" style="width:100%">Sign In</button>
+        <button id="btnAdminCancel" type="button" class="link-btn">Cancel</button>
+      </form>
     </div>
   </div>
 
@@ -544,7 +546,7 @@
   <div id="adminSidebarOverlay" class="overlay hidden"></div>
   <nav id="adminSidebar" class="sidebar no-print">
     <div class="sidebar-head">
-      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1.05rem;color:#F2F5F3">Admin Menu</div>
+      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:1.05rem;color:#1E293B">Admin Menu</div>
       <button id="btnCloseAdminSidebar" class="icon-btn" aria-label="Close">&times;</button>
     </div>
     <div class="side-section-label">Admin Control</div>

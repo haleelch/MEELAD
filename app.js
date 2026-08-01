@@ -420,7 +420,7 @@
         ${winners.map((w) => {
           const team = state.teams.find((t) => t.id === w.student.team);
           return `<div class="result-row">
-            <span class="win-rank">${RANK_ICON[w.rank]} ${RANK_LABEL[w.rank]}</span>
+            <span class="win-rank">${RANK_ICON[w.rank]}</span>
             <span class="result-name">${escapeHtml(w.student.name)}</span>
             <span class="result-meta">${w.student.chestNo}${team ? " \u00b7 " + escapeHtml(team.name) : ""}</span>
           </div>`;
@@ -1386,6 +1386,18 @@
     { key: "qr_code", label: "QR Code", sample: "" },
   ];
 
+  // Fixed default layout applied automatically whenever a template image is
+  // uploaded \u2014 there is no manual drag/position editor any more.
+  function defaultCardPlacements() {
+    return [
+      { id: "pl-" + uid(), tag: "student_name", xPct: 26, yPct: 80, fontSize: 34, color: "#111827", align: "center", bold: false, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "school_class", xPct: 44, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "category", xPct: 26, yPct: 91, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "chest_number", xPct: 76, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: true, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "qr_code", xPct: 76, yPct: 55, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
+    ];
+  }
+
   function resolveCardTag(tag, student) {
     switch (tag) {
       case "student_name": return student.name || "";
@@ -1602,14 +1614,17 @@
   function openStudentLogin() {
     modalBody.innerHTML = `
       <div class="poster-head arch-top">
-        <div style="font-size:1.4rem;color:var(--gold)">\u{1F393}</div>
+        <div class="admin-login-badge">\u{1F393}</div>
         <div class="poster-name font-display">My Dashboard</div>
-        <div class="poster-event">Enter your chest number to continue</div>
+        <div class="poster-event">Enter your chest number to view your programmes &amp; results</div>
       </div>
-      <div style="padding:1rem">
-        <input id="sdChestInput" class="input" placeholder="Chest Number" inputmode="numeric" style="margin-bottom:.6rem" />
+      <div class="tiraz"></div>
+      <div style="padding:1.25rem 1rem">
+        <div class="field-label" style="margin-bottom:.35rem">Chest Number</div>
+        <input id="sdChestInput" class="input" placeholder="e.g. 105" inputmode="numeric" style="margin-bottom:.6rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:1.05rem;letter-spacing:.05em" />
         <div class="empty-note hidden" id="sdLoginError" style="margin-bottom:.6rem;color:var(--crimson)"></div>
-        <button class="btn btn-primary" id="btnStudentLogin" style="width:100%">View My Dashboard</button>
+        <button class="btn btn-primary" id="btnStudentLogin" style="width:100%">\u2728 View My Dashboard</button>
+        <div class="muted" style="text-align:center;font-size:.68rem;margin-top:.75rem">Your chest number is on your registration card</div>
       </div>
       <button class="modal-close" id="btnCloseStudentLogin">Close</button>`;
     modalOverlay.classList.remove("hidden");
@@ -1637,9 +1652,9 @@
     const initials = student.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
     const statCard = (icon, label, value) => `
-      <div class="card" style="display:flex;align-items:center;gap:.65rem;padding:.75rem;margin-bottom:0">
-        <div style="font-size:1.2rem">${icon}</div>
-        <div><div style="font-size:1.25rem;font-weight:700;line-height:1.1">${value}</div><div class="muted" style="font-size:.65rem">${label}</div></div>
+      <div class="card" style="display:flex;align-items:center;gap:.6rem;padding:.75rem;margin-bottom:0">
+        <div style="width:2.3rem;height:2.3rem;flex-shrink:0;border-radius:50%;background:rgba(201,162,39,.14);display:flex;align-items:center;justify-content:center;font-size:1.05rem">${icon}</div>
+        <div><div style="font-size:1.3rem;font-weight:700;line-height:1.1;font-family:'JetBrains Mono',monospace;color:var(--gold-light)">${value}</div><div class="muted" style="font-size:.62rem;letter-spacing:.03em">${label}</div></div>
       </div>`;
 
     const eventRow = (e) => {
@@ -1653,30 +1668,38 @@
     };
 
     const winRow = (w) => `<div class="result-row">
-        <span class="win-rank">${RANK_ICON[w.rank]} ${RANK_LABEL[w.rank]}</span>
+        <span class="win-rank">${RANK_ICON[w.rank]}</span>
         <span class="result-name">${escapeHtml(w.eventName)}</span>
         <span class="result-meta">+${RANK_POINTS[w.rank]} pts</span>
       </div>`;
 
     modalBody.innerHTML = `
       <div class="poster-head arch-top">
-        <div style="width:3.2rem;height:3.2rem;border-radius:50%;background:var(--emerald);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;margin:0 auto .5rem">${initials}</div>
+        <div style="width:3.6rem;height:3.6rem;border-radius:50%;background:var(--emerald);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;margin:0 auto .55rem;border:2.5px solid var(--gold);box-shadow:0 0 16px -4px rgba(201,162,39,.65);font-family:'JetBrains Mono',monospace">${initials}</div>
         <div class="poster-name font-display">${escapeHtml(student.name)}</div>
-        <div class="poster-code">${student.chestNo}</div>
+        <div class="poster-code">CHEST NO. ${student.chestNo}</div>
         <div class="poster-event">${team ? escapeHtml(team.name) : ""}${student.category ? " \u00b7 " + escapeHtml(student.category) : ""}</div>
       </div>
+      <div class="tiraz"></div>
       <div style="padding:0 1rem 1rem">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:1rem 0">
-          ${statCard("\u{1F4C5}", "Registered", events.length)}
-          ${statCard("\u2705", "Completed", completed)}
-          ${statCard("\u{1F3C5}", "Awards", wins.length)}
-          ${statCard("\u2B50", "Total Points", totalPoints)}
+        <div style="display:flex;align-items:center;justify-content:center;gap:.8rem;background:linear-gradient(135deg,var(--emerald-deep),var(--emerald));border-radius:.8rem;padding:1rem;margin:1rem 0;border:1px solid var(--gold)">
+          <div style="font-size:2rem">\u{1F3C6}</div>
+          <div>
+            <div style="font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--gold-light)">OVERALL POINTS</div>
+            <div style="font-size:2.1rem;font-weight:800;line-height:1;color:#FAF6EC;font-family:'JetBrains Mono',monospace">${totalPoints}</div>
+          </div>
         </div>
-        <div class="field-label" style="margin-bottom:.4rem">My Programmes</div>
-        <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1.1rem">
+          ${statCard("\u{1F4C5}", "REGISTERED", events.length)}
+          ${statCard("\u2705", "COMPLETED", completed)}
+          ${statCard("\u{1F3C5}", "AWARDS", wins.length)}
+          ${statCard("\u2B50", "POINTS", totalPoints)}
+        </div>
+        <div class="card-title" style="margin-bottom:.5rem">\u{1F3AD} My Programmes</div>
+        <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.1rem">
           ${events.length ? events.map(eventRow).join("") : `<div class="empty-note">No programmes registered yet.</div>`}
         </div>
-        <div class="field-label" style="margin-bottom:.4rem">Results &amp; Points</div>
+        <div class="card-title" style="margin-bottom:.5rem">\u{1F396}\uFE0F Results &amp; Points</div>
         <div style="display:flex;flex-direction:column;gap:.4rem">
           ${wins.length ? wins.map(winRow).join("") : `<div class="empty-note">No published results yet.</div>`}
         </div>
@@ -2576,25 +2599,10 @@
 
       <div class="card">
         <div class="card-title">Master Card Template</div>
-        <div class="field-label" style="margin-bottom:.5rem">Upload <b>one</b> template design (landscape, recommended 1013\u00d7638px). Tap a tag below, then tap where it should sit on the card \u2014 drag any placed tag to fine-tune. No colour or manual position typing needed.</div>
+        <div class="field-label" style="margin-bottom:.5rem">Upload <b>one</b> template design (landscape, recommended 1013\u00d7638px). Name, Chest No, Category, Class and QR Code are placed on it automatically.</div>
         ${mt.imageUrl ? `<button class="btn btn-ghost" id="btnReplaceTemplate" style="width:auto;padding:.4rem .8rem;margin-bottom:.6rem;font-size:.72rem">Replace Image</button>` : ""}
         <input type="file" id="mtImageInput" accept="image/*" class="input" style="margin-bottom:.75rem;padding:.4rem;${mt.imageUrl ? "display:none" : ""}" />
-        ${mt.imageUrl ? `
-          <div class="tag-toolbar" id="tagToolbar" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem">
-            ${CARD_TAGS.map((t) => {
-              const placed = mt.placements.find((p) => p.tag === t.key);
-              return `<button type="button" class="radio-pill tag-btn ${placed ? "selected" : ""}" data-tag="${t.key}" style="cursor:pointer">${placed ? "\u2713 " : "+ "}${t.label}</button>`;
-            }).join("")}
-          </div>
-          <div id="mtPreviewWrap" style="position:relative;width:100%;border-radius:.6rem;overflow:hidden;touch-action:none;user-select:none;margin-bottom:.75rem">
-            <img id="mtImg" src="${mt.imageUrl}" style="width:100%;display:block;pointer-events:none" />
-            ${mt.placements.map((p) => `
-              <div class="mt-tag-pill" data-id="${p.id}" style="position:absolute;left:${p.xPct}%;top:${p.yPct}%;transform:translate(-50%,-50%);background:rgba(11,29,58,.9);color:#fff;border:1.5px solid #C89F4F;border-radius:999px;padding:.2rem .55rem;font-size:.65rem;font-weight:600;white-space:nowrap;cursor:grab">
-                ${CARD_TAGS.find((t) => t.key === p.tag).label}
-              </div>`).join("")}
-          </div>
-          <div class="field-label" style="margin-bottom:.5rem">Tap a placed tag on the image above to remove it, or drag it to reposition. Tap the same tag in the toolbar again to remove it.</div>
-        ` : ""}
+        ${mt.imageUrl ? `<img src="${mt.imageUrl}" style="width:100%;border-radius:.6rem;display:block" />` : ""}
       </div>
 
       <div class="card">
@@ -2626,8 +2634,6 @@
             <button class="btn btn-primary" id="btnBulkDownload" style="width:auto;padding:.5rem .9rem">\u2B07 Download PDF</button>
             <button class="btn btn-whatsapp" id="btnBulkShare" style="width:auto;padding:.5rem .9rem">\u{1F4AC} Bulk Share</button>
           </div>
-          <div class="field-label" style="margin-bottom:.4rem">Students in this category</div>
-          <div class="marks-table-wrap" id="cnStudentsTableWrap"></div>
         </div>
 
         <div id="cnOnePanel" style="display:none">
@@ -2642,26 +2648,6 @@
           </div>
         </div>
       </div>`;
-
-    function refreshStudentsTable() {
-      const cat = document.getElementById("cnCategoryPick").value;
-      const students = state.students.filter((s) => s.category === cat);
-      const wrap = document.getElementById("cnStudentsTableWrap");
-      if (!students.length) { wrap.innerHTML = `<div class="empty-note">No students found in this category.</div>`; return; }
-      wrap.innerHTML = `
-        <table class="marks-table">
-          <thead><tr><th>Chest No</th><th>Name</th><th>Class</th></tr></thead>
-          <tbody>
-            ${students.map((s) => `<tr>
-              <td>${s.chestNo}</td>
-              <td style="text-align:left">${escapeHtml(s.name)}</td>
-              <td>${escapeHtml(s.cls || "\u2014")}</td>
-            </tr>`).join("")}
-          </tbody>
-        </table>`;
-    }
-    refreshStudentsTable();
-    document.getElementById("cnCategoryPick").addEventListener("change", refreshStudentsTable);
 
     document.querySelectorAll('input[name="cnMode"]').forEach((r) => r.addEventListener("change", () => {
       const isAll = document.querySelector('input[name="cnMode"]:checked').value === "all";
@@ -2784,7 +2770,7 @@
       if (!file) return;
       showToast("Compressing template image\u2026");
       compressImageFile(file, 1013, 0.85).then((imageUrl) => {
-        state.masterCardTemplate = { imageUrl, placements: state.masterCardTemplate.placements || [] };
+        state.masterCardTemplate = { imageUrl, placements: defaultCardPlacements() };
         persist(); showToast("Master template uploaded"); renderChestNumberTab();
       }).catch(() => showToast("Could not process that image"));
     });
@@ -2794,57 +2780,6 @@
       inp.style.display = "block";
       inp.click();
     });
-
-    // ---- Tag toolbar: tap to add (centre) or remove ----
-    document.querySelectorAll(".tag-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const tagKey = btn.dataset.tag;
-        const existing = mt.placements.find((p) => p.tag === tagKey);
-        if (existing) {
-          mt.placements = mt.placements.filter((p) => p.tag !== tagKey);
-        } else {
-          mt.placements.push({
-            id: "pl-" + uid(), tag: tagKey, xPct: 50, yPct: 50,
-            fontSize: tagKey === "student_name" ? 34 : 26, color: "#111827", align: "center", bold: tagKey === "chest_number",
-            qrSize: 140,
-          });
-        }
-        persist(); renderChestNumberTab();
-      });
-    });
-
-    // ---- Drag-to-position placed tags ----
-    const previewWrap = document.getElementById("mtPreviewWrap");
-    if (previewWrap) {
-      previewWrap.querySelectorAll(".mt-tag-pill").forEach((pill) => {
-        let dragging = false, moved = false, downX = 0, downY = 0;
-        const move = (clientX, clientY) => {
-          moved = true;
-          const rect = previewWrap.getBoundingClientRect();
-          let xPct = ((clientX - rect.left) / rect.width) * 100;
-          let yPct = ((clientY - rect.top) / rect.height) * 100;
-          xPct = Math.max(2, Math.min(98, xPct));
-          yPct = Math.max(2, Math.min(98, yPct));
-          pill.style.left = xPct + "%"; pill.style.top = yPct + "%";
-          const p = mt.placements.find((pp) => pp.id === pill.dataset.id);
-          if (p) { p.xPct = xPct; p.yPct = yPct; }
-        };
-        pill.addEventListener("pointerdown", (e) => {
-          dragging = true; moved = false; downX = e.clientX; downY = e.clientY;
-          pill.setPointerCapture(e.pointerId); pill.style.cursor = "grabbing";
-        });
-        pill.addEventListener("pointermove", (e) => {
-          if (dragging && (moved || Math.hypot(e.clientX - downX, e.clientY - downY) > 4)) move(e.clientX, e.clientY);
-        });
-        pill.addEventListener("pointerup", () => {
-          if (!dragging) return;
-          dragging = false; pill.style.cursor = "grab";
-          if (moved) { persist(); }
-          else { mt.placements = mt.placements.filter((p) => p.id !== pill.dataset.id); persist(); renderChestNumberTab(); }
-        });
-        pill.addEventListener("pointercancel", () => { dragging = false; pill.style.cursor = "grab"; });
-      });
-    }
 
   }
 
@@ -3571,21 +3506,31 @@
             <div style="font-size:.85rem;font-weight:500">${escapeHtml(s.name)} <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--gold)">${s.chestNo}</span></div>
             <div class="muted" style="font-size:.7rem">${s.category} \u00b7 ${s.gender} \u00b7 ${team ? escapeHtml(team.name) : ""} \u00b7 ${s.events.length} events</div>
           </div>
-          <button class="delete-text-btn" data-id="${s.id}">Delete</button>
+          <div class="history-dots-wrap">
+            <button class="history-dots-btn" data-id="${s.id}">&#8942;</button>
+            <div class="history-dots-menu hidden" data-id="${s.id}">
+              <button class="history-menu-item danger" data-del-student="${s.id}">Delete</button>
+            </div>
+          </div>
         </div>
       </div>`;
     }).join("");
     document.querySelectorAll("#studentsListWrap .student-card").forEach((card) => card.addEventListener("click", (e) => {
-      if (e.target.closest(".delete-text-btn")) return;
+      if (e.target.closest(".history-dots-wrap")) return;
       studentsView = { mode: "profile", id: card.dataset.open };
       renderStudentsTab();
     }));
-    document.querySelectorAll("#studentsListWrap .delete-text-btn").forEach((b) => b.addEventListener("click", (e) => {
+    document.querySelectorAll("#studentsListWrap .history-dots-btn").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
-      const student = state.students.find((s) => s.id === b.dataset.id);
+      document.querySelectorAll("#studentsListWrap .history-dots-menu").forEach((m) => { if (m.dataset.id !== b.dataset.id) m.classList.add("hidden"); });
+      document.querySelector(`#studentsListWrap .history-dots-menu[data-id="${b.dataset.id}"]`).classList.toggle("hidden");
+    }));
+    document.querySelectorAll("#studentsListWrap [data-del-student]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const student = state.students.find((s) => s.id === b.dataset.delStudent);
       if (!confirm(`Delete ${student ? student.name : "this student"}? This can't be undone.`)) return;
-      removeStudentEverywhere(b.dataset.id);
-      state.students = state.students.filter((s) => s.id !== b.dataset.id);
+      removeStudentEverywhere(b.dataset.delStudent);
+      state.students = state.students.filter((s) => s.id !== b.dataset.delStudent);
       persist(); renderCounters(); renderStudentsTab();
     }));
   }
@@ -4278,7 +4223,7 @@
         <table><thead><tr><th>Team</th><th>Leader Name</th><th>Code Letter</th><th>Leader Signature</th></tr></thead><tbody>
           ${participants.map((s) => {
             const team = state.teams.find((t) => t.id === s.team);
-            return `<tr><td>${team ? escapeHtml(team.name) : ""}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(codeLetterFor(eventId, s.id))}</td><td>&nbsp;</td></tr>`;
+            return `<tr><td>${team ? escapeHtml(team.name) : ""}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
           }).join("")}
           <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
         </tbody></table>
@@ -4291,7 +4236,7 @@
       body = `
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type}</span><b>${event.category.toUpperCase()}</b></div>
         <table><thead><tr><th>Chest No</th><th>Participant</th><th>Code Letter</th><th>Participants Signature</th></tr></thead><tbody>
-          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(codeLetterFor(eventId, s.id))}</td><td>&nbsp;</td></tr>`).join("")}
+          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join("")}
           <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
         </tbody></table>
         <div style="margin-top:1.25rem;font-size:.78rem">
@@ -4300,20 +4245,15 @@
           <div>Green Room Coordinator Signature: ______________</div>
         </div>`;
     } else if (kind === "Valuation Sheet") {
-      const judges = event.assignedJudges.length ? event.assignedJudges : ["Judge 1"];
       body = `
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><b>${event.category.toUpperCase()}</b><span>${event.type}</span></div>
         <div style="text-align:right;font-size:.7rem;color:#666;margin-bottom:.4rem">Stage No: ______</div>
         <table><thead>
-          <tr><th>Chest No</th><th>Participant</th><th>Code Letter</th>${judges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Total</th></tr>
+          <tr><th rowspan="2">Chest No</th><th rowspan="2">Participant</th><th rowspan="2">Code Letter</th><th colspan="3">Judge</th></tr>
+          <tr><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr>
         </thead><tbody>
-          ${participants.map((s) => {
-            const marksSoFar = (state.marks[eventId] || {})[s.id] || {};
-            const final = finalMarkFor(eventId, s.id);
-            return `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(codeLetterFor(eventId, s.id))}</td>${judges.map((j) => `<td>${marksSoFar[j] != null && marksSoFar[j] !== "" ? escapeHtml(String(marksSoFar[j])) : "&nbsp;"}</td>`).join("")}<td><b>${final != null ? final : "&nbsp;"}</b></td></tr>`;
-          }).join("")}
+          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join("")}
         </tbody></table>
-        <div style="margin-top:.4rem;font-size:.68rem;color:#666">Total Out of 100</div>
         <div style="margin-top:1.25rem;font-size:.78rem">
           <div>Judge's Name and Signature :</div>
           <div style="margin-top:1rem">Judging Comments:</div>
