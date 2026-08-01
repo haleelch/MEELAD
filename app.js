@@ -1459,8 +1459,8 @@
       const ratio = 1013 / 638;
 
       let cols, rows, gapX, gapY;
-      if (perPage === 8) { cols = 2; rows = 4; gapX = 8; gapY = 8; }
-      else { cols = 2; rows = 2; gapX = 10; gapY = 10; } // 4 per page \u2014 larger, more legible
+      if (perPage === 12) { cols = 3; rows = 4; gapX = 6; gapY = 6; }
+      else { cols = 2; rows = 4; gapX = 8; gapY = 8; } // 8 per page \u2014 larger, more legible
 
       const cardW = (pageW - margin * 2 - gapX * (cols - 1)) / cols;
       const cardH = cardW / ratio;
@@ -1487,15 +1487,16 @@
 
   // Opens the shared #printOverlay with every card in the category laid out
   // as real <img> tags (crisper for browser printing than a re-rasterised PDF).
-  function openBulkCardPrintSheet(category) {
+  function openBulkCardPrintSheet(category, perPage) {
     const students = state.students.filter((s) => s.category === category);
     if (!students.length) return showToast("No students found in this category");
     if (!state.masterCardTemplate || !state.masterCardTemplate.imageUrl) return showToast("Upload a master template first (Super Admin \u2192 Chest Number)");
     showToast(`Preparing ${students.length} card${students.length > 1 ? "s" : ""} for print\u2026`);
     Promise.all(students.map((s) => drawMasterCard(s))).then((urls) => {
       const cardsHtml = urls.map((u) => `<img src="${u}" class="bulk-card-print-img" />`).join("");
+      const gridClass = perPage === 12 ? "bulk-card-print-grid per-page-12" : "bulk-card-print-grid per-page-8";
       document.getElementById("printTitle").textContent = "Chest Number Cards";
-      document.getElementById("printContent").innerHTML = `<div class="bulk-card-print-grid">${cardsHtml}</div>`;
+      document.getElementById("printContent").innerHTML = `<div class="${gridClass}">${cardsHtml}</div>`;
       document.getElementById("printOverlay").classList.remove("hidden");
       pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
     }).catch(() => showToast("Could not prepare cards for print"));
@@ -1594,6 +1595,102 @@
     });
     document.getElementById("btnClosePoster").addEventListener("click", closeTopScreen);
   }
+
+  // ---- Student Dashboard: chest-number login gate, then a personal
+  // programmes/results view. Reuses the same modalOverlay/modalBody as the
+  // poster modals above (no separate overlay markup needed). ----
+  function openStudentLogin() {
+    modalBody.innerHTML = `
+      <div class="poster-head arch-top">
+        <div style="font-size:1.4rem;color:var(--gold)">\u{1F393}</div>
+        <div class="poster-name font-display">My Dashboard</div>
+        <div class="poster-event">Enter your chest number to continue</div>
+      </div>
+      <div style="padding:1rem">
+        <input id="sdChestInput" class="input" placeholder="Chest Number" inputmode="numeric" style="margin-bottom:.6rem" />
+        <div class="empty-note hidden" id="sdLoginError" style="margin-bottom:.6rem;color:var(--crimson)"></div>
+        <button class="btn btn-primary" id="btnStudentLogin" style="width:100%">View My Dashboard</button>
+      </div>
+      <button class="modal-close" id="btnCloseStudentLogin">Close</button>`;
+    modalOverlay.classList.remove("hidden");
+    pushScreen(closeModal);
+
+    document.getElementById("btnCloseStudentLogin").addEventListener("click", closeTopScreen);
+    const submit = () => {
+      const val = document.getElementById("sdChestInput").value.trim();
+      const err = document.getElementById("sdLoginError");
+      if (!val) { err.textContent = "Enter your chest number"; err.classList.remove("hidden"); return; }
+      const student = state.students.find((s) => String(s.chestNo) === val);
+      if (!student) { err.textContent = "No participant found with that chest number"; err.classList.remove("hidden"); return; }
+      openStudentDashboard(student);
+    };
+    document.getElementById("btnStudentLogin").addEventListener("click", submit);
+    document.getElementById("sdChestInput").addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+  }
+
+  function openStudentDashboard(student) {
+    const team = state.teams.find((t) => t.id === student.team);
+    const events = student.events.map((id) => state.events.find((e) => e.id === id)).filter(Boolean);
+    const wins = getStudentWins(student.id);
+    const completed = events.filter((e) => state.results[e.id]).length;
+    const totalPoints = wins.reduce((sum, w) => sum + (RANK_POINTS[w.rank] || 0), 0);
+    const initials = student.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+
+    const statCard = (icon, label, value) => `
+      <div class="card" style="display:flex;align-items:center;gap:.65rem;padding:.75rem;margin-bottom:0">
+        <div style="font-size:1.2rem">${icon}</div>
+        <div><div style="font-size:1.25rem;font-weight:700;line-height:1.1">${value}</div><div class="muted" style="font-size:.65rem">${label}</div></div>
+      </div>`;
+
+    const eventRow = (e) => {
+      const published = !!state.results[e.id];
+      const label = published ? "RESULT OUT" : (e.status === "ticked" ? "COMPLETED" : "UPCOMING");
+      const style = published ? "background:var(--emerald-light);color:#fff" : e.status === "ticked" ? "background:var(--gold-light);color:#111" : "background:var(--surface2);color:var(--muted)";
+      return `<div class="result-row">
+        <div><div class="result-name">${escapeHtml(e.name)}</div><div class="result-meta">${e.type} \u00b7 ${e.stageType || "Stage"}</div></div>
+        <span style="padding:.25rem .55rem;border-radius:.4rem;font-size:.62rem;font-weight:700;white-space:nowrap;${style}">${label}</span>
+      </div>`;
+    };
+
+    const winRow = (w) => `<div class="result-row">
+        <span class="win-rank">${RANK_ICON[w.rank]} ${RANK_LABEL[w.rank]}</span>
+        <span class="result-name">${escapeHtml(w.eventName)}</span>
+        <span class="result-meta">+${RANK_POINTS[w.rank]} pts</span>
+      </div>`;
+
+    modalBody.innerHTML = `
+      <div class="poster-head arch-top">
+        <div style="width:3.2rem;height:3.2rem;border-radius:50%;background:var(--emerald);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;margin:0 auto .5rem">${initials}</div>
+        <div class="poster-name font-display">${escapeHtml(student.name)}</div>
+        <div class="poster-code">${student.chestNo}</div>
+        <div class="poster-event">${team ? escapeHtml(team.name) : ""}${student.category ? " \u00b7 " + escapeHtml(student.category) : ""}</div>
+      </div>
+      <div style="padding:0 1rem 1rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:1rem 0">
+          ${statCard("\u{1F4C5}", "Registered", events.length)}
+          ${statCard("\u2705", "Completed", completed)}
+          ${statCard("\u{1F3C5}", "Awards", wins.length)}
+          ${statCard("\u2B50", "Total Points", totalPoints)}
+        </div>
+        <div class="field-label" style="margin-bottom:.4rem">My Programmes</div>
+        <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+          ${events.length ? events.map(eventRow).join("") : `<div class="empty-note">No programmes registered yet.</div>`}
+        </div>
+        <div class="field-label" style="margin-bottom:.4rem">Results &amp; Points</div>
+        <div style="display:flex;flex-direction:column;gap:.4rem">
+          ${wins.length ? wins.map(winRow).join("") : `<div class="empty-note">No published results yet.</div>`}
+        </div>
+      </div>
+      <button class="modal-close" id="btnCloseStudentDash">Close</button>`;
+    document.getElementById("btnCloseStudentDash").addEventListener("click", closeTopScreen);
+  }
+
+  const navStudentDashboard = document.getElementById("navStudentDashboard");
+  if (navStudentDashboard) navStudentDashboard.addEventListener("click", (e) => {
+    e.preventDefault();
+    closeSidebar();
+    openStudentLogin();
+  });
 
   // Combined result modal: shows 1st, 2nd & 3rd winners of one programme together
   // in a single poster, with a template carousel (admin-managed), download & share.
@@ -2039,7 +2136,6 @@
     if (tab === "export") return renderExportTab();
     if (tab === "results") return renderResultsTab();
     if (tab === "schedule") return renderScheduleTab();
-    if (tab === "printsheets") return renderPrintSheetsTab();
   }
 
   /* ---- Dashboard tab ---- */
@@ -2497,24 +2593,7 @@
                 ${CARD_TAGS.find((t) => t.key === p.tag).label}
               </div>`).join("")}
           </div>
-          ${mt.placements.length ? `
-          <div class="field-label" style="margin-bottom:.4rem">Placed tags \u2014 fine-tune style (optional)</div>
-          <div class="marks-table-wrap" style="margin-bottom:.75rem">
-            <table class="marks-table">
-              <thead><tr><th>Tag</th><th>Size</th><th>Bold</th><th>Colour</th><th></th></tr></thead>
-              <tbody>
-                ${mt.placements.map((p) => `<tr data-placement-row="${p.id}">
-                  <td style="text-align:left">${CARD_TAGS.find((t) => t.key === p.tag).label}</td>
-                  <td>${p.tag === "qr_code"
-                    ? `<input type="number" class="input pl-size" data-id="${p.id}" value="${p.qrSize || 120}" style="width:4rem;padding:.3rem" />`
-                    : `<input type="number" class="input pl-size" data-id="${p.id}" value="${p.fontSize || 30}" style="width:4rem;padding:.3rem" />`}</td>
-                  <td>${p.tag === "qr_code" ? "\u2014" : `<input type="checkbox" class="pl-bold" data-id="${p.id}" ${p.bold ? "checked" : ""} />`}</td>
-                  <td>${p.tag === "qr_code" ? "\u2014" : `<input type="color" class="input pl-color" data-id="${p.id}" value="${p.color || "#111827"}" style="padding:.15rem;width:2.6rem" />`}</td>
-                  <td><button class="btn btn-ghost pl-remove" data-id="${p.id}" style="width:auto;padding:.3rem .6rem;font-size:.65rem;border-color:var(--crimson);color:var(--crimson)">Remove</button></td>
-                </tr>`).join("")}
-              </tbody>
-            </table>
-          </div>` : ""}
+          <div class="field-label" style="margin-bottom:.5rem">Tap a placed tag on the image above to remove it, or drag it to reposition. Tap the same tag in the toolbar again to remove it.</div>
         ` : ""}
       </div>
 
@@ -2527,23 +2606,41 @@
       <div class="card">
         <div class="card-title">Generate Chest Number Cards</div>
         ${mt.imageUrl ? "" : `<div class="empty-note" style="margin-bottom:.75rem">${super_ ? "Upload a master template above to start generating cards." : "No master template has been uploaded yet \u2014 ask your super admin to add one."}</div>`}
-        <div class="field-label" style="margin-bottom:.4rem">Category</div>
-        <select id="cnCategoryPick" class="input" style="margin-bottom:.75rem">
-          ${state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)} (${state.students.filter((s) => s.category === c).length} students)</option>`).join("")}
-        </select>
 
-        <div id="cnBulkActions" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
-          <button class="btn btn-primary" id="btnBulkPrint" style="width:auto;padding:.5rem .9rem">\u{1F5A8} Bulk Print</button>
-          <button class="btn btn-primary" id="btnBulkDownload" style="width:auto;padding:.5rem .9rem">\u2B07 Download PDF</button>
-          <button class="btn btn-whatsapp" id="btnBulkShare" style="width:auto;padding:.5rem .9rem">\u{1F4AC} Bulk Share</button>
-        </div>
         <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
-          <label class="radio-pill"><input type="radio" name="cnPerPage" value="4" checked /> 4 per page (large)</label>
-          <label class="radio-pill"><input type="radio" name="cnPerPage" value="8" /> 8 per page</label>
+          <label class="radio-pill"><input type="radio" name="cnMode" value="all" checked /> All Students</label>
+          <label class="radio-pill"><input type="radio" name="cnMode" value="one" /> Student</label>
         </div>
 
-        <div class="field-label" style="margin-bottom:.4rem">Students in this category</div>
-        <div class="marks-table-wrap" id="cnStudentsTableWrap"></div>
+        <div id="cnAllPanel">
+          <div class="field-label" style="margin-bottom:.4rem">Category</div>
+          <select id="cnCategoryPick" class="input" style="margin-bottom:.75rem">
+            ${state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)} (${state.students.filter((s) => s.category === c).length} students)</option>`).join("")}
+          </select>
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+            <label class="radio-pill"><input type="radio" name="cnPerPage" value="8" checked /> 8 per page</label>
+            <label class="radio-pill"><input type="radio" name="cnPerPage" value="12" /> 12 per page</label>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+            <button class="btn btn-primary" id="btnBulkPrint" style="width:auto;padding:.5rem .9rem">\u{1F5A8} Bulk Print</button>
+            <button class="btn btn-primary" id="btnBulkDownload" style="width:auto;padding:.5rem .9rem">\u2B07 Download PDF</button>
+            <button class="btn btn-whatsapp" id="btnBulkShare" style="width:auto;padding:.5rem .9rem">\u{1F4AC} Bulk Share</button>
+          </div>
+          <div class="field-label" style="margin-bottom:.4rem">Students in this category</div>
+          <div class="marks-table-wrap" id="cnStudentsTableWrap"></div>
+        </div>
+
+        <div id="cnOnePanel" style="display:none">
+          <div class="field-label" style="margin-bottom:.4rem">Student (name \u2014 chest no)</div>
+          <select id="cnStudentPick" class="input" style="margin-bottom:.75rem">
+            ${state.students.map((s) => `<option value="${s.id}">${escapeHtml(s.name)} \u2014 ${s.chestNo} (${escapeHtml(s.category)})</option>`).join("")}
+          </select>
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+            <button class="btn btn-primary" id="btnOnePrint" style="width:auto;padding:.5rem .9rem">\u{1F5A8} Print</button>
+            <button class="btn btn-primary" id="btnOneDownload" style="width:auto;padding:.5rem .9rem">\u2B07 Download</button>
+            <button class="btn btn-whatsapp" id="btnOneShare" style="width:auto;padding:.5rem .9rem">\u{1F4AC} Share</button>
+          </div>
+        </div>
       </div>`;
 
     function refreshStudentsTable() {
@@ -2553,50 +2650,29 @@
       if (!students.length) { wrap.innerHTML = `<div class="empty-note">No students found in this category.</div>`; return; }
       wrap.innerHTML = `
         <table class="marks-table">
-          <thead><tr><th>Chest No</th><th>Name</th><th>Class</th><th colspan="3">Actions</th></tr></thead>
+          <thead><tr><th>Chest No</th><th>Name</th><th>Class</th></tr></thead>
           <tbody>
             ${students.map((s) => `<tr>
               <td>${s.chestNo}</td>
               <td style="text-align:left">${escapeHtml(s.name)}</td>
               <td>${escapeHtml(s.cls || "\u2014")}</td>
-              <td><button class="btn btn-ghost cn-row-download" data-id="${s.id}" style="width:auto;padding:.3rem .55rem;font-size:.65rem">\u2B07</button></td>
-              <td><button class="btn btn-ghost cn-row-print" data-id="${s.id}" style="width:auto;padding:.3rem .55rem;font-size:.65rem">\u{1F5A8}</button></td>
-              <td><button class="btn btn-ghost cn-row-share" data-id="${s.id}" style="width:auto;padding:.3rem .55rem;font-size:.65rem">\u{1F4AC}</button></td>
             </tr>`).join("")}
           </tbody>
         </table>`;
-
-      wrap.querySelectorAll(".cn-row-download").forEach((b) => b.addEventListener("click", () => {
-        const student = state.students.find((s) => s.id === b.dataset.id);
-        if (!mt.imageUrl) return showToast("Upload a master template first");
-        showToast("Preparing card\u2026");
-        drawMasterCard(student).then((url) => { downloadDataUrl(url, `${student.chestNo}-chest-no-card.jpg`); showToast("Card downloaded"); })
-          .catch(() => showToast("Could not generate card"));
-      }));
-      wrap.querySelectorAll(".cn-row-print").forEach((b) => b.addEventListener("click", () => {
-        const student = state.students.find((s) => s.id === b.dataset.id);
-        if (!mt.imageUrl) return showToast("Upload a master template first");
-        showToast("Preparing card for print\u2026");
-        drawMasterCard(student).then((url) => {
-          document.getElementById("printTitle").textContent = "Chest Number Card";
-          document.getElementById("printContent").innerHTML = `<div class="bulk-card-print-grid"><img src="${url}" class="bulk-card-print-img" /></div>`;
-          document.getElementById("printOverlay").classList.remove("hidden");
-          pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
-        }).catch(() => showToast("Could not generate card"));
-      }));
-      wrap.querySelectorAll(".cn-row-share").forEach((b) => b.addEventListener("click", () => {
-        const student = state.students.find((s) => s.id === b.dataset.id);
-        if (!mt.imageUrl) return showToast("Upload a master template first");
-        showToast("Preparing card\u2026");
-        const text = `${student.name} \u2014 Chest No ${student.chestNo}, ${student.category} at ${state.hero.title}`;
-        drawMasterCard(student).then((url) => shareImageWithText(url, `${student.chestNo}-chest-no-card.jpg`, text))
-          .catch(() => showToast("Could not generate card"));
-      }));
     }
     refreshStudentsTable();
     document.getElementById("cnCategoryPick").addEventListener("change", refreshStudentsTable);
 
-    document.getElementById("btnBulkPrint").addEventListener("click", () => openBulkCardPrintSheet(document.getElementById("cnCategoryPick").value));
+    document.querySelectorAll('input[name="cnMode"]').forEach((r) => r.addEventListener("change", () => {
+      const isAll = document.querySelector('input[name="cnMode"]:checked').value === "all";
+      document.getElementById("cnAllPanel").style.display = isAll ? "" : "none";
+      document.getElementById("cnOnePanel").style.display = isAll ? "none" : "";
+    }));
+
+    document.getElementById("btnBulkPrint").addEventListener("click", () => {
+      const perPage = Number(document.querySelector('input[name="cnPerPage"]:checked').value);
+      openBulkCardPrintSheet(document.getElementById("cnCategoryPick").value, perPage);
+    });
     document.getElementById("btnBulkDownload").addEventListener("click", () => {
       const category = document.getElementById("cnCategoryPick").value;
       const perPage = Number(document.querySelector('input[name="cnPerPage"]:checked').value);
@@ -2614,6 +2690,36 @@
         if (!res) return;
         shareBlobFile(res.blob, res.filename, "application/pdf", `${category} chest number cards \u2014 ${state.hero.title}`);
       }).catch(() => {});
+    });
+
+    document.getElementById("btnOnePrint").addEventListener("click", () => {
+      const student = state.students.find((s) => s.id === document.getElementById("cnStudentPick").value);
+      if (!student) return;
+      if (!mt.imageUrl) return showToast("Upload a master template first");
+      showToast("Preparing card for print\u2026");
+      drawMasterCard(student).then((url) => {
+        document.getElementById("printTitle").textContent = "Chest Number Card";
+        document.getElementById("printContent").innerHTML = `<div class="bulk-card-print-grid"><img src="${url}" class="bulk-card-print-img" /></div>`;
+        document.getElementById("printOverlay").classList.remove("hidden");
+        pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+      }).catch(() => showToast("Could not generate card"));
+    });
+    document.getElementById("btnOneDownload").addEventListener("click", () => {
+      const student = state.students.find((s) => s.id === document.getElementById("cnStudentPick").value);
+      if (!student) return;
+      if (!mt.imageUrl) return showToast("Upload a master template first");
+      showToast("Preparing card\u2026");
+      drawMasterCard(student).then((url) => { downloadDataUrl(url, `${student.chestNo}-chest-no-card.jpg`); showToast("Card downloaded"); })
+        .catch(() => showToast("Could not generate card"));
+    });
+    document.getElementById("btnOneShare").addEventListener("click", () => {
+      const student = state.students.find((s) => s.id === document.getElementById("cnStudentPick").value);
+      if (!student) return;
+      if (!mt.imageUrl) return showToast("Upload a master template first");
+      showToast("Preparing card\u2026");
+      const text = `${student.name} \u2014 Chest No ${student.chestNo}, ${student.category} at ${state.hero.title}`;
+      drawMasterCard(student).then((url) => shareImageWithText(url, `${student.chestNo}-chest-no-card.jpg`, text))
+        .catch(() => showToast("Could not generate card"));
     });
 
     if (!super_) return; // everything below is super-admin only
@@ -2711,8 +2817,9 @@
     const previewWrap = document.getElementById("mtPreviewWrap");
     if (previewWrap) {
       previewWrap.querySelectorAll(".mt-tag-pill").forEach((pill) => {
-        let dragging = false;
+        let dragging = false, moved = false, downX = 0, downY = 0;
         const move = (clientX, clientY) => {
+          moved = true;
           const rect = previewWrap.getBoundingClientRect();
           let xPct = ((clientX - rect.left) / rect.width) * 100;
           let yPct = ((clientY - rect.top) / rect.height) * 100;
@@ -2723,33 +2830,22 @@
           if (p) { p.xPct = xPct; p.yPct = yPct; }
         };
         pill.addEventListener("pointerdown", (e) => {
-          dragging = true; pill.setPointerCapture(e.pointerId); pill.style.cursor = "grabbing";
+          dragging = true; moved = false; downX = e.clientX; downY = e.clientY;
+          pill.setPointerCapture(e.pointerId); pill.style.cursor = "grabbing";
         });
-        pill.addEventListener("pointermove", (e) => { if (dragging) move(e.clientX, e.clientY); });
-        pill.addEventListener("pointerup", () => { if (dragging) { dragging = false; pill.style.cursor = "grab"; persist(); } });
+        pill.addEventListener("pointermove", (e) => {
+          if (dragging && (moved || Math.hypot(e.clientX - downX, e.clientY - downY) > 4)) move(e.clientX, e.clientY);
+        });
+        pill.addEventListener("pointerup", () => {
+          if (!dragging) return;
+          dragging = false; pill.style.cursor = "grab";
+          if (moved) { persist(); }
+          else { mt.placements = mt.placements.filter((p) => p.id !== pill.dataset.id); persist(); renderChestNumberTab(); }
+        });
         pill.addEventListener("pointercancel", () => { dragging = false; pill.style.cursor = "grab"; });
       });
     }
 
-    // ---- Per-tag style tweaks ----
-    document.querySelectorAll(".pl-size").forEach((inp) => inp.addEventListener("change", () => {
-      const p = mt.placements.find((pp) => pp.id === inp.dataset.id);
-      if (!p) return;
-      if (p.tag === "qr_code") p.qrSize = Number(inp.value) || 120; else p.fontSize = Number(inp.value) || 30;
-      persist();
-    }));
-    document.querySelectorAll(".pl-bold").forEach((inp) => inp.addEventListener("change", () => {
-      const p = mt.placements.find((pp) => pp.id === inp.dataset.id);
-      if (p) { p.bold = inp.checked; persist(); }
-    }));
-    document.querySelectorAll(".pl-color").forEach((inp) => inp.addEventListener("change", () => {
-      const p = mt.placements.find((pp) => pp.id === inp.dataset.id);
-      if (p) { p.color = inp.value; persist(); }
-    }));
-    document.querySelectorAll(".pl-remove").forEach((btn) => btn.addEventListener("click", () => {
-      mt.placements = mt.placements.filter((p) => p.id !== btn.dataset.id);
-      persist(); renderChestNumberTab();
-    }));
   }
 
   /* ---- Teams tab ---- */
@@ -2916,9 +3012,26 @@
       showToast("Programme added");
     });
   }
+  let eventEditId = null; // which programme is showing its inline edit form
   function renderEventsList() {
     document.getElementById("eventsListWrap").innerHTML = state.events.map((e) => {
       const participants = state.students.filter((s) => s.events.includes(e.id));
+      if (eventEditId === e.id) return `<div class="card">
+        <input class="input" data-edit-ev-name value="${escapeAttr(e.name)}" placeholder="Programme Name" style="margin-bottom:.5rem" />
+        <div class="grid3" style="margin-bottom:.5rem">
+          <select class="input" data-edit-ev-category>${state.categories.map((c) => `<option ${c === e.category ? "selected" : ""}>${c}</option>`).join("")}</select>
+          <select class="input" data-edit-ev-type><option ${e.type === "Individual" ? "selected" : ""}>Individual</option><option ${e.type === "Group" ? "selected" : ""}>Group</option></select>
+          <select class="input" data-edit-ev-gender>${["General", "Boys", "Girls"].map((g) => `<option ${g === e.gender ? "selected" : ""}>${g}</option>`).join("")}</select>
+        </div>
+        <div class="grid2" style="margin-bottom:.75rem">
+          <label class="radio-pill"><input type="radio" name="editEvStageType-${e.id}" value="Stage" data-edit-ev-stagetype ${(e.stageType || "Stage") === "Stage" ? "checked" : ""} /> \u{1F3A4} Stage</label>
+          <label class="radio-pill"><input type="radio" name="editEvStageType-${e.id}" value="Off-stage" data-edit-ev-stagetype ${e.stageType === "Off-stage" ? "checked" : ""} /> \u270D\uFE0F Off-stage</label>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-primary" data-save-event="${e.id}" style="width:auto;padding:.45rem .9rem">Save</button>
+          <button class="btn btn-ghost" data-cancel-edit-event style="width:auto;padding:.45rem .9rem">Cancel</button>
+        </div>
+      </div>`;
       return `<div class="card">
         <div class="row-between">
           <div>
@@ -2928,6 +3041,7 @@
           <div class="history-dots-wrap">
             <button class="history-dots-btn" data-id="${e.id}">&#8942;</button>
             <div class="history-dots-menu hidden" data-id="${e.id}">
+              <button class="history-menu-item" data-edit-event="${e.id}">Edit</button>
               <button class="history-menu-item danger" data-del-event="${e.id}">Delete</button>
             </div>
           </div>
@@ -2938,6 +3052,28 @@
       e.stopPropagation();
       document.querySelectorAll("#eventsListWrap .history-dots-menu").forEach((m) => { if (m.dataset.id !== b.dataset.id) m.classList.add("hidden"); });
       document.querySelector(`#eventsListWrap .history-dots-menu[data-id="${b.dataset.id}"]`).classList.toggle("hidden");
+    }));
+    document.querySelectorAll("#eventsListWrap [data-edit-event]").forEach((b) => b.addEventListener("click", () => {
+      eventEditId = b.dataset.editEvent;
+      renderEventsList();
+    }));
+    document.querySelectorAll("#eventsListWrap [data-cancel-edit-event]").forEach((b) => b.addEventListener("click", () => {
+      eventEditId = null;
+      renderEventsList();
+    }));
+    document.querySelectorAll("#eventsListWrap [data-save-event]").forEach((b) => b.addEventListener("click", () => {
+      const ev = state.events.find((e) => e.id === b.dataset.saveEvent);
+      const name = document.querySelector("[data-edit-ev-name]").value.trim();
+      if (!name) return showToast("Programme name is required");
+      const stageInput = document.querySelector("[data-edit-ev-stagetype]:checked");
+      ev.name = name;
+      ev.category = document.querySelector("[data-edit-ev-category]").value;
+      ev.type = document.querySelector("[data-edit-ev-type]").value;
+      ev.gender = document.querySelector("[data-edit-ev-gender]").value;
+      ev.stageType = stageInput ? stageInput.value : (ev.stageType || "Stage");
+      eventEditId = null;
+      persist(); renderCounters(); renderTicker(); renderFilters(); renderResultsList(); renderEventsList();
+      showToast("Programme updated");
     }));
     document.querySelectorAll("#eventsListWrap [data-del-event]").forEach((b) => b.addEventListener("click", () => {
       const ev = state.events.find((e) => e.id === b.dataset.delEvent);
@@ -3647,185 +3783,6 @@
 
   /* ---- Export tab ---- */
   let pickEventKind = null;
-  /* ---- Print Sheets tab: fillable Valuation Sheet & Green Room Sign ----
-     Chest No / Name auto-fill from the selected programme's registered
-     participants. Code Letter is always typed in by hand (never auto-
-     generated) since it's assigned fresh at the venue. Draft entries
-     (code letters + marks) are saved to localStorage per programme, so
-     they survive a page reload; Chest No/Name are always re-derived live
-     from current student data, never stored, so the sheet can't go stale
-     if a student is added/removed. ---- */
-  let printSheetView = "valuation"; // "valuation" | "greenroom"
-
-  function psLocalKey(type, eventId) { return `meelad_printsheet_${type}_${eventId}`; }
-  function psLoadDraft(type, eventId) {
-    try { return JSON.parse(localStorage.getItem(psLocalKey(type, eventId))) || { rows: {}, extraRows: [] }; }
-    catch { return { rows: {}, extraRows: [] }; }
-  }
-  function psSaveDraft(type, eventId, draft) {
-    try { localStorage.setItem(psLocalKey(type, eventId), JSON.stringify(draft)); } catch {}
-  }
-
-  function renderPrintSheetsTab() {
-    adminContent.innerHTML = `
-      <div class="card">
-        <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
-          <button type="button" class="radio-pill ps-type-btn ${printSheetView === "valuation" ? "selected" : ""}" data-type="valuation" style="flex:1;cursor:pointer">\u{1F3C5} Valuation Sheet</button>
-          <button type="button" class="radio-pill ps-type-btn ${printSheetView === "greenroom" ? "selected" : ""}" data-type="greenroom" style="flex:1;cursor:pointer">\u2B50 Green Room Sign</button>
-        </div>
-        <div class="field-label" style="margin-bottom:.4rem">Category</div>
-        <select id="psCategoryPick" class="input" style="margin-bottom:.6rem">
-          ${state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join("")}
-        </select>
-        <div class="field-label" style="margin-bottom:.4rem">Programme</div>
-        <select id="psEventPick" class="input" style="margin-bottom:.75rem"></select>
-        <div id="psSheetWrap"></div>
-      </div>`;
-
-    document.querySelectorAll(".ps-type-btn").forEach((b) => b.addEventListener("click", () => {
-      printSheetView = b.dataset.type;
-      renderPrintSheetsTab();
-    }));
-
-    function refreshEventOptions() {
-      const cat = document.getElementById("psCategoryPick").value;
-      const eligible = state.events.filter((e) => e.category === cat);
-      const evSel = document.getElementById("psEventPick");
-      evSel.innerHTML = eligible.length
-        ? eligible.map((e) => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join("")
-        : `<option value="">No programmes in this category</option>`;
-      renderSheet();
-    }
-    document.getElementById("psCategoryPick").addEventListener("change", refreshEventOptions);
-    document.getElementById("psEventPick").addEventListener("change", renderSheet);
-
-    function participantsFor(event) {
-      return event.type === "Group" ? groupAwareParticipants(event.id) : state.students.filter((s) => s.events.includes(event.id));
-    }
-
-    function renderSheet() {
-      const wrap = document.getElementById("psSheetWrap");
-      const eventId = document.getElementById("psEventPick").value;
-      const event = state.events.find((e) => e.id === eventId);
-      if (!event) { wrap.innerHTML = `<div class="empty-note">Choose a programme first.</div>`; return; }
-
-      const participants = participantsFor(event);
-      const draft = psLoadDraft(printSheetView, eventId);
-      draft.rows = draft.rows || {}; draft.extraRows = draft.extraRows || [];
-
-      const title = printSheetView === "valuation" ? "VALUATION SHEET" : "GREEN ROOM SIGN";
-      const headExtra = printSheetView === "valuation"
-        ? `<th rowspan="2">Chest No</th><th rowspan="2">Code Letter</th><th colspan="2">MARKS</th><th rowspan="2">Total</th>`
-        : `<th rowspan="2">No</th><th rowspan="2">Chest No</th><th rowspan="2">Name</th><th rowspan="2">Code Letter</th><th rowspan="2">Sign</th>`;
-      const subHead = printSheetView === "valuation" ? `<tr><th>Judge 1</th><th>Judge 2</th></tr>` : "";
-
-      function rowHtml(id, chestNo, name, isExtra, idx) {
-        const r = draft.rows[id] || {};
-        const codeLetter = r.codeLetter || "";
-        if (printSheetView === "valuation") {
-          const j1 = r.judge1 ?? "", j2 = r.judge2 ?? "";
-          const n1 = parseFloat(j1), n2 = parseFloat(j2);
-          const vals = [n1, n2].filter((v) => !isNaN(v));
-          const total = vals.length ? vals.reduce((a, b) => a + b, 0) : "";
-          return `<tr data-row="${id}">
-            <td>${isExtra ? `<input class="input ps-chest" data-id="${id}" value="${escapeAttr(chestNo)}" style="width:5rem;text-align:center" />` : chestNo}</td>
-            <td><input class="input ps-code" data-id="${id}" value="${escapeAttr(codeLetter)}" style="width:4rem;text-align:center;text-transform:uppercase" maxlength="2" /></td>
-            <td><input class="input ps-j1" data-id="${id}" value="${escapeAttr(j1)}" inputmode="decimal" style="width:4rem;text-align:center" /></td>
-            <td><input class="input ps-j2" data-id="${id}" value="${escapeAttr(j2)}" inputmode="decimal" style="width:4rem;text-align:center" /></td>
-            <td style="font-weight:700;text-align:center">${total}</td>
-          </tr>`;
-        }
-        return `<tr data-row="${id}">
-          <td>${idx}</td>
-          <td>${isExtra ? `<input class="input ps-chest" data-id="${id}" value="${escapeAttr(chestNo)}" style="width:5rem;text-align:center" />` : chestNo}</td>
-          <td style="text-align:left">${isExtra ? `<input class="input ps-name" data-id="${id}" value="${escapeAttr(name)}" style="width:100%" />` : escapeHtml(name)}</td>
-          <td><input class="input ps-code" data-id="${id}" value="${escapeAttr(codeLetter)}" style="width:4rem;text-align:center;text-transform:uppercase" maxlength="2" /></td>
-          <td></td>
-        </tr>`;
-      }
-
-      const baseRows = participants.map((s, i) => rowHtml(s.id, s.chestNo, s.name, false, i + 1));
-      const extraRows = draft.extraRows.map((id, i) => {
-        const r = draft.rows[id] || {};
-        return rowHtml(id, r.chestNo || "", r.name || "", true, participants.length + i + 1);
-      });
-
-      wrap.innerHTML = `
-        <div style="text-align:center;font-weight:700;letter-spacing:.04em;font-size:1rem;margin-bottom:.15rem">${title}</div>
-        <div class="muted" style="text-align:center;font-size:.78rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
-        <div class="marks-table-wrap">
-          <table class="marks-table" id="psTable">
-            <thead><tr>${headExtra}</tr>${subHead}</thead>
-            <tbody>${baseRows.join("") + extraRows.join("")}</tbody>
-          </table>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
-          <button class="btn btn-ghost" id="btnPsAddRow" style="width:auto;padding:.5rem .9rem">+ Add Row</button>
-          <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
-        </div>`;
-
-      function saveField(id, field, value) {
-        draft.rows[id] = draft.rows[id] || {};
-        draft.rows[id][field] = value;
-        psSaveDraft(printSheetView, eventId, draft);
-      }
-      wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "codeLetter", inp.value.toUpperCase())));
-      wrap.querySelectorAll(".ps-j1").forEach((inp) => inp.addEventListener("input", () => { saveField(inp.dataset.id, "judge1", inp.value); renderSheet(); }));
-      wrap.querySelectorAll(".ps-j2").forEach((inp) => inp.addEventListener("input", () => { saveField(inp.dataset.id, "judge2", inp.value); renderSheet(); }));
-      wrap.querySelectorAll(".ps-chest").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "chestNo", inp.value)));
-      wrap.querySelectorAll(".ps-name").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "name", inp.value)));
-
-      document.getElementById("btnPsAddRow").addEventListener("click", () => {
-        const id = "extra-" + uid();
-        draft.extraRows.push(id);
-        psSaveDraft(printSheetView, eventId, draft);
-        renderSheet();
-      });
-
-      document.getElementById("btnPsPrint").addEventListener("click", () => {
-        const sectorLine = escapeHtml(state.printHeaderName || state.hero.title);
-        const now = new Date();
-        const timestamp = now.toLocaleDateString("en-GB") + " " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-        const printHeadRow1 = printSheetView === "valuation"
-          ? `<th rowspan="2">Chest No</th><th rowspan="2">Code Letter</th><th colspan="2">MARKS</th><th rowspan="2">Total</th>`
-          : `<th rowspan="2">No</th><th rowspan="2">Chest No</th><th rowspan="2">Name</th><th rowspan="2">Code Letter</th><th rowspan="2">Sign</th>`;
-        const printSubHead = printSheetView === "valuation" ? `<tr><th>Judge 1</th><th>Judge 2</th></tr>` : "";
-
-        function printRow(id, chestNo, name, idx) {
-          const r = draft.rows[id] || {};
-          const codeLetter = r.codeLetter || "";
-          if (printSheetView === "valuation") {
-            const j1 = r.judge1 ?? "", j2 = r.judge2 ?? "";
-            const n1 = parseFloat(j1), n2 = parseFloat(j2);
-            const vals = [n1, n2].filter((v) => !isNaN(v));
-            const total = vals.length ? vals.reduce((a, b) => a + b, 0) : "";
-            return `<tr><td>${chestNo}</td><td>${escapeHtml(codeLetter)}</td><td>${escapeHtml(String(j1))}</td><td>${escapeHtml(String(j2))}</td><td><b>${total}</b></td></tr>`;
-          }
-          return `<tr><td>${idx}</td><td>${chestNo}</td><td style="text-align:left">${escapeHtml(name)}</td><td>${escapeHtml(codeLetter)}</td><td></td></tr>`;
-        }
-        const printBaseRows = participants.map((s, i) => printRow(s.id, s.chestNo, s.name, i + 1));
-        const printExtraRows = draft.extraRows.map((id, i) => {
-          const r = draft.rows[id] || {};
-          return printRow(id, r.chestNo || "", r.name || "", participants.length + i + 1);
-        });
-
-        document.getElementById("printTitle").textContent = title;
-        document.getElementById("printContent").innerHTML = `
-          <div class="print-masthead"><b>${sectorLine}</b><span>${timestamp}</span></div>
-          <div class="print-heading" style="text-align:center">${title}</div>
-          <div class="muted" style="text-align:center;font-size:.85rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
-          <table class="schedule-print-table"><thead><tr>${printHeadRow1}</tr>${printSubHead}</thead>
-            <tbody>${printBaseRows.join("") + printExtraRows.join("")}</tbody>
-          </table>`;
-        document.getElementById("printOverlay").classList.remove("hidden");
-        pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
-      });
-    }
-
-    refreshEventOptions();
-  }
-
   function renderExportTab() {
     const cards = [
       { id: "Call List", icon: "\u{1F4CB}" }, { id: "Valuation Sheet", icon: "\u{1F3C5}" },
@@ -4318,12 +4275,12 @@
     if (kind === "Green Room Sign" && event.type === "Group") {
       body = `
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type}</span><b>${event.category.toUpperCase()}</b></div>
-        <table><thead><tr><th>Team</th><th>Leader Name</th><th>Leader Signature</th></tr></thead><tbody>
+        <table><thead><tr><th>Team</th><th>Leader Name</th><th>Code Letter</th><th>Leader Signature</th></tr></thead><tbody>
           ${participants.map((s) => {
             const team = state.teams.find((t) => t.id === s.team);
-            return `<tr><td>${team ? escapeHtml(team.name) : ""}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td></tr>`;
+            return `<tr><td>${team ? escapeHtml(team.name) : ""}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(codeLetterFor(eventId, s.id))}</td><td>&nbsp;</td></tr>`;
           }).join("")}
-          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
         </tbody></table>
         <div style="margin-top:1.25rem;font-size:.78rem">
           <div style="margin-bottom:.4rem">Competition Start Time: ______________</div>
@@ -4333,9 +4290,9 @@
     } else if (kind === "Green Room Sign") {
       body = `
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type}</span><b>${event.category.toUpperCase()}</b></div>
-        <table><thead><tr><th>Chest No</th><th>Participant</th><th>Participants Signature</th></tr></thead><tbody>
-          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td></tr>`).join("")}
-          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <table><thead><tr><th>Chest No</th><th>Participant</th><th>Code Letter</th><th>Participants Signature</th></tr></thead><tbody>
+          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(codeLetterFor(eventId, s.id))}</td><td>&nbsp;</td></tr>`).join("")}
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
         </tbody></table>
         <div style="margin-top:1.25rem;font-size:.78rem">
           <div style="margin-bottom:.4rem">Competition Start Time: ______________</div>
@@ -4348,9 +4305,13 @@
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><b>${event.category.toUpperCase()}</b><span>${event.type}</span></div>
         <div style="text-align:right;font-size:.7rem;color:#666;margin-bottom:.4rem">Stage No: ______</div>
         <table><thead>
-          <tr><th>Chest No</th><th>Participant</th>${judges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Total</th></tr>
+          <tr><th>Chest No</th><th>Participant</th><th>Code Letter</th>${judges.map((j) => `<th>${escapeHtml(j)}</th>`).join("")}<th>Total</th></tr>
         </thead><tbody>
-          ${participants.map((s) => `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td>${judges.map(() => "<td>&nbsp;</td>").join("")}<td>&nbsp;</td></tr>`).join("")}
+          ${participants.map((s) => {
+            const marksSoFar = (state.marks[eventId] || {})[s.id] || {};
+            const final = finalMarkFor(eventId, s.id);
+            return `<tr><td>${s.chestNo}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(codeLetterFor(eventId, s.id))}</td>${judges.map((j) => `<td>${marksSoFar[j] != null && marksSoFar[j] !== "" ? escapeHtml(String(marksSoFar[j])) : "&nbsp;"}</td>`).join("")}<td><b>${final != null ? final : "&nbsp;"}</b></td></tr>`;
+          }).join("")}
         </tbody></table>
         <div style="margin-top:.4rem;font-size:.68rem;color:#666">Total Out of 100</div>
         <div style="margin-top:1.25rem;font-size:.78rem">

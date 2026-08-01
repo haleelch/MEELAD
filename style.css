@@ -369,6 +369,20 @@ a.stat-card:hover{transform:translateY(-2px);}
 .checklist-row.done{background:rgba(31,122,87,.18);}
 .tick{color:var(--emerald-light);}
 
+/* ---- chest number card print grid ---- */
+.bulk-card-print-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+.bulk-card-print-img{width:100%;aspect-ratio:1013/638;object-fit:contain;border:1px solid #ddd;}
+.bulk-card-print-grid.per-page-8{grid-template-columns:1fr 1fr;}
+.bulk-card-print-grid.per-page-12{grid-template-columns:1fr 1fr 1fr;gap:6px;}
+@media print{
+  .bulk-card-print-grid.per-page-8{grid-template-rows:repeat(4,1fr);}
+  .bulk-card-print-grid.per-page-8 .bulk-card-print-img:nth-child(8n+1){break-before:page;}
+  .bulk-card-print-grid.per-page-8 .bulk-card-print-img:nth-child(1){break-before:auto;}
+  .bulk-card-print-grid.per-page-12{grid-template-rows:repeat(4,1fr);}
+  .bulk-card-print-grid.per-page-12 .bulk-card-print-img:nth-child(12n+1){break-before:page;}
+  .bulk-card-print-grid.per-page-12 .bulk-card-print-img:nth-child(1){break-before:auto;}
+}
+
 /* ---- print sheet (premium) ---- */
 .print-sheet{max-width:560px;background:#fff;color:#111;max-height:85vh;display:flex;flex-direction:column;}
 .print-sheet-bar{display:flex;justify-content:space-between;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #e3dcc5;}
