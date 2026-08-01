@@ -552,8 +552,7 @@
     <a href="#" class="side-link admin-menu-link" data-tab="teams"><span class="atab-ic ic-mono">&#128101;</span> TEAM</a>
     <a href="#" class="side-link admin-menu-link" data-tab="events"><span class="atab-ic ic-mono">&#127941;</span> PROGRAMME</a>
     <a href="#" class="side-link admin-menu-link" data-tab="competitions"><span class="atab-ic ic-mono">&#128269;</span> COMPETITIONS</a>
-    <a href="#" class="side-link admin-menu-link" data-tab="chestno" data-super-only="1"><span class="atab-ic ic-mono">&#128290;</span> CHESS NO</a>
-    <a href="#" class="side-link admin-menu-link" data-tab="idcards"><span class="atab-ic ic-mono">&#128179;</span> CHEST NO</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="chestnumber"><span class="atab-ic ic-mono">&#128179;</span> CHEST NUMBER</a>
     <a href="#" class="side-link admin-menu-link" data-tab="students"><span class="atab-ic ic-mono">&#128100;</span> PARTICIPANTS</a>
     <a href="#" class="side-link admin-menu-link" data-tab="limits" data-super-only="1"><span class="atab-ic ic-mono">&#9878;</span> LIMITS</a>
     <a href="#" class="side-link admin-menu-link" data-tab="markentry"><span class="atab-ic ic-mono">&#127908;</span> MARK ENTRY</a>
@@ -561,6 +560,7 @@
     <a href="#" class="side-link admin-menu-link" data-tab="schedule"><span class="atab-ic ic-mono">&#128197;</span> SCHEDULE</a>
     <a href="#" class="side-link admin-menu-link" data-tab="results"><span class="atab-ic ic-mono">&#127942;</span> RESULTS</a>
     <a href="#" class="side-link admin-menu-link" data-tab="export"><span class="atab-ic ic-mono">&#127917;</span> GREEN ROOM</a>
+    <a href="#" class="side-link admin-menu-link" data-tab="printsheets"><span class="atab-ic ic-mono">&#128203;</span> PRINT SHEETS</a>
     <a href="#" class="side-link admin-menu-link" data-tab="gallery"><span class="atab-ic ic-mono">&#128248;</span> GALLERY</a>
     <div class="side-divider"></div>
     <a href="#" id="btnDrawerLogout" class="side-link"><span class="atab-ic ic-mono">&#128682;</span> Logout</a>
@@ -583,6 +583,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
     // Applied before app.js so there's no flash of the wrong theme on load.

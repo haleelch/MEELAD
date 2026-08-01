@@ -49,6 +49,7 @@
     judges: seed.judges || ["Judge 1"],
     customTemplates: seed.customTemplates || [],
     cardTemplates: seed.cardTemplates || [],
+    masterCardTemplate: seed.masterCardTemplate || { imageUrl: null, placements: [] },
     resultTemplates: seed.resultTemplates || [],
     printHistory: seed.printHistory || [],
     gradeScale: seed.gradeScale || null, // null = use the default DEFAULT_GRADE_SCALE below
@@ -83,6 +84,8 @@
     state.judges = state.judges || ["Judge 1"];
     state.customTemplates = state.customTemplates || [];
     state.cardTemplates = state.cardTemplates || [];
+    state.masterCardTemplate = state.masterCardTemplate || { imageUrl: null, placements: [] };
+    if (!state.masterCardTemplate.placements) state.masterCardTemplate.placements = [];
     state.resultTemplates = state.resultTemplates || [];
     state.categoryStartNumbers = state.categoryStartNumbers || {};
     state.printHistory = state.printHistory || [];
@@ -339,6 +342,12 @@
   // in (optionally filtered to just "Stage" or "Off-stage" programmes). For Group
   // programmes only the team leader is marked, so every teammate shares that same
   // mark \u2014 the whole team performed together.
+  //
+  // This sums each programme's GRADE POINT (0\u201310, from the same grade scale used
+  // everywhere else) rather than the raw judge mark \u2014 raw marks aren't on a
+  // comparable scale across programmes (e.g. a 100-mark stage item vs. a 25-mark
+  // off-stage item), so summing them directly would be meaningless. Grade points
+  // are already normalised, so the leaderboard total is a fair like-for-like sum.
   function computeStudentTotalMarks(studentId, stageTypeFilter) {
     const student = state.students.find((s) => s.id === studentId);
     if (!student) return 0;
@@ -349,7 +358,7 @@
       if (event.type === "Group") return; // Group programme points count toward the team only, not individual Top Score
       if (stageTypeFilter && (event.stageType || "Stage") !== stageTypeFilter) return;
       const mark = finalMarkFor(eventId, studentId);
-      if (mark != null) total += mark;
+      if (mark != null) total += (gradePointFor(mark) || 0);
     });
     return Math.round(total * 100) / 100;
   }
@@ -863,7 +872,7 @@
         const entry = result[rank];
         if (!entry) return;
         const ids = entry.tiedIds && entry.tiedIds.length ? entry.tiedIds : [entry.studentId];
-        if (ids.includes(studentId)) wins.push({ eventName: e.name, rank });
+        if (ids.includes(studentId)) wins.push({ eventId: e.id, eventName: e.name, rank });
       });
     });
     return wins;
@@ -926,6 +935,41 @@
     document.getElementById("btnResultBlockDownload").addEventListener("click", () => quickDownloadResult(event.id));
   }
 
+  // Same result view as the search-icon flow (category, item name, winners
+  // table, Share + Download) but entered by tapping a student in the name
+  // search list instead of picking a programme. If the student has more
+  // than one published win, every one of them is shown, each with its own
+  // Share / Download.
+  function showStudentResultBlock(studentId) {
+    const student = state.students.find((s) => s.id === studentId);
+    if (!student) return;
+    const wins = getStudentWins(studentId);
+    const block = document.getElementById("resultBlock");
+    if (!wins.length) {
+      block.classList.add("hidden");
+      return showToast("No published results for this student yet");
+    }
+
+    block.innerHTML = wins.map((w, i) => {
+      const event = state.events.find((e) => e.id === w.eventId);
+      if (!event) return "";
+      return `
+      <div class="student-result-entry" ${i > 0 ? 'style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)"' : ""}>
+        <div class="category">${escapeHtml(event.category)}</div>
+        <div class="item-name">${escapeHtml(event.name)}</div>
+        ${renderPublicWinnersTable(event.id)}
+        <div class="rf-footer" style="margin-top:.75rem">
+          <button type="button" class="rf-btn rf-btn-share" data-share="${event.id}">\u{1F4AC} Share</button>
+          <button type="button" class="rf-btn rf-btn-poster" data-download="${event.id}">\u2B07 Download</button>
+        </div>
+      </div>`;
+    }).join("");
+    block.classList.remove("hidden");
+    block.querySelectorAll("[data-share]").forEach((b) => b.addEventListener("click", () => quickShareResult(b.dataset.share)));
+    block.querySelectorAll("[data-download]").forEach((b) => b.addEventListener("click", () => quickDownloadResult(b.dataset.download)));
+  }
+
+
   function renderResultsList() {
     document.getElementById("resultBlock").classList.add("hidden");
     const search = document.getElementById("searchBox").value.trim().toLowerCase();
@@ -944,7 +988,7 @@
         const winsHtml = wins.length
           ? `<div class="result-wins">${wins.map((w) => `<span class="win-chip">${RANK_ICON[w.rank]} ${RANK_LABEL[w.rank]} \u2014 ${escapeHtml(w.eventName)}</span>`).join("")}</div>`
           : "";
-        return `<div class="result-row" style="flex-direction:column;align-items:stretch;gap:.35rem">
+        return `<div class="result-row" data-student="${s.id}" style="flex-direction:column;align-items:stretch;gap:.35rem;cursor:pointer">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem">
             <div><div class="result-name">${escapeHtml(s.name)}</div><div class="result-meta">${s.chestNo} \u00b7 ${s.category} \u00b7 ${team ? escapeHtml(team.name) : ""}</div></div>
             <div class="result-meta">${s.events.length} events</div>
@@ -952,6 +996,10 @@
           ${winsHtml}
         </div>`;
       }).join("");
+      list.querySelectorAll("[data-student]").forEach((row) => row.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showStudentResultBlock(row.dataset.student);
+      }));
       if (matches.length > searchResultsShown) {
         list.innerHTML += `<button type="button" class="btn btn-ghost" id="btnViewNextSearch" style="width:100%;margin-top:.6rem">View Next</button>`;
         const btn = document.getElementById("btnViewNextSearch");
@@ -1325,298 +1373,97 @@
     return lines;
   }
 
-  /* ---- ID / Chest-No Card ----
-     Landscape card (1013x638px \u2248 CR80 badge ratio). Templates are admin-
-     uploaded images (see state.cardTemplates); we print name, chest no,
-     team and the student's registered programme names on top. */
-  function getAllCardTemplates() {
-    return state.cardTemplates.map((t) => ({
-      id: t.id, label: t.label, imageUrl: t.imageUrl, textY: t.textY, textColor: t.textColor,
-    }));
-  }
+  /* ---- Chest Number Card (single master template) ----
+     One admin-designed landscape template (1013x638px, CR80 badge ratio)
+     with placeholder tags positioned anywhere on it. Tags are resolved from
+     each student's data at generation time \u2014 no per-template colour or
+     text-position setup needed, and there is only ever one template. */
+  const CARD_TAGS = [
+    { key: "student_name", label: "Name", sample: "QALEELULLA CH" },
+    { key: "chest_number", label: "Chest No", sample: "303" },
+    { key: "category", label: "Category", sample: "Junior" },
+    { key: "school_class", label: "Class", sample: "7-A" },
+    { key: "qr_code", label: "QR Code", sample: "" },
+  ];
 
-  // Simple person-silhouette icon, used as the photo placeholder when a
-  // student has no photo on file.
-  function drawSilhouette(ctx, cx, cy, size, color) {
-    ctx.save();
-    ctx.fillStyle = color;
-    const r = size * 0.22;
-    ctx.beginPath();
-    ctx.arc(cx, cy - size * 0.12, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx - size * 0.42, cy + size * 0.42);
-    ctx.quadraticCurveTo(cx - size * 0.42, cy + size * 0.05, cx, cy + size * 0.05);
-    ctx.quadraticCurveTo(cx + size * 0.42, cy + size * 0.05, cx + size * 0.42, cy + size * 0.42);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // The "navy & gold" default ID card design — drawn from scratch on canvas
-  // (no template image required). Auto-fills name, chest no, team, category
-  // and programmes straight from student data. Used whenever the admin
-  // hasn't uploaded a custom card template image.
-  function paintDefaultIdCard(ctx, canvas, student, team, programmes) {
-    const W = canvas.width, H = canvas.height; // 1013 x 638
-    const NAVY = "#0B1D3A", GOLD = "#C89F4F", WHITE = "#FFFFFF";
-
-    // Base card
-    ctx.fillStyle = WHITE;
-    ctx.fillRect(0, 0, W, H);
-
-    // Top bar (navy) + gold diagonal flourish
-    ctx.fillStyle = NAVY;
-    ctx.fillRect(0, 0, W, 66);
-    ctx.fillStyle = GOLD;
-    ctx.beginPath();
-    ctx.moveTo(700, 0); ctx.lineTo(880, 0); ctx.lineTo(790, 66); ctx.lineTo(610, 66);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = GOLD;
-    ctx.fillRect(0, 66, 785, 5);
-
-    // Bottom bar (navy) + mirrored gold flourish
-    ctx.fillStyle = NAVY;
-    ctx.fillRect(0, H - 66, W, 66);
-    ctx.fillStyle = GOLD;
-    ctx.beginPath();
-    ctx.moveTo(313, H); ctx.lineTo(133, H); ctx.lineTo(223, H - 66); ctx.lineTo(403, H - 66);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = GOLD;
-    ctx.fillRect(228, H - 71, W - 228, 5);
-
-    // Outer border
-    ctx.strokeStyle = NAVY; ctx.lineWidth = 4;
-    ctx.strokeRect(2, 2, W - 4, H - 4);
-
-    // Category badge (top-right) — auto-filled from student.category
-    if (student.category) {
-      ctx.font = "bold 20px Georgia";
-      const label = String(student.category).toUpperCase();
-      const padX = 18;
-      const textW = ctx.measureText(label).width;
-      const bw = textW + padX * 2, bh = 34, bx = W - 30 - bw, by = 16;
-      ctx.fillStyle = WHITE;
-      ctx.strokeStyle = GOLD; ctx.lineWidth = 2;
-      roundRectPath(ctx, bx, by, bw, bh, 17);
-      ctx.fill(); ctx.stroke();
-      ctx.fillStyle = NAVY; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(label, bx + bw / 2, by + bh / 2 + 1);
-      ctx.textBaseline = "alphabetic";
+  function resolveCardTag(tag, student) {
+    switch (tag) {
+      case "student_name": return student.name || "";
+      case "chest_number": return String(student.chestNo || "");
+      case "category": return student.category || "";
+      case "school_class": return student.cls || "";
+      default: return "";
     }
-
-    // Left column center line
-    const lcx = 285;
-
-    // Photo box
-    const boxSize = 210, boxX = lcx - boxSize / 2, boxY = 130;
-    ctx.fillStyle = "#F3F4F6";
-    roundRectPath(ctx, boxX, boxY, boxSize, boxSize, 18);
-    ctx.fill();
-    ctx.strokeStyle = NAVY; ctx.lineWidth = 3;
-    roundRectPath(ctx, boxX, boxY, boxSize, boxSize, 18);
-    ctx.stroke();
-    if (student.photoUrl) return null; // caller handles async photo loading separately
-    ctx.save();
-    roundRectPath(ctx, boxX, boxY, boxSize, boxSize, 18);
-    ctx.clip();
-    drawSilhouette(ctx, lcx, boxY + boxSize / 2 + 10, boxSize * 0.72, NAVY);
-    ctx.restore();
-
-    // Name
-    ctx.fillStyle = NAVY; ctx.textAlign = "center";
-    let nameFont = 40;
-    ctx.font = `bold ${nameFont}px Georgia`;
-    while (ctx.measureText(student.name.toUpperCase()).width > 320 && nameFont > 22) {
-      nameFont -= 2; ctx.font = `bold ${nameFont}px Georgia`;
-    }
-    const nameY = boxY + boxSize + 46;
-    ctx.fillText(student.name.toUpperCase(), lcx, nameY);
-
-    // Divider + dot
-    goldDividerWithDot(ctx, lcx, nameY + 20, 280, GOLD);
-
-    // Chest No (big)
-    ctx.font = "bold 92px Georgia";
-    ctx.fillText(String(student.chestNo), lcx, nameY + 120);
-
-    // Divider + dot
-    goldDividerWithDot(ctx, lcx, nameY + 148, 280, GOLD);
-
-    // Team pill (hexagon-ish)
-    const teamName = (team ? team.name : "-").toUpperCase();
-    ctx.font = "bold 24px Georgia";
-    const teamW = Math.max(160, ctx.measureText(teamName).width + 70);
-    const pillH = 52, pillX = lcx - teamW / 2, pillY = nameY + 172;
-    ctx.fillStyle = NAVY;
-    ctx.beginPath();
-    const notch = 16;
-    ctx.moveTo(pillX + notch, pillY);
-    ctx.lineTo(pillX + teamW - notch, pillY);
-    ctx.lineTo(pillX + teamW, pillY + pillH / 2);
-    ctx.lineTo(pillX + teamW - notch, pillY + pillH);
-    ctx.lineTo(pillX + notch, pillY + pillH);
-    ctx.lineTo(pillX, pillY + pillH / 2);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = WHITE; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(teamName, lcx, pillY + pillH / 2 + 1);
-    ctx.textBaseline = "alphabetic";
-
-    // Vertical divider between left/right columns
-    ctx.strokeStyle = NAVY; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(500, 130); ctx.lineTo(500, H - 100); ctx.stroke();
-
-    // Right column: PROGRAMMES pill header
-    const rcx1 = 540, rcx2 = W - 40;
-    const pTitle = "PROGRAMS";
-    ctx.font = "bold 22px Georgia";
-    const ptW = ctx.measureText(pTitle).width + 56;
-    const ptX = (rcx1 + rcx2) / 2 - ptW / 2, ptY = 145, ptH = 44;
-    ctx.strokeStyle = NAVY; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(rcx1, ptY + ptH / 2); ctx.lineTo(ptX - 10, ptY + ptH / 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(ptX + ptW + 10, ptY + ptH / 2); ctx.lineTo(rcx2, ptY + ptH / 2); ctx.stroke();
-    ctx.fillStyle = NAVY;
-    roundRectPath(ctx, ptX, ptY, ptW, ptH, 10);
-    ctx.fill();
-    ctx.fillStyle = WHITE; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(pTitle, ptX + ptW / 2, ptY + ptH / 2 + 1);
-    ctx.textBaseline = "alphabetic";
-
-    // Programmes list (auto-filled from student.events), up to 5 shown
-    const list = programmes.length ? programmes.slice(0, 5) : ["\u2014"];
-    let py = ptY + ptH + 55;
-    const rowGap = (H - 100 - py) / Math.max(list.length, 1);
-    const lineGap = Math.min(64, Math.max(46, rowGap));
-    ctx.textAlign = "left"; ctx.fillStyle = NAVY;
-    list.forEach((name, i) => {
-      let font = 24;
-      ctx.font = `500 ${font}px Georgia`;
-      let label = name;
-      while (ctx.measureText(label).width > (rcx2 - rcx1 - 10) && font > 14) {
-        font -= 2; ctx.font = `500 ${font}px Georgia`;
-      }
-      ctx.fillText(label, rcx1, py);
-      if (i < list.length - 1) {
-        ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(rcx1, py + 16); ctx.lineTo(rcx2, py + 16); ctx.stroke();
-      }
-      py += lineGap;
-    });
   }
 
-  function roundRectPath(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  function goldDividerWithDot(ctx, cx, y, width, color) {
-    ctx.strokeStyle = color; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(cx - width / 2, y); ctx.lineTo(cx - 8, y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + 8, y); ctx.lineTo(cx + width / 2, y); ctx.stroke();
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(cx, y, 5, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // Admin-uploaded card templates no longer expose colour/position controls —
-  // text is auto-placed using these fixed, readable defaults (white text with
-  // a drop shadow, starting just past the card's vertical midpoint) so any
-  // template photo stays legible without manual setup.
-  const AUTO_TEXT_Y = 55;
-  const AUTO_TEXT_COLOR = "#FFFFFF";
-
-  function drawIdCard(student, templateOverride, chestNoOnly) {
-    const template = templateOverride || state.hero.cardTemplate;
-    const custom = template ? state.cardTemplates.find((ct) => ct.id === template) : null;
-    const team = state.teams.find((t) => t.id === student.team);
-    const programmes = student.events.map((id) => state.events.find((e) => e.id === id)).filter(Boolean).map((e) => e.name);
-
+  // Renders one student's card onto canvas using the master template image
+  // plus every placed tag. Returns a Promise<dataURL>.
+  function drawMasterCard(student) {
+    const mt = state.masterCardTemplate || { imageUrl: null, placements: [] };
     const canvas = document.createElement("canvas");
     canvas.width = 1013; canvas.height = 638;
     const ctx = canvas.getContext("2d");
 
-    const paint = (img) => {
+    const qrPlacement = (mt.placements || []).find((p) => p.tag === "qr_code");
+    const qrText = `${window.location.origin}${window.location.pathname}?chest=${encodeURIComponent(student.chestNo || "")}`;
+    const qrPromise = (qrPlacement && window.QRious)
+      ? Promise.resolve().then(() => new window.QRious({ value: qrText, size: qrPlacement.qrSize || 240 }).toDataURL()).then(loadImage).catch(() => null)
+      : Promise.resolve(null);
+    const templatePromise = mt.imageUrl ? loadImage(mt.imageUrl) : Promise.resolve(null);
+
+    return Promise.all([templatePromise, qrPromise]).then(([img, qrImg]) => {
       if (img) {
         const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
         const w = img.width * scale, h = img.height * scale;
         ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-      }
-
-      if (chestNoOnly) {
-        // Chest-No-only card: just the big chest number, centered — no name,
-        // category, team or programme list is drawn on this variant.
-        if (!img) {
-          const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-          grad.addColorStop(0, "#0B3D2E"); grad.addColorStop(1, "#0A2A20");
-          ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.strokeStyle = "#C9A227"; ctx.lineWidth = 4; ctx.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
-          ctx.textAlign = "left"; ctx.fillStyle = "#FAF6EC"; ctx.font = "bold 26px Georgia";
-          ctx.fillText(state.hero.title, 40, 60);
-        }
-        const color = (custom && custom.textColor) || "#FFFFFF";
-        ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8;
-        ctx.fillStyle = color;
-        ctx.textAlign = "center";
-        ctx.font = "bold 104px 'JetBrains Mono', monospace";
-        ctx.fillText(String(student.chestNo), canvas.width / 2, canvas.height / 2 + 34);
-        ctx.shadowBlur = 0;
-      } else if (custom && custom.imageUrl) {
-        // Admin-uploaded custom template image: keep the original simple
-        // text-overlay behaviour so existing templates still work as before.
-        const color = custom.textColor || "#FFFFFF";
-        ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8;
-        ctx.fillStyle = color;
-        const startY = canvas.height * ((custom.textY ? custom.textY : 55) / 100);
-        ctx.textAlign = "left";
-        ctx.font = "bold 42px Georgia"; ctx.fillText(student.name, 40, startY);
-        ctx.font = "26px 'JetBrains Mono', monospace"; ctx.fillText(`Chest No: ${student.chestNo}`, 40, startY + 42);
-        ctx.font = "22px Georgia"; ctx.fillText(`${student.category} \u00b7 ${team ? team.name : ""}`, 40, startY + 76);
-        ctx.font = "20px Georgia";
-        const label = "Programmes: " + (programmes.length ? programmes.join(", ") : "\u2014");
-        const lines = wrapText(ctx, label, canvas.width - 80).slice(0, 3);
-        lines.forEach((ln, i) => ctx.fillText(ln, 40, startY + 112 + i * 26));
-        ctx.shadowBlur = 0;
       } else {
-        // Default navy & gold design — fully auto-generated, no template
-        // image needed. See paintDefaultIdCard().
-        paintDefaultIdCard(ctx, canvas, student, team, programmes);
+        ctx.fillStyle = "#F3F4F6"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#9CA3AF"; ctx.textAlign = "center"; ctx.font = "24px Georgia";
+        ctx.fillText("No master template uploaded yet", canvas.width / 2, canvas.height / 2);
       }
+      (mt.placements || []).forEach((p) => {
+        const x = (p.xPct / 100) * canvas.width, y = (p.yPct / 100) * canvas.height;
+        if (p.tag === "qr_code") {
+          if (qrImg) {
+            const size = p.qrSize || 120;
+            ctx.drawImage(qrImg, x - size / 2, y - size / 2, size, size);
+          }
+        } else {
+          const val = resolveCardTag(p.tag, student);
+          if (!val) return;
+          ctx.fillStyle = p.color || "#111827";
+          ctx.font = `${p.bold ? "bold " : ""}${p.fontSize || 30}px Georgia`;
+          ctx.textAlign = p.align || "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(val, x, y);
+        }
+      });
+      ctx.textBaseline = "alphabetic";
       return canvas.toDataURL("image/jpeg", 0.92);
-    };
-
-    if (custom && custom.imageUrl) return loadImage(custom.imageUrl).then(paint);
-    return Promise.resolve(paint(null));
+    });
   }
 
-  // Builds a real downloadable PDF (not a browser print) with every student's
-  // chest-no-only ID card in a category laid out on A4 pages. 8/page uses true
-  // ATM/credit card size (85.6x53.98mm); 12/page scales down to fit 3 across.
-  function generateCategoryCardsPdf(category, perPage) {
+  // Builds a combined, printable PDF of every student's card in a category.
+  function generateMasterCardsPdf(category, perPage) {
     if (!category) return showToast("Choose a category first");
     const students = state.students.filter((s) => s.category === category);
     if (!students.length) return showToast("No students found in this category");
     if (!window.jspdf) return showToast("PDF library failed to load \u2014 check your connection and try again");
+    if (!state.masterCardTemplate || !state.masterCardTemplate.imageUrl) return showToast("Upload a master template first (Super Admin \u2192 Chest Number)");
     showToast(`Preparing ${students.length} card${students.length > 1 ? "s" : ""}\u2026`);
 
-    Promise.all(students.map((s) => drawIdCard(s, null, true))).then((urls) => {
+    return Promise.all(students.map((s) => drawMasterCard(s))).then((urls) => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const pageW = 210, pageH = 297, margin = 10;
-      const ratio = 1013 / 638; // card image aspect ratio
+      const ratio = 1013 / 638;
 
-      let cols, rows, cardW, cardH, gapX, gapY;
-      if (perPage === 12) {
-        cols = 3; rows = 4; gapX = 6; gapY = 8;
-        cardW = (pageW - margin * 2 - gapX * (cols - 1)) / cols;
-        cardH = cardW / ratio;
-      } else {
-        cols = 2; rows = 4; gapX = 10; gapY = 8;
-        cardW = 85.6; cardH = 53.98; // standard ATM/credit card size (ISO/IEC 7810 ID-1)
-      }
+      let cols, rows, gapX, gapY;
+      if (perPage === 8) { cols = 2; rows = 4; gapX = 8; gapY = 8; }
+      else { cols = 2; rows = 2; gapX = 10; gapY = 10; } // 4 per page \u2014 larger, more legible
+
+      const cardW = (pageW - margin * 2 - gapX * (cols - 1)) / cols;
+      const cardH = cardW / ratio;
       const totalW = cols * cardW + (cols - 1) * gapX;
       const totalH = rows * cardH + (rows - 1) * gapY;
       const startX = (pageW - totalW) / 2;
@@ -1633,12 +1480,27 @@
         doc.addImage(url, "JPEG", x, y, cardW, cardH);
       });
 
-      const filename = `${category.replace(/\s+/g, "_")}-id-cards.pdf`;
-      const blob = doc.output("blob");
-      shareBlobFile(blob, filename, "application/pdf", `${category} chest-no cards \u2014 ${state.hero.title}`);
       showToast(`${students.length} card${students.length > 1 ? "s" : ""} ready`);
-    }).catch(() => showToast("Could not prepare the PDF"));
+      return { blob: doc.output("blob"), filename: `${category.replace(/\s+/g, "_")}-chest-no-cards.pdf`, count: students.length };
+    }).catch((err) => { showToast("Could not prepare the PDF"); throw err; });
   }
+
+  // Opens the shared #printOverlay with every card in the category laid out
+  // as real <img> tags (crisper for browser printing than a re-rasterised PDF).
+  function openBulkCardPrintSheet(category) {
+    const students = state.students.filter((s) => s.category === category);
+    if (!students.length) return showToast("No students found in this category");
+    if (!state.masterCardTemplate || !state.masterCardTemplate.imageUrl) return showToast("Upload a master template first (Super Admin \u2192 Chest Number)");
+    showToast(`Preparing ${students.length} card${students.length > 1 ? "s" : ""} for print\u2026`);
+    Promise.all(students.map((s) => drawMasterCard(s))).then((urls) => {
+      const cardsHtml = urls.map((u) => `<img src="${u}" class="bulk-card-print-img" />`).join("");
+      document.getElementById("printTitle").textContent = "Chest Number Cards";
+      document.getElementById("printContent").innerHTML = `<div class="bulk-card-print-grid">${cardsHtml}</div>`;
+      document.getElementById("printOverlay").classList.remove("hidden");
+      pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+    }).catch(() => showToast("Could not prepare cards for print"));
+  }
+
 
   /* ---------------- victory poster modal ---------------- */
   const modalOverlay = document.getElementById("modalOverlay");
@@ -1828,20 +1690,7 @@
   /* ---------------- ID card modal (parent-facing) ---------------- */
   function openCardModal(student) {
     const team = state.teams.find((t) => t.id === student.team);
-    const programmes = student.events.map((id) => state.events.find((e) => e.id === id)).filter(Boolean).map((e) => e.name);
-    const templates = getAllCardTemplates();
-    let selectedTemplate = templates.some((t) => t.id === state.hero.cardTemplate)
-      ? state.hero.cardTemplate : (templates[0] ? templates[0].id : null);
-
-    const cardHtml = (t) => `
-      <div class="id-card ${t.id === selectedTemplate ? "active" : ""}" data-tpl="${t.id}" style="background-image:url('${t.imageUrl}')">
-        <div class="id-card-overlay" style="top:${t.textY || 55}%;color:${t.textColor || "#fff"}">
-          <div class="id-card-name">${escapeHtml(student.name)}</div>
-          <div class="id-card-code">Chest No: ${student.chestNo}</div>
-          <div class="id-card-meta">${escapeHtml(student.category)} \u00b7 ${team ? escapeHtml(team.name) : ""}</div>
-          <div class="id-card-prog">${escapeHtml(programmes.join(", ") || "\u2014")}</div>
-        </div>
-      </div>`;
+    const hasTemplate = !!(state.masterCardTemplate && state.masterCardTemplate.imageUrl);
 
     modalBody.innerHTML = `
       <div class="poster-head arch-top">
@@ -1850,11 +1699,10 @@
         <div class="poster-code">Chest No: ${student.chestNo}</div>
         <div class="poster-event">${escapeHtml(student.category)} \u00b7 ${team ? escapeHtml(team.name) : ""}</div>
       </div>
-      ${templates.length ? `
-        <div class="field-label" style="padding:.85rem 1rem 0;background:var(--surface)">Swipe to choose a card design</div>
-        <div class="id-card-carousel" id="idCardCarousel">${templates.map(cardHtml).join("")}</div>
+      ${hasTemplate ? `
+        <div id="cardPreviewWrap" style="padding:1rem;display:flex;justify-content:center"><div class="empty-note">Preparing card\u2026</div></div>
       ` : `
-        <div class="empty-note" style="margin:1rem">No ID card template has been added yet. Ask your madrasa admin to add one under Admin \u2192 Chest No.</div>
+        <div class="empty-note" style="margin:1rem">No chest number card template has been added yet. Ask your madrasa admin to add one under Admin \u2192 Chest Number.</div>
       `}
       <div class="modal-actions">
         <button class="btn btn-primary" id="btnDownloadCard">\u2B07 Download Card</button>
@@ -1864,44 +1712,29 @@
     modalOverlay.classList.remove("hidden");
     pushScreen(closeModal);
 
-    const carousel = document.getElementById("idCardCarousel");
-    if (carousel) {
-      const cards = () => Array.from(carousel.querySelectorAll(".id-card"));
-      const setActive = (tpl) => {
-        selectedTemplate = tpl;
-        cards().forEach((c) => c.classList.toggle("active", c.dataset.tpl === tpl));
-      };
-      cards().forEach((c) => c.addEventListener("click", () => {
-        c.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-        setActive(c.dataset.tpl);
-      }));
-      let scrollTimer;
-      carousel.addEventListener("scroll", () => {
-        clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => {
-          const mid = carousel.scrollLeft + carousel.clientWidth / 2;
-          let closest = null, closestDist = Infinity;
-          cards().forEach((c) => {
-            const dist = Math.abs((c.offsetLeft + c.offsetWidth / 2) - mid);
-            if (dist < closestDist) { closestDist = dist; closest = c; }
-          });
-          if (closest) setActive(closest.dataset.tpl);
-        }, 100);
-      }, { passive: true });
+    let cardUrlPromise = null;
+    if (hasTemplate) {
+      cardUrlPromise = drawMasterCard(student);
+      cardUrlPromise.then((url) => {
+        const wrap = document.getElementById("cardPreviewWrap");
+        if (wrap) wrap.innerHTML = `<img src="${url}" style="max-width:100%;border-radius:.6rem;box-shadow:0 4px 16px rgba(0,0,0,.35)" />`;
+      });
     }
 
     document.getElementById("btnDownloadCard").addEventListener("click", () => {
+      if (!hasTemplate) return showToast("No chest number card template has been added yet");
       showToast("Preparing card\u2026");
-      drawIdCard(student, selectedTemplate).then((url) => {
-        downloadDataUrl(url, `${student.chestNo}-idcard.jpg`);
+      (cardUrlPromise || drawMasterCard(student)).then((url) => {
+        downloadDataUrl(url, `${student.chestNo}-chest-no-card.jpg`);
         showToast("Card downloaded");
       }).catch(() => showToast("Could not generate card"));
     });
     document.getElementById("btnShareCard").addEventListener("click", () => {
+      if (!hasTemplate) return showToast("No chest number card template has been added yet");
       showToast("Preparing card\u2026");
       const text = `${student.name} \u2014 Chest No ${student.chestNo}, ${student.category} at ${state.hero.title}, representing ${team ? team.name : ""}!`;
-      drawIdCard(student, selectedTemplate)
-        .then((url) => shareImageWithText(url, `${student.chestNo}-idcard.jpg`, text))
+      (cardUrlPromise || drawMasterCard(student))
+        .then((url) => shareImageWithText(url, `${student.chestNo}-chest-no-card.jpg`, text))
         .catch(() => showToast("Could not generate card"));
     });
     document.getElementById("btnCloseCard").addEventListener("click", closeTopScreen);
@@ -2048,7 +1881,7 @@
   const SUPER_ADMIN_PASS = "meelad786";
   const NORMAL_ADMIN_USER = "staff";
   const NORMAL_ADMIN_PASS = "meelad123";
-  const SUPER_ONLY_TABS = ["poster", "limits", "chestno"]; // home page design, categories/limits, chest-no start numbers
+  const SUPER_ONLY_TABS = ["poster", "limits"]; // home page design, categories/limits
   const loginScreen = document.getElementById("adminLoginScreen");
   const adminScreen = document.getElementById("adminScreen");
   const ADMIN_SESSION_KEY = "meelad_admin_session";
@@ -2194,7 +2027,7 @@
   function renderAdminTab(tab) {
     if (tab === "dashboard") return renderDashboardTab();
     if (tab === "poster") return renderPosterTab();
-    if (tab === "idcards") return renderCardsTab();
+    if (tab === "chestnumber") return renderChestNumberTab();
     if (tab === "teams") return renderTeamsTab();
     if (tab === "events") return renderEventsTab();
     if (tab === "competitions") return renderCompetitionsTab();
@@ -2202,11 +2035,11 @@
     if (tab === "topscore") return renderTopScoreTab();
     if (tab === "limits") return renderLimitsTab();
     if (tab === "students") return renderStudentsTab();
-    if (tab === "chestno") return renderChestNoTab();
     if (tab === "gallery") return renderGalleryTab();
     if (tab === "export") return renderExportTab();
     if (tab === "results") return renderResultsTab();
     if (tab === "schedule") return renderScheduleTab();
+    if (tab === "printsheets") return renderPrintSheetsTab();
   }
 
   /* ---- Dashboard tab ---- */
@@ -2603,113 +2436,320 @@
     });
   }
 
-  /* ---- ID Cards tab ---- */
-  function renderCardsTab() {
-    const h = state.hero;
-    const allCards = getAllCardTemplates();
+  /* ---- Chest Number tab (merged: categories/start numbers, master
+     template + tag placement editor [super admin], and category-based
+     card generation with bulk actions [all admins]) ---- */
+  function renderChestNumberTab() {
     const super_ = isSuperAdmin();
+    const mt = state.masterCardTemplate || { imageUrl: null, placements: [] };
+
     adminContent.innerHTML = `
-      ${super_ ? `<button class="link-btn" id="btnCardsBack" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.75rem">&larr; Back</button>` : ""}
       ${super_ ? `
       <div class="card">
-        <div class="card-title">Chest-No ID Cards</div>
-        <div class="field-label" style="margin-bottom:.5rem">Upload up to 5 of your own designed ID card templates \u2014 landscape, <b>recommended size: 1013\u00d7638px</b> (standard ID-card ratio). Leave a clear area for the student's name, chest number, category/team and their list of programmes \u2014 these are printed automatically for each student.</div>
-        <div class="template-row" id="cardTemplateRow">
-          ${allCards.map((t) => `
-            <div class="template-swatch ${h.cardTemplate === t.id ? "selected" : ""}" data-tpl="${t.id}" style="background:${t.imageUrl ? `url('${t.imageUrl}') center/cover` : "#0B3D2E"};color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);position:relative;min-height:2.6rem">
-              ${escapeHtml(t.label)}
-              <span class="template-del" data-id="${t.id}">&times;</span>
-            </div>`).join("")}
+        <div class="card-title">Categories &amp; Start Numbers</div>
+        <div class="field-label" style="margin-bottom:.6rem">Numbers fill the lowest free slot in each category, starting from its Start Number. Deleting a student frees their number \u2014 the next student added gets it back (numbers are reused, never skipped).</div>
+        <div class="marks-table-wrap">
+          <table class="marks-table">
+            <thead><tr><th>Category Name</th><th>Active</th><th>Start Number</th><th></th><th></th></tr></thead>
+            <tbody>
+              ${state.categories.map((c) => {
+                const active = state.students.filter((s) => s.category === c).length;
+                const start = state.categoryStartNumbers[c] || 1;
+                const safeId = c.replace(/[^a-zA-Z0-9]/g, "_");
+                return `<tr>
+                  <td style="text-align:left">${escapeHtml(c)}</td>
+                  <td>${active}</td>
+                  <td><input type="number" step="1" class="input chest-start-input" data-category="${escapeAttr(c)}" id="start_${safeId}" value="${start}" style="width:5.5rem;padding:.35rem .5rem;font-family:'JetBrains Mono',monospace" /></td>
+                  <td><button class="btn btn-primary btn-save-start" data-category="${escapeAttr(c)}" style="width:auto;padding:.35rem .6rem;font-size:.7rem">Save</button></td>
+                  <td><button class="btn btn-ghost btn-delete-category" data-category="${escapeAttr(c)}" style="width:auto;padding:.35rem .6rem;font-size:.68rem;border-color:var(--crimson);color:var(--crimson)">Delete</button></td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
         </div>
-        <button class="link-btn" id="btnShowAddCard" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.5rem">+ Add Card Template ${state.cardTemplates.length}/5</button>
-        <div id="addCardForm"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">+ Add Category</div>
+        <div class="field-label" style="margin-bottom:.5rem">A new category automatically starts at the next free hundred above every existing category's start number.</div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <input id="newCategoryName" class="input" placeholder="e.g. Kids" style="flex:1" />
+          <button class="btn btn-primary" id="btnAddCategory" style="width:auto;padding:.5rem .9rem">+ Add</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Master Card Template</div>
+        <div class="field-label" style="margin-bottom:.5rem">Upload <b>one</b> template design (landscape, recommended 1013\u00d7638px). Tap a tag below, then tap where it should sit on the card \u2014 drag any placed tag to fine-tune. No colour or manual position typing needed.</div>
+        ${mt.imageUrl ? `<button class="btn btn-ghost" id="btnReplaceTemplate" style="width:auto;padding:.4rem .8rem;margin-bottom:.6rem;font-size:.72rem">Replace Image</button>` : ""}
+        <input type="file" id="mtImageInput" accept="image/*" class="input" style="margin-bottom:.75rem;padding:.4rem;${mt.imageUrl ? "display:none" : ""}" />
+        ${mt.imageUrl ? `
+          <div class="tag-toolbar" id="tagToolbar" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem">
+            ${CARD_TAGS.map((t) => {
+              const placed = mt.placements.find((p) => p.tag === t.key);
+              return `<button type="button" class="radio-pill tag-btn ${placed ? "selected" : ""}" data-tag="${t.key}" style="cursor:pointer">${placed ? "\u2713 " : "+ "}${t.label}</button>`;
+            }).join("")}
+          </div>
+          <div id="mtPreviewWrap" style="position:relative;width:100%;border-radius:.6rem;overflow:hidden;touch-action:none;user-select:none;margin-bottom:.75rem">
+            <img id="mtImg" src="${mt.imageUrl}" style="width:100%;display:block;pointer-events:none" />
+            ${mt.placements.map((p) => `
+              <div class="mt-tag-pill" data-id="${p.id}" style="position:absolute;left:${p.xPct}%;top:${p.yPct}%;transform:translate(-50%,-50%);background:rgba(11,29,58,.9);color:#fff;border:1.5px solid #C89F4F;border-radius:999px;padding:.2rem .55rem;font-size:.65rem;font-weight:600;white-space:nowrap;cursor:grab">
+                ${CARD_TAGS.find((t) => t.key === p.tag).label}
+              </div>`).join("")}
+          </div>
+          ${mt.placements.length ? `
+          <div class="field-label" style="margin-bottom:.4rem">Placed tags \u2014 fine-tune style (optional)</div>
+          <div class="marks-table-wrap" style="margin-bottom:.75rem">
+            <table class="marks-table">
+              <thead><tr><th>Tag</th><th>Size</th><th>Bold</th><th>Colour</th><th></th></tr></thead>
+              <tbody>
+                ${mt.placements.map((p) => `<tr data-placement-row="${p.id}">
+                  <td style="text-align:left">${CARD_TAGS.find((t) => t.key === p.tag).label}</td>
+                  <td>${p.tag === "qr_code"
+                    ? `<input type="number" class="input pl-size" data-id="${p.id}" value="${p.qrSize || 120}" style="width:4rem;padding:.3rem" />`
+                    : `<input type="number" class="input pl-size" data-id="${p.id}" value="${p.fontSize || 30}" style="width:4rem;padding:.3rem" />`}</td>
+                  <td>${p.tag === "qr_code" ? "\u2014" : `<input type="checkbox" class="pl-bold" data-id="${p.id}" ${p.bold ? "checked" : ""} />`}</td>
+                  <td>${p.tag === "qr_code" ? "\u2014" : `<input type="color" class="input pl-color" data-id="${p.id}" value="${p.color || "#111827"}" style="padding:.15rem;width:2.6rem" />`}</td>
+                  <td><button class="btn btn-ghost pl-remove" data-id="${p.id}" style="width:auto;padding:.3rem .6rem;font-size:.65rem;border-color:var(--crimson);color:var(--crimson)">Remove</button></td>
+                </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>` : ""}
+        ` : ""}
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color:var(--crimson)">Reset Sample Data</div>
+        <div class="field-label" style="margin-bottom:.5rem">Removes <b>every registered student</b> and their chest numbers so real registrations can start fresh from each category's Start Number. Teams, programmes and categories themselves are kept. This cannot be undone.</div>
+        <button class="btn btn-ghost" id="btnResetStudents" style="width:auto;padding:.5rem .9rem;border-color:var(--crimson);color:var(--crimson)">Delete All Students &amp; Reset Numbers</button>
       </div>` : ""}
 
       <div class="card">
-        <div class="card-title">Chest No ID Cards</div>
-        <div class="field-label" style="margin-bottom:.5rem">Every card shows only the student's Chest Number \u2014 no name or other details are printed.</div>
+        <div class="card-title">Generate Chest Number Cards</div>
+        ${mt.imageUrl ? "" : `<div class="empty-note" style="margin-bottom:.75rem">${super_ ? "Upload a master template above to start generating cards." : "No master template has been uploaded yet \u2014 ask your super admin to add one."}</div>`}
         <div class="field-label" style="margin-bottom:.4rem">Category</div>
-        <select id="cardCategoryPick" class="input" style="margin-bottom:.75rem">
+        <select id="cnCategoryPick" class="input" style="margin-bottom:.75rem">
           ${state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)} (${state.students.filter((s) => s.category === c).length} students)</option>`).join("")}
         </select>
 
-        <div class="field-label" style="margin-bottom:.4rem">Single card</div>
-        <select id="cardStudentPick" class="input" style="margin-bottom:.5rem"></select>
-        <button class="btn btn-primary" id="btnDownloadTestCard" style="width:auto;padding:.5rem .9rem;margin-bottom:1rem">\u2B07 Chest No DOWNLOAD</button>
-
-        <div class="field-label" style="margin-bottom:.4rem">All cards in this category</div>
-        <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
-          <label class="radio-pill"><input type="radio" name="cardsPerPage" value="8" checked /> 8 per page (true card size)</label>
-          <label class="radio-pill"><input type="radio" name="cardsPerPage" value="12" /> 12 per page (smaller)</label>
+        <div id="cnBulkActions" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+          <button class="btn btn-primary" id="btnBulkPrint" style="width:auto;padding:.5rem .9rem">\u{1F5A8} Bulk Print</button>
+          <button class="btn btn-primary" id="btnBulkDownload" style="width:auto;padding:.5rem .9rem">\u2B07 Download PDF</button>
+          <button class="btn btn-whatsapp" id="btnBulkShare" style="width:auto;padding:.5rem .9rem">\u{1F4AC} Bulk Share</button>
         </div>
-        <button class="btn btn-primary" id="btnPrintCategoryCards" style="width:auto;padding:.5rem .9rem">\u{1F5A8} Chest No SHARE (PDF)</button>
+        <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+          <label class="radio-pill"><input type="radio" name="cnPerPage" value="4" checked /> 4 per page (large)</label>
+          <label class="radio-pill"><input type="radio" name="cnPerPage" value="8" /> 8 per page</label>
+        </div>
+
+        <div class="field-label" style="margin-bottom:.4rem">Students in this category</div>
+        <div class="marks-table-wrap" id="cnStudentsTableWrap"></div>
       </div>`;
 
-    function refreshCardStudentOptions() {
-      const cat = document.getElementById("cardCategoryPick").value;
-      const opts = state.students.filter((s) => s.category === cat);
-      document.getElementById("cardStudentPick").innerHTML =
-        `<option value="">Choose a student\u2026</option>` +
-        opts.map((s) => `<option value="${s.id}">${escapeHtml(s.name)} \u2014 ${s.chestNo}</option>`).join("");
-    }
-    refreshCardStudentOptions();
-    document.getElementById("cardCategoryPick").addEventListener("change", refreshCardStudentOptions);
+    function refreshStudentsTable() {
+      const cat = document.getElementById("cnCategoryPick").value;
+      const students = state.students.filter((s) => s.category === cat);
+      const wrap = document.getElementById("cnStudentsTableWrap");
+      if (!students.length) { wrap.innerHTML = `<div class="empty-note">No students found in this category.</div>`; return; }
+      wrap.innerHTML = `
+        <table class="marks-table">
+          <thead><tr><th>Chest No</th><th>Name</th><th>Class</th><th colspan="3">Actions</th></tr></thead>
+          <tbody>
+            ${students.map((s) => `<tr>
+              <td>${s.chestNo}</td>
+              <td style="text-align:left">${escapeHtml(s.name)}</td>
+              <td>${escapeHtml(s.cls || "\u2014")}</td>
+              <td><button class="btn btn-ghost cn-row-download" data-id="${s.id}" style="width:auto;padding:.3rem .55rem;font-size:.65rem">\u2B07</button></td>
+              <td><button class="btn btn-ghost cn-row-print" data-id="${s.id}" style="width:auto;padding:.3rem .55rem;font-size:.65rem">\u{1F5A8}</button></td>
+              <td><button class="btn btn-ghost cn-row-share" data-id="${s.id}" style="width:auto;padding:.3rem .55rem;font-size:.65rem">\u{1F4AC}</button></td>
+            </tr>`).join("")}
+          </tbody>
+        </table>`;
 
-    document.querySelectorAll("#cardTemplateRow .template-swatch").forEach((sw) => {
-      sw.addEventListener("click", () => {
-        document.querySelectorAll("#cardTemplateRow .template-swatch").forEach((s) => s.classList.remove("selected"));
-        sw.classList.add("selected");
-        state.hero.cardTemplate = sw.dataset.tpl;
+      wrap.querySelectorAll(".cn-row-download").forEach((b) => b.addEventListener("click", () => {
+        const student = state.students.find((s) => s.id === b.dataset.id);
+        if (!mt.imageUrl) return showToast("Upload a master template first");
+        showToast("Preparing card\u2026");
+        drawMasterCard(student).then((url) => { downloadDataUrl(url, `${student.chestNo}-chest-no-card.jpg`); showToast("Card downloaded"); })
+          .catch(() => showToast("Could not generate card"));
+      }));
+      wrap.querySelectorAll(".cn-row-print").forEach((b) => b.addEventListener("click", () => {
+        const student = state.students.find((s) => s.id === b.dataset.id);
+        if (!mt.imageUrl) return showToast("Upload a master template first");
+        showToast("Preparing card for print\u2026");
+        drawMasterCard(student).then((url) => {
+          document.getElementById("printTitle").textContent = "Chest Number Card";
+          document.getElementById("printContent").innerHTML = `<div class="bulk-card-print-grid"><img src="${url}" class="bulk-card-print-img" /></div>`;
+          document.getElementById("printOverlay").classList.remove("hidden");
+          pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+        }).catch(() => showToast("Could not generate card"));
+      }));
+      wrap.querySelectorAll(".cn-row-share").forEach((b) => b.addEventListener("click", () => {
+        const student = state.students.find((s) => s.id === b.dataset.id);
+        if (!mt.imageUrl) return showToast("Upload a master template first");
+        showToast("Preparing card\u2026");
+        const text = `${student.name} \u2014 Chest No ${student.chestNo}, ${student.category} at ${state.hero.title}`;
+        drawMasterCard(student).then((url) => shareImageWithText(url, `${student.chestNo}-chest-no-card.jpg`, text))
+          .catch(() => showToast("Could not generate card"));
+      }));
+    }
+    refreshStudentsTable();
+    document.getElementById("cnCategoryPick").addEventListener("change", refreshStudentsTable);
+
+    document.getElementById("btnBulkPrint").addEventListener("click", () => openBulkCardPrintSheet(document.getElementById("cnCategoryPick").value));
+    document.getElementById("btnBulkDownload").addEventListener("click", () => {
+      const category = document.getElementById("cnCategoryPick").value;
+      const perPage = Number(document.querySelector('input[name="cnPerPage"]:checked').value);
+      generateMasterCardsPdf(category, perPage).then((res) => {
+        if (!res) return;
+        const url = URL.createObjectURL(res.blob);
+        downloadDataUrl(url, res.filename);
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+      }).catch(() => {});
+    });
+    document.getElementById("btnBulkShare").addEventListener("click", () => {
+      const category = document.getElementById("cnCategoryPick").value;
+      const perPage = Number(document.querySelector('input[name="cnPerPage"]:checked').value);
+      generateMasterCardsPdf(category, perPage).then((res) => {
+        if (!res) return;
+        shareBlobFile(res.blob, res.filename, "application/pdf", `${category} chest number cards \u2014 ${state.hero.title}`);
+      }).catch(() => {});
+    });
+
+    if (!super_) return; // everything below is super-admin only
+
+    document.querySelectorAll(".btn-save-start").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const cat = btn.dataset.category;
+        const safeId = cat.replace(/[^a-zA-Z0-9]/g, "_");
+        const val = parseInt(document.getElementById(`start_${safeId}`).value, 10);
+        if (!val || val < 1) return showToast("Enter a valid start number");
+        state.categoryStartNumbers[cat] = val;
         persist();
+        showToast(`Start number for ${cat} set to ${val}`);
+        renderChestNumberTab();
       });
     });
-    if (document.getElementById("btnShowAddCard")) document.getElementById("btnShowAddCard").addEventListener("click", () => {
-      if (state.cardTemplates.length >= 5) return showToast("Maximum 5 card templates \u2014 delete one first");
-      const holder = document.getElementById("addCardForm");
-      if (holder.innerHTML) { holder.innerHTML = ""; return; }
-      holder.innerHTML = `
-        <div class="card" style="margin-bottom:.75rem">
-          <div class="field-label">Template Name</div>
-          <input id="ctName" class="input" placeholder="e.g. Gold Card" style="margin-bottom:.5rem" />
-          <div class="field-label">Card Image \u2014 landscape, 1013\u00d7638px recommended</div>
-          <input type="file" id="ctImage" accept="image/*" class="input" style="margin-bottom:.5rem;padding:.4rem" />
-          <div class="muted" style="font-size:.7rem;margin-bottom:.75rem">Name, Chest No, Team and Programmes are placed on the card automatically \u2014 no colour or position setup needed.</div>
-          <button class="btn btn-primary" id="btnSaveCardTemplate" style="width:auto;padding:.5rem .9rem">Save Template</button>
-        </div>`;
-      document.getElementById("btnSaveCardTemplate").addEventListener("click", () => {
-        const name = document.getElementById("ctName").value.trim() || "Custom";
-        const file = document.getElementById("ctImage").files[0];
-        if (!file) return showToast("Choose a card image first");
-        showToast("Compressing template image\u2026");
-        compressImageFile(file, 1013, 0.85).then((imageUrl) => {
-          // Text colour / position are auto-decided (not admin-configurable) \u2014
-          // see AUTO_TEXT_Y / AUTO_TEXT_COLOR defaults used by drawIdCard().
-          state.cardTemplates.push({ id: "card-" + uid(), label: name, imageUrl, textY: AUTO_TEXT_Y, textColor: AUTO_TEXT_COLOR });
-          persist(); showToast("Card template added"); renderCardsTab();
-        }).catch(() => showToast("Could not process that image"));
+
+    document.getElementById("btnAddCategory").addEventListener("click", () => {
+      const name = document.getElementById("newCategoryName").value.trim();
+      if (!name) return showToast("Enter a category name");
+      if (state.categories.includes(name)) return showToast("That category already exists");
+      const highestStart = Object.values(state.categoryStartNumbers).reduce((m, v) => Math.max(m, v), 0);
+      const nextStart = Math.floor(highestStart / 100) * 100 + 100;
+      state.categories.push(name);
+      state.categoryStartNumbers[name] = nextStart;
+      persist();
+      showToast(`"${name}" added \u2014 starts at ${nextStart}`);
+      renderChestNumberTab();
+    });
+
+    document.querySelectorAll(".btn-delete-category").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const cat = btn.dataset.category;
+        if (state.categories.length <= 1) return showToast("At least one category must remain");
+        const studentCount = state.students.filter((s) => s.category === cat).length;
+        const eventCount = state.events.filter((e) => e.category === cat).length;
+        if (studentCount || eventCount) {
+          return showToast(`Can't delete "${cat}" \u2014 it still has ${studentCount} student(s) and ${eventCount} programme(s). Remove those first.`);
+        }
+        if (!confirm(`Delete the "${cat}" category? This cannot be undone.`)) return;
+        state.categories = state.categories.filter((c) => c !== cat);
+        delete state.categoryStartNumbers[cat];
+        persist();
+        showToast(`"${cat}" deleted`);
+        renderChestNumberTab();
       });
     });
-    document.querySelectorAll("#cardTemplateRow .template-del").forEach((b) => b.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      state.cardTemplates = state.cardTemplates.filter((t) => t.id !== b.dataset.id);
-      persist(); renderCardsTab();
+
+    document.getElementById("btnResetStudents").addEventListener("click", () => {
+      if (!confirm(`Delete all ${state.students.length} registered student(s) and reset chest numbers? This cannot be undone.`)) return;
+      state.students = [];
+      persist();
+      renderCounters();
+      showToast("All students removed \u2014 chest numbers reset");
+      renderChestNumberTab();
+    });
+
+    // ---- Master template upload ----
+    const mtInput = document.getElementById("mtImageInput");
+    if (mtInput) mtInput.addEventListener("change", () => {
+      const file = mtInput.files[0];
+      if (!file) return;
+      showToast("Compressing template image\u2026");
+      compressImageFile(file, 1013, 0.85).then((imageUrl) => {
+        state.masterCardTemplate = { imageUrl, placements: state.masterCardTemplate.placements || [] };
+        persist(); showToast("Master template uploaded"); renderChestNumberTab();
+      }).catch(() => showToast("Could not process that image"));
+    });
+    const replaceBtn = document.getElementById("btnReplaceTemplate");
+    if (replaceBtn) replaceBtn.addEventListener("click", () => {
+      const inp = document.getElementById("mtImageInput");
+      inp.style.display = "block";
+      inp.click();
+    });
+
+    // ---- Tag toolbar: tap to add (centre) or remove ----
+    document.querySelectorAll(".tag-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tagKey = btn.dataset.tag;
+        const existing = mt.placements.find((p) => p.tag === tagKey);
+        if (existing) {
+          mt.placements = mt.placements.filter((p) => p.tag !== tagKey);
+        } else {
+          mt.placements.push({
+            id: "pl-" + uid(), tag: tagKey, xPct: 50, yPct: 50,
+            fontSize: tagKey === "student_name" ? 34 : 26, color: "#111827", align: "center", bold: tagKey === "chest_number",
+            qrSize: 140,
+          });
+        }
+        persist(); renderChestNumberTab();
+      });
+    });
+
+    // ---- Drag-to-position placed tags ----
+    const previewWrap = document.getElementById("mtPreviewWrap");
+    if (previewWrap) {
+      previewWrap.querySelectorAll(".mt-tag-pill").forEach((pill) => {
+        let dragging = false;
+        const move = (clientX, clientY) => {
+          const rect = previewWrap.getBoundingClientRect();
+          let xPct = ((clientX - rect.left) / rect.width) * 100;
+          let yPct = ((clientY - rect.top) / rect.height) * 100;
+          xPct = Math.max(2, Math.min(98, xPct));
+          yPct = Math.max(2, Math.min(98, yPct));
+          pill.style.left = xPct + "%"; pill.style.top = yPct + "%";
+          const p = mt.placements.find((pp) => pp.id === pill.dataset.id);
+          if (p) { p.xPct = xPct; p.yPct = yPct; }
+        };
+        pill.addEventListener("pointerdown", (e) => {
+          dragging = true; pill.setPointerCapture(e.pointerId); pill.style.cursor = "grabbing";
+        });
+        pill.addEventListener("pointermove", (e) => { if (dragging) move(e.clientX, e.clientY); });
+        pill.addEventListener("pointerup", () => { if (dragging) { dragging = false; pill.style.cursor = "grab"; persist(); } });
+        pill.addEventListener("pointercancel", () => { dragging = false; pill.style.cursor = "grab"; });
+      });
+    }
+
+    // ---- Per-tag style tweaks ----
+    document.querySelectorAll(".pl-size").forEach((inp) => inp.addEventListener("change", () => {
+      const p = mt.placements.find((pp) => pp.id === inp.dataset.id);
+      if (!p) return;
+      if (p.tag === "qr_code") p.qrSize = Number(inp.value) || 120; else p.fontSize = Number(inp.value) || 30;
+      persist();
     }));
-    document.getElementById("btnPrintCategoryCards").addEventListener("click", () => {
-      const category = document.getElementById("cardCategoryPick").value;
-      const perPage = Number(document.querySelector('input[name="cardsPerPage"]:checked').value);
-      generateCategoryCardsPdf(category, perPage);
-    });
-    document.getElementById("btnDownloadTestCard").addEventListener("click", () => {
-      const sid = document.getElementById("cardStudentPick").value;
-      const student = state.students.find((s) => s.id === sid);
-      if (!student) return showToast("Pick a student first");
-      showToast("Preparing card\u2026");
-      drawIdCard(student, null, true).then((url) => {
-        downloadDataUrl(url, `${student.chestNo}-chestno-card.jpg`);
-        showToast("Card downloaded");
-      }).catch(() => showToast("Could not generate card"));
-    });
-    if (super_) document.getElementById("btnCardsBack").addEventListener("click", () => setActiveAdminTab("chestno"));
+    document.querySelectorAll(".pl-bold").forEach((inp) => inp.addEventListener("change", () => {
+      const p = mt.placements.find((pp) => pp.id === inp.dataset.id);
+      if (p) { p.bold = inp.checked; persist(); }
+    }));
+    document.querySelectorAll(".pl-color").forEach((inp) => inp.addEventListener("change", () => {
+      const p = mt.placements.find((pp) => pp.id === inp.dataset.id);
+      if (p) { p.color = inp.value; persist(); }
+    }));
+    document.querySelectorAll(".pl-remove").forEach((btn) => btn.addEventListener("click", () => {
+      mt.placements = mt.placements.filter((p) => p.id !== btn.dataset.id);
+      persist(); renderChestNumberTab();
+    }));
   }
 
   /* ---- Teams tab ---- */
@@ -3518,108 +3558,6 @@
     });
   }
 
-  /* ---- Chess No tab ---- */
-  function renderChestNoTab() {
-    adminContent.innerHTML = `
-      <div class="card">
-        <div class="field-label" style="margin-bottom:.6rem">Numbers fill the lowest free slot in each category, starting from its Start Number. Deleting a student frees their number \u2014 the next student added gets it back (numbers are reused, never skipped).</div>
-        <div class="marks-table-wrap">
-          <table class="marks-table">
-            <thead><tr><th>Category Name</th><th>Active</th><th>Start Number</th><th></th><th></th></tr></thead>
-            <tbody>
-              ${state.categories.map((c) => {
-                const active = state.students.filter((s) => s.category === c).length;
-                const start = state.categoryStartNumbers[c] || 1;
-                const safeId = c.replace(/[^a-zA-Z0-9]/g, "_");
-                return `<tr>
-                  <td style="text-align:left">${escapeHtml(c)}</td>
-                  <td>${active}</td>
-                  <td><input type="number" step="1" class="input chest-start-input" data-category="${escapeAttr(c)}" id="start_${safeId}" value="${start}" style="width:5.5rem;padding:.35rem .5rem;font-family:'JetBrains Mono',monospace" /></td>
-                  <td><button class="btn btn-primary btn-save-start" data-category="${escapeAttr(c)}" style="width:auto;padding:.35rem .6rem;font-size:.7rem">Save</button></td>
-                  <td><button class="btn btn-ghost btn-delete-category" data-category="${escapeAttr(c)}" style="width:auto;padding:.35rem .6rem;font-size:.68rem;border-color:var(--crimson);color:var(--crimson)">Delete</button></td>
-                </tr>`;
-              }).join("")}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">+ Add Category</div>
-        <div class="field-label" style="margin-bottom:.5rem">A new category automatically starts at the next free hundred above every existing category's start number.</div>
-        <div style="display:flex;gap:.5rem;align-items:center">
-          <input id="newCategoryName" class="input" placeholder="e.g. Kids" style="flex:1" />
-          <button class="btn btn-primary" id="btnAddCategory" style="width:auto;padding:.5rem .9rem">+ Add</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Chest No</div>
-        <div class="field-label" style="margin-bottom:.5rem">Chest-no ID cards are managed here \u2014 upload templates per category and print or download cards.</div>
-        <button class="btn btn-primary" id="btnOpenIdCards" style="width:auto;padding:.5rem .9rem">\u{1F4B3} Open Chest No</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title" style="color:var(--crimson)">Reset Sample Data</div>
-        <div class="field-label" style="margin-bottom:.5rem">Removes <b>every registered student</b> and their chest numbers so real registrations can start fresh from each category's Start Number. Teams, programmes and categories themselves are kept. This cannot be undone.</div>
-        <button class="btn btn-ghost" id="btnResetStudents" style="width:auto;padding:.5rem .9rem;border-color:var(--crimson);color:var(--crimson)">Delete All Students &amp; Reset Numbers</button>
-      </div>`;
-
-    document.querySelectorAll(".btn-save-start").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const cat = btn.dataset.category;
-        const safeId = cat.replace(/[^a-zA-Z0-9]/g, "_");
-        const val = parseInt(document.getElementById(`start_${safeId}`).value, 10);
-        if (!val || val < 1) return showToast("Enter a valid start number");
-        state.categoryStartNumbers[cat] = val;
-        persist();
-        showToast(`Start number for ${cat} set to ${val}`);
-        renderChestNoTab();
-      });
-    });
-
-    document.getElementById("btnAddCategory").addEventListener("click", () => {
-      const name = document.getElementById("newCategoryName").value.trim();
-      if (!name) return showToast("Enter a category name");
-      if (state.categories.includes(name)) return showToast("That category already exists");
-      const highestStart = Object.values(state.categoryStartNumbers).reduce((m, v) => Math.max(m, v), 0);
-      const nextStart = Math.floor(highestStart / 100) * 100 + 100;
-      state.categories.push(name);
-      state.categoryStartNumbers[name] = nextStart;
-      persist();
-      showToast(`"${name}" added \u2014 starts at ${nextStart}`);
-      renderChestNoTab();
-    });
-
-    document.querySelectorAll(".btn-delete-category").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const cat = btn.dataset.category;
-        if (state.categories.length <= 1) return showToast("At least one category must remain");
-        const studentCount = state.students.filter((s) => s.category === cat).length;
-        const eventCount = state.events.filter((e) => e.category === cat).length;
-        if (studentCount || eventCount) {
-          return showToast(`Can't delete "${cat}" \u2014 it still has ${studentCount} student(s) and ${eventCount} programme(s). Remove those first.`);
-        }
-        if (!confirm(`Delete the "${cat}" category? This cannot be undone.`)) return;
-        state.categories = state.categories.filter((c) => c !== cat);
-        delete state.categoryStartNumbers[cat];
-        persist();
-        showToast(`"${cat}" deleted`);
-        renderChestNoTab();
-      });
-    });
-
-    document.getElementById("btnResetStudents").addEventListener("click", () => {
-      if (!confirm(`Delete all ${state.students.length} registered student(s) and reset chest numbers? This cannot be undone.`)) return;
-      state.students = [];
-      persist();
-      renderCounters();
-      showToast("All students removed \u2014 chest numbers reset");
-      renderChestNoTab();
-    });
-    document.getElementById("btnOpenIdCards").addEventListener("click", () => setActiveAdminTab("idcards"));
-  }
-
   /* ---- Gallery tab ---- */
   function renderGalleryTab() {
     const frameUrl = state.hero.galleryFrameUrl;
@@ -3709,6 +3647,185 @@
 
   /* ---- Export tab ---- */
   let pickEventKind = null;
+  /* ---- Print Sheets tab: fillable Valuation Sheet & Green Room Sign ----
+     Chest No / Name auto-fill from the selected programme's registered
+     participants. Code Letter is always typed in by hand (never auto-
+     generated) since it's assigned fresh at the venue. Draft entries
+     (code letters + marks) are saved to localStorage per programme, so
+     they survive a page reload; Chest No/Name are always re-derived live
+     from current student data, never stored, so the sheet can't go stale
+     if a student is added/removed. ---- */
+  let printSheetView = "valuation"; // "valuation" | "greenroom"
+
+  function psLocalKey(type, eventId) { return `meelad_printsheet_${type}_${eventId}`; }
+  function psLoadDraft(type, eventId) {
+    try { return JSON.parse(localStorage.getItem(psLocalKey(type, eventId))) || { rows: {}, extraRows: [] }; }
+    catch { return { rows: {}, extraRows: [] }; }
+  }
+  function psSaveDraft(type, eventId, draft) {
+    try { localStorage.setItem(psLocalKey(type, eventId), JSON.stringify(draft)); } catch {}
+  }
+
+  function renderPrintSheetsTab() {
+    adminContent.innerHTML = `
+      <div class="card">
+        <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+          <button type="button" class="radio-pill ps-type-btn ${printSheetView === "valuation" ? "selected" : ""}" data-type="valuation" style="flex:1;cursor:pointer">\u{1F3C5} Valuation Sheet</button>
+          <button type="button" class="radio-pill ps-type-btn ${printSheetView === "greenroom" ? "selected" : ""}" data-type="greenroom" style="flex:1;cursor:pointer">\u2B50 Green Room Sign</button>
+        </div>
+        <div class="field-label" style="margin-bottom:.4rem">Category</div>
+        <select id="psCategoryPick" class="input" style="margin-bottom:.6rem">
+          ${state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join("")}
+        </select>
+        <div class="field-label" style="margin-bottom:.4rem">Programme</div>
+        <select id="psEventPick" class="input" style="margin-bottom:.75rem"></select>
+        <div id="psSheetWrap"></div>
+      </div>`;
+
+    document.querySelectorAll(".ps-type-btn").forEach((b) => b.addEventListener("click", () => {
+      printSheetView = b.dataset.type;
+      renderPrintSheetsTab();
+    }));
+
+    function refreshEventOptions() {
+      const cat = document.getElementById("psCategoryPick").value;
+      const eligible = state.events.filter((e) => e.category === cat);
+      const evSel = document.getElementById("psEventPick");
+      evSel.innerHTML = eligible.length
+        ? eligible.map((e) => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join("")
+        : `<option value="">No programmes in this category</option>`;
+      renderSheet();
+    }
+    document.getElementById("psCategoryPick").addEventListener("change", refreshEventOptions);
+    document.getElementById("psEventPick").addEventListener("change", renderSheet);
+
+    function participantsFor(event) {
+      return event.type === "Group" ? groupAwareParticipants(event.id) : state.students.filter((s) => s.events.includes(event.id));
+    }
+
+    function renderSheet() {
+      const wrap = document.getElementById("psSheetWrap");
+      const eventId = document.getElementById("psEventPick").value;
+      const event = state.events.find((e) => e.id === eventId);
+      if (!event) { wrap.innerHTML = `<div class="empty-note">Choose a programme first.</div>`; return; }
+
+      const participants = participantsFor(event);
+      const draft = psLoadDraft(printSheetView, eventId);
+      draft.rows = draft.rows || {}; draft.extraRows = draft.extraRows || [];
+
+      const title = printSheetView === "valuation" ? "VALUATION SHEET" : "GREEN ROOM SIGN";
+      const headExtra = printSheetView === "valuation"
+        ? `<th rowspan="2">Chest No</th><th rowspan="2">Code Letter</th><th colspan="2">MARKS</th><th rowspan="2">Total</th>`
+        : `<th rowspan="2">No</th><th rowspan="2">Chest No</th><th rowspan="2">Name</th><th rowspan="2">Code Letter</th><th rowspan="2">Sign</th>`;
+      const subHead = printSheetView === "valuation" ? `<tr><th>Judge 1</th><th>Judge 2</th></tr>` : "";
+
+      function rowHtml(id, chestNo, name, isExtra, idx) {
+        const r = draft.rows[id] || {};
+        const codeLetter = r.codeLetter || "";
+        if (printSheetView === "valuation") {
+          const j1 = r.judge1 ?? "", j2 = r.judge2 ?? "";
+          const n1 = parseFloat(j1), n2 = parseFloat(j2);
+          const vals = [n1, n2].filter((v) => !isNaN(v));
+          const total = vals.length ? vals.reduce((a, b) => a + b, 0) : "";
+          return `<tr data-row="${id}">
+            <td>${isExtra ? `<input class="input ps-chest" data-id="${id}" value="${escapeAttr(chestNo)}" style="width:5rem;text-align:center" />` : chestNo}</td>
+            <td><input class="input ps-code" data-id="${id}" value="${escapeAttr(codeLetter)}" style="width:4rem;text-align:center;text-transform:uppercase" maxlength="2" /></td>
+            <td><input class="input ps-j1" data-id="${id}" value="${escapeAttr(j1)}" inputmode="decimal" style="width:4rem;text-align:center" /></td>
+            <td><input class="input ps-j2" data-id="${id}" value="${escapeAttr(j2)}" inputmode="decimal" style="width:4rem;text-align:center" /></td>
+            <td style="font-weight:700;text-align:center">${total}</td>
+          </tr>`;
+        }
+        return `<tr data-row="${id}">
+          <td>${idx}</td>
+          <td>${isExtra ? `<input class="input ps-chest" data-id="${id}" value="${escapeAttr(chestNo)}" style="width:5rem;text-align:center" />` : chestNo}</td>
+          <td style="text-align:left">${isExtra ? `<input class="input ps-name" data-id="${id}" value="${escapeAttr(name)}" style="width:100%" />` : escapeHtml(name)}</td>
+          <td><input class="input ps-code" data-id="${id}" value="${escapeAttr(codeLetter)}" style="width:4rem;text-align:center;text-transform:uppercase" maxlength="2" /></td>
+          <td></td>
+        </tr>`;
+      }
+
+      const baseRows = participants.map((s, i) => rowHtml(s.id, s.chestNo, s.name, false, i + 1));
+      const extraRows = draft.extraRows.map((id, i) => {
+        const r = draft.rows[id] || {};
+        return rowHtml(id, r.chestNo || "", r.name || "", true, participants.length + i + 1);
+      });
+
+      wrap.innerHTML = `
+        <div style="text-align:center;font-weight:700;letter-spacing:.04em;font-size:1rem;margin-bottom:.15rem">${title}</div>
+        <div class="muted" style="text-align:center;font-size:.78rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
+        <div class="marks-table-wrap">
+          <table class="marks-table" id="psTable">
+            <thead><tr>${headExtra}</tr>${subHead}</thead>
+            <tbody>${baseRows.join("") + extraRows.join("")}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
+          <button class="btn btn-ghost" id="btnPsAddRow" style="width:auto;padding:.5rem .9rem">+ Add Row</button>
+          <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
+        </div>`;
+
+      function saveField(id, field, value) {
+        draft.rows[id] = draft.rows[id] || {};
+        draft.rows[id][field] = value;
+        psSaveDraft(printSheetView, eventId, draft);
+      }
+      wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "codeLetter", inp.value.toUpperCase())));
+      wrap.querySelectorAll(".ps-j1").forEach((inp) => inp.addEventListener("input", () => { saveField(inp.dataset.id, "judge1", inp.value); renderSheet(); }));
+      wrap.querySelectorAll(".ps-j2").forEach((inp) => inp.addEventListener("input", () => { saveField(inp.dataset.id, "judge2", inp.value); renderSheet(); }));
+      wrap.querySelectorAll(".ps-chest").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "chestNo", inp.value)));
+      wrap.querySelectorAll(".ps-name").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "name", inp.value)));
+
+      document.getElementById("btnPsAddRow").addEventListener("click", () => {
+        const id = "extra-" + uid();
+        draft.extraRows.push(id);
+        psSaveDraft(printSheetView, eventId, draft);
+        renderSheet();
+      });
+
+      document.getElementById("btnPsPrint").addEventListener("click", () => {
+        const sectorLine = escapeHtml(state.printHeaderName || state.hero.title);
+        const now = new Date();
+        const timestamp = now.toLocaleDateString("en-GB") + " " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+        const printHeadRow1 = printSheetView === "valuation"
+          ? `<th rowspan="2">Chest No</th><th rowspan="2">Code Letter</th><th colspan="2">MARKS</th><th rowspan="2">Total</th>`
+          : `<th rowspan="2">No</th><th rowspan="2">Chest No</th><th rowspan="2">Name</th><th rowspan="2">Code Letter</th><th rowspan="2">Sign</th>`;
+        const printSubHead = printSheetView === "valuation" ? `<tr><th>Judge 1</th><th>Judge 2</th></tr>` : "";
+
+        function printRow(id, chestNo, name, idx) {
+          const r = draft.rows[id] || {};
+          const codeLetter = r.codeLetter || "";
+          if (printSheetView === "valuation") {
+            const j1 = r.judge1 ?? "", j2 = r.judge2 ?? "";
+            const n1 = parseFloat(j1), n2 = parseFloat(j2);
+            const vals = [n1, n2].filter((v) => !isNaN(v));
+            const total = vals.length ? vals.reduce((a, b) => a + b, 0) : "";
+            return `<tr><td>${chestNo}</td><td>${escapeHtml(codeLetter)}</td><td>${escapeHtml(String(j1))}</td><td>${escapeHtml(String(j2))}</td><td><b>${total}</b></td></tr>`;
+          }
+          return `<tr><td>${idx}</td><td>${chestNo}</td><td style="text-align:left">${escapeHtml(name)}</td><td>${escapeHtml(codeLetter)}</td><td></td></tr>`;
+        }
+        const printBaseRows = participants.map((s, i) => printRow(s.id, s.chestNo, s.name, i + 1));
+        const printExtraRows = draft.extraRows.map((id, i) => {
+          const r = draft.rows[id] || {};
+          return printRow(id, r.chestNo || "", r.name || "", participants.length + i + 1);
+        });
+
+        document.getElementById("printTitle").textContent = title;
+        document.getElementById("printContent").innerHTML = `
+          <div class="print-masthead"><b>${sectorLine}</b><span>${timestamp}</span></div>
+          <div class="print-heading" style="text-align:center">${title}</div>
+          <div class="muted" style="text-align:center;font-size:.85rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
+          <table class="schedule-print-table"><thead><tr>${printHeadRow1}</tr>${printSubHead}</thead>
+            <tbody>${printBaseRows.join("") + printExtraRows.join("")}</tbody>
+          </table>`;
+        document.getElementById("printOverlay").classList.remove("hidden");
+        pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+      });
+    }
+
+    refreshEventOptions();
+  }
+
   function renderExportTab() {
     const cards = [
       { id: "Call List", icon: "\u{1F4CB}" }, { id: "Valuation Sheet", icon: "\u{1F3C5}" },
