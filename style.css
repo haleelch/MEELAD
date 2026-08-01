@@ -250,6 +250,8 @@ a.stat-card:hover{transform:translateY(-2px);}
 .rank-third{background:rgba(176,141,87,.25);color:#D8B98A;}
 .result-name{font-size:.85rem;font-weight:500;flex:1;}
 .result-meta{font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.rf-winners-simple{display:flex;flex-direction:column;gap:.5rem;}
+.win-rank{font-size:.78rem;font-weight:600;white-space:nowrap;}
 .empty-note{text-align:center;padding:1.75rem;border-radius:.6rem;background:var(--surface);border:1px dashed rgba(201,162,39,.35);color:var(--muted);font-size:.85rem;}
 
 /* ---- gallery ---- */
@@ -441,6 +443,9 @@ a.stat-card:hover{transform:translateY(-2px);}
 .marks-modal .dots-btn{color:#999;}
 .marks-modal .btn-ghost{background:#F0EDE3;color:#333;}
 .marks-modal .warn-banner{background:#FBEAEC;}
+.marks-modal .result-detail-table th{background:#F8FAFC;color:#374151;border-bottom:1px solid #E5E7EB;}
+.marks-modal .result-detail-table td{color:#111827;border-bottom:1px solid #F1F5F9;}
+.marks-modal .status-pill{font-size:.68rem;}
 
 /* ---- admin dashboard overview ---- */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}

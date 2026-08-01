@@ -399,6 +399,26 @@
       </div>`;
   }
 
+  // Guest-facing (home page) winners summary: rank, name, chest no, team
+  // ONLY. Team Points / Grade / Grade Point are internal scoring details and
+  // are shown to admins only (Admin -> Result -> View), never on the public
+  // home page feed or the search-icon result block.
+  function renderPublicWinnersTable(eventId) {
+    const winners = getWinnersForEvent(eventId);
+    if (!winners.length) return `<div class="empty-note">No winners recorded for this programme yet.</div>`;
+    return `
+      <div class="rf-winners-simple">
+        ${winners.map((w) => {
+          const team = state.teams.find((t) => t.id === w.student.team);
+          return `<div class="result-row">
+            <span class="win-rank">${RANK_ICON[w.rank]} ${RANK_LABEL[w.rank]}</span>
+            <span class="result-name">${escapeHtml(w.student.name)}</span>
+            <span class="result-meta">${w.student.chestNo}${team ? " \u00b7 " + escapeHtml(team.name) : ""}</span>
+          </div>`;
+        }).join("")}
+      </div>`;
+  }
+
   function getWinnersForEvent(eventId) {
     const result = state.results[eventId];
     if (!result) return [];
@@ -896,7 +916,7 @@
     block.innerHTML = `
       <div class="category">${escapeHtml(event.category)}</div>
       <div class="item-name">${escapeHtml(event.name)}</div>
-      ${renderResultTable(event.id)}
+      ${renderPublicWinnersTable(event.id)}
       <div class="rf-footer" style="margin-top:.75rem">
         <button type="button" class="rf-btn rf-btn-share" id="btnResultBlockShare">\u{1F4AC} Share</button>
         <button type="button" class="rf-btn rf-btn-poster" id="btnResultBlockDownload">\u2B07 Download</button>
@@ -1012,7 +1032,7 @@
         </div>
         ${expanded ? `
         <div class="rf-winners-list">
-          ${renderResultTable(event.id)}
+          ${renderPublicWinnersTable(event.id)}
         </div>
         <div class="rf-footer">
           <button class="rf-btn rf-btn-share" data-share="${event.id}">\u{1F4AC} Share</button>
@@ -1315,6 +1335,193 @@
     }));
   }
 
+  // Simple person-silhouette icon, used as the photo placeholder when a
+  // student has no photo on file.
+  function drawSilhouette(ctx, cx, cy, size, color) {
+    ctx.save();
+    ctx.fillStyle = color;
+    const r = size * 0.22;
+    ctx.beginPath();
+    ctx.arc(cx, cy - size * 0.12, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.42, cy + size * 0.42);
+    ctx.quadraticCurveTo(cx - size * 0.42, cy + size * 0.05, cx, cy + size * 0.05);
+    ctx.quadraticCurveTo(cx + size * 0.42, cy + size * 0.05, cx + size * 0.42, cy + size * 0.42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // The "navy & gold" default ID card design — drawn from scratch on canvas
+  // (no template image required). Auto-fills name, chest no, team, category
+  // and programmes straight from student data. Used whenever the admin
+  // hasn't uploaded a custom card template image.
+  function paintDefaultIdCard(ctx, canvas, student, team, programmes) {
+    const W = canvas.width, H = canvas.height; // 1013 x 638
+    const NAVY = "#0B1D3A", GOLD = "#C89F4F", WHITE = "#FFFFFF";
+
+    // Base card
+    ctx.fillStyle = WHITE;
+    ctx.fillRect(0, 0, W, H);
+
+    // Top bar (navy) + gold diagonal flourish
+    ctx.fillStyle = NAVY;
+    ctx.fillRect(0, 0, W, 66);
+    ctx.fillStyle = GOLD;
+    ctx.beginPath();
+    ctx.moveTo(700, 0); ctx.lineTo(880, 0); ctx.lineTo(790, 66); ctx.lineTo(610, 66);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = GOLD;
+    ctx.fillRect(0, 66, 785, 5);
+
+    // Bottom bar (navy) + mirrored gold flourish
+    ctx.fillStyle = NAVY;
+    ctx.fillRect(0, H - 66, W, 66);
+    ctx.fillStyle = GOLD;
+    ctx.beginPath();
+    ctx.moveTo(313, H); ctx.lineTo(133, H); ctx.lineTo(223, H - 66); ctx.lineTo(403, H - 66);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = GOLD;
+    ctx.fillRect(228, H - 71, W - 228, 5);
+
+    // Outer border
+    ctx.strokeStyle = NAVY; ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, W - 4, H - 4);
+
+    // Category badge (top-right) — auto-filled from student.category
+    if (student.category) {
+      ctx.font = "bold 20px Georgia";
+      const label = String(student.category).toUpperCase();
+      const padX = 18;
+      const textW = ctx.measureText(label).width;
+      const bw = textW + padX * 2, bh = 34, bx = W - 30 - bw, by = 16;
+      ctx.fillStyle = WHITE;
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 2;
+      roundRectPath(ctx, bx, by, bw, bh, 17);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = NAVY; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(label, bx + bw / 2, by + bh / 2 + 1);
+      ctx.textBaseline = "alphabetic";
+    }
+
+    // Left column center line
+    const lcx = 285;
+
+    // Photo box
+    const boxSize = 210, boxX = lcx - boxSize / 2, boxY = 130;
+    ctx.fillStyle = "#F3F4F6";
+    roundRectPath(ctx, boxX, boxY, boxSize, boxSize, 18);
+    ctx.fill();
+    ctx.strokeStyle = NAVY; ctx.lineWidth = 3;
+    roundRectPath(ctx, boxX, boxY, boxSize, boxSize, 18);
+    ctx.stroke();
+    if (student.photoUrl) return null; // caller handles async photo loading separately
+    ctx.save();
+    roundRectPath(ctx, boxX, boxY, boxSize, boxSize, 18);
+    ctx.clip();
+    drawSilhouette(ctx, lcx, boxY + boxSize / 2 + 10, boxSize * 0.72, NAVY);
+    ctx.restore();
+
+    // Name
+    ctx.fillStyle = NAVY; ctx.textAlign = "center";
+    let nameFont = 40;
+    ctx.font = `bold ${nameFont}px Georgia`;
+    while (ctx.measureText(student.name.toUpperCase()).width > 320 && nameFont > 22) {
+      nameFont -= 2; ctx.font = `bold ${nameFont}px Georgia`;
+    }
+    const nameY = boxY + boxSize + 46;
+    ctx.fillText(student.name.toUpperCase(), lcx, nameY);
+
+    // Divider + dot
+    goldDividerWithDot(ctx, lcx, nameY + 20, 280, GOLD);
+
+    // Chest No (big)
+    ctx.font = "bold 92px Georgia";
+    ctx.fillText(String(student.chestNo), lcx, nameY + 120);
+
+    // Divider + dot
+    goldDividerWithDot(ctx, lcx, nameY + 148, 280, GOLD);
+
+    // Team pill (hexagon-ish)
+    const teamName = (team ? team.name : "-").toUpperCase();
+    ctx.font = "bold 24px Georgia";
+    const teamW = Math.max(160, ctx.measureText(teamName).width + 70);
+    const pillH = 52, pillX = lcx - teamW / 2, pillY = nameY + 172;
+    ctx.fillStyle = NAVY;
+    ctx.beginPath();
+    const notch = 16;
+    ctx.moveTo(pillX + notch, pillY);
+    ctx.lineTo(pillX + teamW - notch, pillY);
+    ctx.lineTo(pillX + teamW, pillY + pillH / 2);
+    ctx.lineTo(pillX + teamW - notch, pillY + pillH);
+    ctx.lineTo(pillX + notch, pillY + pillH);
+    ctx.lineTo(pillX, pillY + pillH / 2);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = WHITE; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(teamName, lcx, pillY + pillH / 2 + 1);
+    ctx.textBaseline = "alphabetic";
+
+    // Vertical divider between left/right columns
+    ctx.strokeStyle = NAVY; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(500, 130); ctx.lineTo(500, H - 100); ctx.stroke();
+
+    // Right column: PROGRAMMES pill header
+    const rcx1 = 540, rcx2 = W - 40;
+    const pTitle = "PROGRAMS";
+    ctx.font = "bold 22px Georgia";
+    const ptW = ctx.measureText(pTitle).width + 56;
+    const ptX = (rcx1 + rcx2) / 2 - ptW / 2, ptY = 145, ptH = 44;
+    ctx.strokeStyle = NAVY; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(rcx1, ptY + ptH / 2); ctx.lineTo(ptX - 10, ptY + ptH / 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ptX + ptW + 10, ptY + ptH / 2); ctx.lineTo(rcx2, ptY + ptH / 2); ctx.stroke();
+    ctx.fillStyle = NAVY;
+    roundRectPath(ctx, ptX, ptY, ptW, ptH, 10);
+    ctx.fill();
+    ctx.fillStyle = WHITE; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(pTitle, ptX + ptW / 2, ptY + ptH / 2 + 1);
+    ctx.textBaseline = "alphabetic";
+
+    // Programmes list (auto-filled from student.events), up to 5 shown
+    const list = programmes.length ? programmes.slice(0, 5) : ["\u2014"];
+    let py = ptY + ptH + 55;
+    const rowGap = (H - 100 - py) / Math.max(list.length, 1);
+    const lineGap = Math.min(64, Math.max(46, rowGap));
+    ctx.textAlign = "left"; ctx.fillStyle = NAVY;
+    list.forEach((name, i) => {
+      let font = 24;
+      ctx.font = `500 ${font}px Georgia`;
+      let label = name;
+      while (ctx.measureText(label).width > (rcx2 - rcx1 - 10) && font > 14) {
+        font -= 2; ctx.font = `500 ${font}px Georgia`;
+      }
+      ctx.fillText(label, rcx1, py);
+      if (i < list.length - 1) {
+        ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(rcx1, py + 16); ctx.lineTo(rcx2, py + 16); ctx.stroke();
+      }
+      py += lineGap;
+    });
+  }
+
+  function roundRectPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function goldDividerWithDot(ctx, cx, y, width, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - width / 2, y); ctx.lineTo(cx - 8, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 8, y); ctx.lineTo(cx + width / 2, y); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(cx, y, 5, 0, Math.PI * 2); ctx.fill();
+  }
+
   function drawIdCard(student, templateOverride, chestNoOnly) {
     const template = templateOverride || state.hero.cardTemplate;
     const custom = template ? state.cardTemplates.find((ct) => ct.id === template) : null;
@@ -1330,26 +1537,33 @@
         const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
         const w = img.width * scale, h = img.height * scale;
         ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-      } else {
-        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        grad.addColorStop(0, "#0B3D2E"); grad.addColorStop(1, "#0A2A20");
-        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "#C9A227"; ctx.lineWidth = 4; ctx.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
-        ctx.textAlign = "left"; ctx.fillStyle = "#FAF6EC"; ctx.font = "bold 26px Georgia";
-        ctx.fillText(state.hero.title, 40, 60);
       }
-      const color = (custom && custom.textColor) || "#FFFFFF";
-      ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8;
-      ctx.fillStyle = color;
 
       if (chestNoOnly) {
         // Chest-No-only card: just the big chest number, centered — no name,
         // category, team or programme list is drawn on this variant.
+        if (!img) {
+          const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          grad.addColorStop(0, "#0B3D2E"); grad.addColorStop(1, "#0A2A20");
+          ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.strokeStyle = "#C9A227"; ctx.lineWidth = 4; ctx.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+          ctx.textAlign = "left"; ctx.fillStyle = "#FAF6EC"; ctx.font = "bold 26px Georgia";
+          ctx.fillText(state.hero.title, 40, 60);
+        }
+        const color = (custom && custom.textColor) || "#FFFFFF";
+        ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8;
+        ctx.fillStyle = color;
         ctx.textAlign = "center";
         ctx.font = "bold 104px 'JetBrains Mono', monospace";
         ctx.fillText(String(student.chestNo), canvas.width / 2, canvas.height / 2 + 34);
-      } else {
-        const startY = canvas.height * ((custom && custom.textY ? custom.textY : 55) / 100);
+        ctx.shadowBlur = 0;
+      } else if (custom && custom.imageUrl) {
+        // Admin-uploaded custom template image: keep the original simple
+        // text-overlay behaviour so existing templates still work as before.
+        const color = custom.textColor || "#FFFFFF";
+        ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8;
+        ctx.fillStyle = color;
+        const startY = canvas.height * ((custom.textY ? custom.textY : 55) / 100);
         ctx.textAlign = "left";
         ctx.font = "bold 42px Georgia"; ctx.fillText(student.name, 40, startY);
         ctx.font = "26px 'JetBrains Mono', monospace"; ctx.fillText(`Chest No: ${student.chestNo}`, 40, startY + 42);
@@ -1358,8 +1572,12 @@
         const label = "Programmes: " + (programmes.length ? programmes.join(", ") : "\u2014");
         const lines = wrapText(ctx, label, canvas.width - 80).slice(0, 3);
         lines.forEach((ln, i) => ctx.fillText(ln, 40, startY + 112 + i * 26));
+        ctx.shadowBlur = 0;
+      } else {
+        // Default navy & gold design — fully auto-generated, no template
+        // image needed. See paintDefaultIdCard().
+        paintDefaultIdCard(ctx, canvas, student, team, programmes);
       }
-      ctx.shadowBlur = 0;
       return canvas.toDataURL("image/jpeg", 0.92);
     };
 
@@ -3660,42 +3878,83 @@
     document.getElementById("resultsSearchInput").addEventListener("input", (e) => { searchQuery = e.target.value; renderList(); });
   }
 
-  // Read-only preview of a programme's top placements \u2014 for the person
-  // announcing results on stage to check before hitting Publish.
+  // Full result table for admins — shown only inside Admin -> Results -> View.
+  // Guests never see this: Grade / Prize / Points are admin-only scoring detail.
+  const PRIZE_LABEL = { first: "1st Prize", second: "2nd Prize", third: "3rd Prize" };
   function openResultViewModal(eventId) {
     const event = state.events.find((e) => e.id === eventId);
     if (!event) return;
-    const ranked = rankedParticipants(eventId).filter((r) => r.mark != null).slice(0, 3);
+    const idx = state.events.findIndex((e) => e.id === eventId) + 1;
+    const status = getResultStatus(event);
+    const pillClass = status === "Published" ? "status-published" : status === "Submitted" ? "status-submitted" : "status-pending";
+    const ranked = rankedParticipants(eventId).filter((r) => r.mark != null);
     const rankKeys = ["first", "second", "third"];
+
     const rowsHtml = ranked.length
       ? ranked.map((r, i) => {
           const team = state.teams.find((t) => t.id === r.student.team);
-          return `
-          <div class="history-row">
-            <div class="history-row-main">
-              <div class="history-row-title">${RANK_LABEL[rankKeys[i]]} \u2014 ${escapeHtml(r.student.name)}</div>
-              <div class="muted" style="font-size:.7rem">${r.student.chestNo || "\u2014"} \u00b7 ${team ? escapeHtml(team.name) : "\u2014"} \u00b7 Mark: ${r.mark}</div>
-            </div>
-          </div>`;
+          const rankKey = rankKeys[i];
+          const prizeHtml = rankKey ? `${RANK_ICON[rankKey]} ${PRIZE_LABEL[rankKey]}` : "-";
+          const gradeHtml = rankKey ? gradeFor(r.mark) : "-";
+          const pointsHtml = rankKey ? (gradePointFor(r.mark) ?? "-") : "0";
+          return `<tr>
+            <td>${i + 1}</td>
+            <td>${r.student.chestNo || "\u2014"}</td>
+            <td>${escapeHtml(r.student.name)}</td>
+            <td>${codeLetterFor(eventId, r.student.id)}</td>
+            <td>${team ? escapeHtml(team.name) : "\u2014"}</td>
+            <td><b>${gradeHtml}</b></td>
+            <td>${prizeHtml}</td>
+            <td><b>${pointsHtml}</b></td>
+          </tr>`;
         }).join("")
-      : `<div class="empty-note">No marks entered yet for this programme.</div>`;
+      : "";
 
     modalBody.innerHTML = `
       <div class="marks-modal">
-        <div class="row-between" style="margin-bottom:.75rem">
-          <div style="font-weight:600;font-size:.95rem">${escapeHtml(event.name)} \u2014 ${event.category}</div>
+        <div class="row-between" style="margin-bottom:.75rem;align-items:flex-start">
+          <div>
+            <div style="font-weight:700;font-size:1rem">#${idx} ${escapeHtml(event.name)}</div>
+            <span class="status-pill ${pillClass}" style="margin-top:.3rem;display:inline-block">${status}</span>
+          </div>
           <button class="dots-btn" id="rvClose" style="font-size:1.2rem">&times;</button>
         </div>
-        <div class="muted" style="font-size:.72rem;margin-bottom:.6rem">Preview for announcing on stage</div>
-        ${rowsHtml}
-        <div class="modal-actions" style="background:transparent;padding:.75rem 0 0">
+        ${ranked.length ? `
+        <div style="overflow-x:auto">
+          <table class="result-detail-table"><thead><tr>
+            <th>Sl No</th><th>Chest #</th><th>Participant</th><th>Code Letter</th><th>Team</th><th>Grade</th><th>Prize</th><th>Points</th>
+          </tr></thead><tbody>${rowsHtml}</tbody></table>
+        </div>` : `<div class="empty-note">No marks entered yet for this programme.</div>`}
+        <div class="modal-actions" style="background:transparent;padding:.75rem 0 0;gap:.5rem">
           <button class="btn btn-ghost" id="rvClose2" style="flex:1">Close</button>
+          ${ranked.length ? `<button class="btn btn-primary" id="rvPrint" style="flex:1">\u{1F5A8} Print Result</button>` : ""}
         </div>
       </div>`;
     document.getElementById("rvClose").addEventListener("click", closeTopScreen);
     document.getElementById("rvClose2").addEventListener("click", closeTopScreen);
+    const printBtn = document.getElementById("rvPrint");
+    if (printBtn) printBtn.addEventListener("click", () => openResultPrintSheet(idx, event, rowsHtml));
     modalOverlay.classList.remove("hidden");
     pushScreen(() => { modalOverlay.classList.add("hidden"); modalBody.innerHTML = ""; });
+  }
+
+  // Reuses the shared #printOverlay (see openScheduleSheet) to print this
+  // exact admin result table on A4.
+  function openResultPrintSheet(idx, event, rowsHtml) {
+    const printContentHtml = `
+      <div class="schedule-print-header">
+        <h1>${escapeHtml(state.hero.title)}</h1>
+        <h2>#${idx} ${escapeHtml(event.name).toUpperCase()} \u2014 ${escapeHtml(event.category).toUpperCase()}</h2>
+      </div>
+      <table class="schedule-print-table"><thead><tr>
+        <th>Sl No</th><th>Chest #</th><th>Participant</th><th>Code Letter</th><th>Team</th><th>Grade</th><th>Prize</th><th>Points</th>
+      </tr></thead><tbody>${rowsHtml}</tbody></table>
+      <div class="schedule-print-footer">${escapeHtml(state.hero.title)} \u00a9 All rights reserved</div>`;
+
+    document.getElementById("printTitle").textContent = "Result Sheet";
+    document.getElementById("printContent").innerHTML = printContentHtml;
+    document.getElementById("printOverlay").classList.remove("hidden");
+    pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
   }
 
   function renderChecklist() {
