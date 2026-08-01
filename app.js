@@ -1522,6 +1522,13 @@
     ctx.beginPath(); ctx.arc(cx, y, 5, 0, Math.PI * 2); ctx.fill();
   }
 
+  // Admin-uploaded card templates no longer expose colour/position controls —
+  // text is auto-placed using these fixed, readable defaults (white text with
+  // a drop shadow, starting just past the card's vertical midpoint) so any
+  // template photo stays legible without manual setup.
+  const AUTO_TEXT_Y = 55;
+  const AUTO_TEXT_COLOR = "#FFFFFF";
+
   function drawIdCard(student, templateOverride, chestNoOnly) {
     const template = templateOverride || state.hero.cardTemplate;
     const custom = template ? state.cardTemplates.find((ct) => ct.id === template) : null;
@@ -1847,7 +1854,7 @@
         <div class="field-label" style="padding:.85rem 1rem 0;background:var(--surface)">Swipe to choose a card design</div>
         <div class="id-card-carousel" id="idCardCarousel">${templates.map(cardHtml).join("")}</div>
       ` : `
-        <div class="empty-note" style="margin:1rem">No ID card template has been added yet. Ask your madrasa admin to add one under Admin \u2192 ID Cards.</div>
+        <div class="empty-note" style="margin:1rem">No ID card template has been added yet. Ask your madrasa admin to add one under Admin \u2192 Chest No.</div>
       `}
       <div class="modal-actions">
         <button class="btn btn-primary" id="btnDownloadCard">\u2B07 Download Card</button>
@@ -2602,7 +2609,7 @@
     const allCards = getAllCardTemplates();
     const super_ = isSuperAdmin();
     adminContent.innerHTML = `
-      ${super_ ? `<button class="link-btn" id="btnCardsBack" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.75rem">&larr; Back to Chess No</button>` : ""}
+      ${super_ ? `<button class="link-btn" id="btnCardsBack" style="text-align:left;color:var(--gold-light);padding:0;margin-bottom:.75rem">&larr; Back</button>` : ""}
       ${super_ ? `
       <div class="card">
         <div class="card-title">Chest-No ID Cards</div>
@@ -2666,22 +2673,18 @@
           <input id="ctName" class="input" placeholder="e.g. Gold Card" style="margin-bottom:.5rem" />
           <div class="field-label">Card Image \u2014 landscape, 1013\u00d7638px recommended</div>
           <input type="file" id="ctImage" accept="image/*" class="input" style="margin-bottom:.5rem;padding:.4rem" />
-          <div class="grid3" style="margin-bottom:.5rem">
-            <div><div class="field-label">Text Colour</div><input id="ctFg" type="color" class="input" value="#FFFFFF" style="padding:.25rem" /></div>
-          </div>
-          <div class="field-label">Text Position (how far down the card the name block starts)</div>
-          <input id="ctTextY" type="range" min="20" max="80" value="55" style="width:100%;margin-bottom:.75rem" />
+          <div class="muted" style="font-size:.7rem;margin-bottom:.75rem">Name, Chest No, Team and Programmes are placed on the card automatically \u2014 no colour or position setup needed.</div>
           <button class="btn btn-primary" id="btnSaveCardTemplate" style="width:auto;padding:.5rem .9rem">Save Template</button>
         </div>`;
       document.getElementById("btnSaveCardTemplate").addEventListener("click", () => {
         const name = document.getElementById("ctName").value.trim() || "Custom";
         const file = document.getElementById("ctImage").files[0];
-        const textY = Number(document.getElementById("ctTextY").value);
-        const textColor = document.getElementById("ctFg").value;
         if (!file) return showToast("Choose a card image first");
         showToast("Compressing template image\u2026");
         compressImageFile(file, 1013, 0.85).then((imageUrl) => {
-          state.cardTemplates.push({ id: "card-" + uid(), label: name, imageUrl, textY, textColor });
+          // Text colour / position are auto-decided (not admin-configurable) \u2014
+          // see AUTO_TEXT_Y / AUTO_TEXT_COLOR defaults used by drawIdCard().
+          state.cardTemplates.push({ id: "card-" + uid(), label: name, imageUrl, textY: AUTO_TEXT_Y, textColor: AUTO_TEXT_COLOR });
           persist(); showToast("Card template added"); renderCardsTab();
         }).catch(() => showToast("Could not process that image"));
       });
@@ -3551,9 +3554,9 @@
       </div>
 
       <div class="card">
-        <div class="card-title">ID Cards</div>
+        <div class="card-title">Chest No</div>
         <div class="field-label" style="margin-bottom:.5rem">Chest-no ID cards are managed here \u2014 upload templates per category and print or download cards.</div>
-        <button class="btn btn-primary" id="btnOpenIdCards" style="width:auto;padding:.5rem .9rem">\u{1F4B3} Open ID Cards</button>
+        <button class="btn btn-primary" id="btnOpenIdCards" style="width:auto;padding:.5rem .9rem">\u{1F4B3} Open Chest No</button>
       </div>
 
       <div class="card">
