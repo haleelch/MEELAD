@@ -883,10 +883,7 @@
       const top = sorted[0];
       topScorerEl.innerHTML = top ? `
         <div class="lr-top-card">
-          <svg class="lr-trophy" viewBox="0 0 24 24" fill="#FBBF24">
-            <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.36 1.05.59 2.12.59 3.06 0 1.01-.23 1.98-.64 2.86-.38.87-.94 1.59-1.64 2.15-.65.55-1.39.96-2.18 1.22-.79.26-1.59.34-2.36.18.98 1.22 2.49 2 4.23 2h8c1.74 0 3.25-.78 4.23-2-.77.16-1.57.08-2.36-.18-.79-.26-1.53-.67-2.18-1.22-.7-.56-1.26-1.28-1.64-2.15-.41-.88-.64-1.85-.64-2.86 0-.94.23-2.01.59-3.06C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2z"/>
-            <path d="M12 11.5A2.5 2.5 0 019.5 9 2.5 2.5 0 0112 6.5 2.5 2.5 0 0114.5 9a2.5 2.5 0 01-2.5 2.5z"/>
-          </svg>
+          <div class="lr-trophy" style="font-size:2rem;line-height:1">\u{1F3C6}</div>
           <div class="lr-top-info">
             <div class="lr-label">\u2605 TOP SCORER</div>
             <div class="lr-team">${escapeHtml(top.name)}</div>
@@ -2187,7 +2184,7 @@
   function goFullyHome() {
     adminScreen.classList.add("hidden");
     loginScreen.classList.add("hidden");
-    document.body.classList.remove("no-scroll"); // bug fix: always unlock background scroll on exit
+    unlockBodyScroll(); // bug fix: classList.remove("no-scroll") alone left the body's inline position:fixed/top styles (set by lockBodyScroll) in place, freezing the page until a manual refresh
     closeSidebar();
     closeAdminSidebar();
     modalOverlay.classList.add("hidden");
@@ -3949,46 +3946,48 @@
     });
   }
 
-  /* ===== Green Room Sign: chest no + name auto (fixed to registered participants), code letter & sign manual ===== */
+  /* ===== Green Room Sign: read-only preview built straight from registered
+     participants \u2014 no typing on screen at all. Code Letter and Signature
+     stay blank for the stage incharge to fill by hand at the venue. Select
+     programme + Generate is the only input; the preview is exactly what
+     prints, same pattern as the Valuation Sheet. ===== */
   function renderGreenRoomSheetInline(wrap, event, eventId, participants) {
-    const draft = psLoadDraft("greenroom", eventId);
-    draft.rows = draft.rows || {};
+    const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const rows = participants.map((s) => `<tr><td>${s.chestNo}</td><td style="text-align:left">${escapeHtml(s.name)}</td><td></td><td></td></tr>`).join("");
 
-    function rowHtml(id, chestNo, name, idx) {
-      const r = draft.rows[id] || {};
-      return `<tr data-row="${id}">
-        <td>${idx}</td>
-        <td class="p0">${chestNo}</td>
-        <td style="text-align:left">${escapeHtml(name)}</td>
-        <td><input class="input ps-code" data-id="${id}" value="${escapeAttr(r.codeLetter || "")}" style="width:4rem;text-align:center;text-transform:uppercase" maxlength="3" /></td>
-        <td></td>
-      </tr>`;
-    }
-    const baseRows = participants.map((s, i) => rowHtml(s.id, s.chestNo, s.name, i + 1));
+    const sheetHtml = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+        <div>
+          <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
+          <div style="font-size:1.15rem;font-weight:700">Green Room Sign Sheet</div>
+        </div>
+        <div class="muted" style="font-size:.68rem;white-space:nowrap">${dateStr}</div>
+      </div>
+      <hr class="print-hr" style="margin:.4rem 0 .75rem" />
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;font-weight:700;font-size:.85rem">
+        <div>${escapeHtml(event.name)}</div>
+        <div class="muted" style="font-weight:500">${escapeHtml(event.type || "Individual")}</div>
+        <div>${escapeHtml(event.category)}</div>
+      </div>
+      <table class="schedule-print-table" style="table-layout:fixed">
+        <thead><tr><th style="width:4.5rem">Chest No</th><th>Participant</th><th style="width:5rem">Code Letter</th><th style="width:8rem">Participants Signature</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:1.5rem;font-size:.78rem" class="muted">
+        <div>Competition Start Time:</div>
+        <div style="margin-top:.4rem">Competition End Time:</div>
+      </div>
+      <div style="text-align:center;margin-top:2rem;font-size:.78rem" class="muted">Stage incharge's Name and Signature</div>
+      <div style="border-bottom:1px solid var(--border);margin:.4rem auto 0;width:50%"></div>`;
 
     wrap.innerHTML = `
       <div class="card">
-        <div style="text-align:center;font-weight:700;letter-spacing:.04em;font-size:1rem;margin-bottom:.15rem">GREEN ROOM SIGN</div>
-        <div class="muted" style="text-align:center;font-size:.78rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
-        <div class="marks-table-wrap">
-          <table class="marks-table" id="psGrTable" style="table-layout:fixed">
-            <colgroup><col style="width:2.6rem" /><col style="width:4rem" /></colgroup>
-            <thead><tr><th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Sign</th></tr></thead>
-            <tbody>${baseRows.join("")}</tbody>
-          </table>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
-          <button class="btn btn-ghost" id="btnPsClose" style="width:auto;padding:.5rem .9rem">Close</button>
-          <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
+        ${sheetHtml}
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
+          <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
+          <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print</button>
         </div>
       </div>`;
-
-    function saveField(id, field, value) {
-      draft.rows[id] = draft.rows[id] || {};
-      draft.rows[id][field] = value;
-      psSaveDraft("greenroom", eventId, draft);
-    }
-    wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "codeLetter", inp.value.toUpperCase())));
 
     document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
 
@@ -3996,14 +3995,8 @@
     // renderValuationSheetInline for why #printOverlay is still used
     // internally but never left open as a visible extra step).
     document.getElementById("btnPsPrint").addEventListener("click", () => {
-      const printBaseRows = participants.map((s, i) => `<tr><td>${i + 1}</td><td>${s.chestNo}</td><td style="text-align:left">${escapeHtml(s.name)}</td><td>${escapeHtml((draft.rows[s.id] || {}).codeLetter || "")}</td><td></td></tr>`);
-      document.getElementById("printTitle").textContent = "Green Room Sign";
-      document.getElementById("printContent").innerHTML = `
-        <div class="print-heading" style="text-align:center">GREEN ROOM SIGN</div>
-        <div class="muted" style="text-align:center;font-size:.85rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
-        <table class="schedule-print-table"><thead><tr><th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Sign</th></tr></thead>
-          <tbody>${printBaseRows.join("")}</tbody>
-        </table>`;
+      document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
+      document.getElementById("printContent").innerHTML = sheetHtml;
       document.getElementById("printOverlay").classList.remove("hidden");
       window.print();
       document.getElementById("printOverlay").classList.add("hidden");

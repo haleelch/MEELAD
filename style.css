@@ -533,12 +533,12 @@ body.no-scroll .bottom-nav{display:none;}
 .schedule-print-header h2{font-size:.85rem;font-weight:600;color:#DC2626;letter-spacing:.5px;margin:.25rem 0 0;}
 .schedule-stage-block{margin-bottom:1.4rem;border-radius:.6rem;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);}
 .schedule-stage-header{background:#1E3A8A;color:#fff;padding:.6rem 1rem;font-size:.85rem;font-weight:700;}
-.schedule-print-table{width:100%;border-collapse:collapse;font-size:.8rem;border:2px solid #000;}
-.schedule-print-table thead{background:#fff;color:#000;}
-.schedule-print-table th{padding:.55rem .7rem;text-align:left;font-weight:700;white-space:nowrap;border:1px solid #000;color:#000;}
-.schedule-print-table td{padding:.55rem .7rem;border:1px solid #000;color:#000;}
+.schedule-print-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.schedule-print-table thead{background:#374151;color:#fff;}
+.schedule-print-table th{padding:.55rem .7rem;text-align:left;font-weight:600;white-space:nowrap;}
+.schedule-print-table td{padding:.55rem .7rem;border-bottom:1px solid #E5E7EB;color:#111827;}
+.schedule-print-table tbody tr:nth-child(even){background:#F9FAFB;}
 .schedule-print-footer{text-align:center;font-size:.68rem;color:#6B7280;margin-top:1.5rem;padding-top:.75rem;border-top:1px solid #E5E7EB;}
-
 
 /* ---- results feed cards (dark, matches result-card design) ---- */
 .rf-card{
