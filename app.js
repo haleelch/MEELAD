@@ -183,6 +183,7 @@
   }
   const RANK_POINTS = { first: 7, second: 5, third: 3 };
   const RANK_LABEL = { first: "1st Place", second: "2nd Place", third: "3rd Place" };
+  const RANK_ORDINAL = { first: "1st", second: "2nd", third: "3rd" };
   const RANK_ICON = { first: "\u{1F947}", second: "\u{1F948}", third: "\u{1F949}" };
   const RANK_NUMBER = { first: 1, second: 2, third: 3 };
   const ORDINAL = (n) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
@@ -420,7 +421,7 @@
         ${winners.map((w) => {
           const team = state.teams.find((t) => t.id === w.student.team);
           return `<div class="result-row">
-            <span class="win-rank">${RANK_ICON[w.rank]}</span>
+            <span class="win-rank">${RANK_ICON[w.rank]} ${RANK_ORDINAL[w.rank]}</span>
             <span class="result-name">${escapeHtml(w.student.name)}</span>
             <span class="result-meta">${w.student.chestNo}${team ? " \u00b7 " + escapeHtml(team.name) : ""}</span>
           </div>`;
@@ -519,12 +520,39 @@
      matching screen is actually closed inside the popstate handler, so every
      path (our buttons, hardware back, edge-swipe) closes exactly one screen. */
   const screenStack = [];
-  const btnBack = document.getElementById("btnBack");
   let suppressNextPopstate = false;
+
+  // Robust background-scroll lock: plain `overflow:hidden` on <body> doesn't
+  // reliably stop scroll on mobile (the page behind an overlay can still be
+  // dragged/rubber-banded into view). Pinning the body with position:fixed
+  // at its current scroll offset actually removes it from the scrollable
+  // flow, so whatever mode/screen is open is the only thing that can
+  // scroll \u2014 the mode underneath stays completely put until you close back
+  // down to it. Hooked into the screen stack below so every overlay (Admin,
+  // Participant Dashboard, modals, print sheet) locks/unlocks consistently
+  // with no per-screen wiring needed.
+  let savedScrollY = 0;
+  function lockBodyScroll() {
+    savedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.classList.add("no-scroll");
+  }
+  function unlockBodyScroll() {
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.classList.remove("no-scroll");
+    window.scrollTo(0, savedScrollY);
+  }
+
   function pushScreen(closeFn) {
+    if (screenStack.length === 0) lockBodyScroll();
     screenStack.push(closeFn);
     history.pushState({ meelaScreen: screenStack.length }, "", location.pathname + location.search);
-    btnBack.classList.remove("hidden");
   }
   function popScreen() {
     if (screenStack.length) history.back();
@@ -538,7 +566,7 @@
     if (!screenStack.length) return;
     const fn = screenStack.pop();
     if (fn) fn();
-    btnBack.classList.toggle("hidden", screenStack.length === 0);
+    if (screenStack.length === 0) unlockBodyScroll();
     suppressNextPopstate = true;
     history.back();
   }
@@ -555,15 +583,13 @@
     } else {
       pushScreen(newCloseFn);
     }
-    btnBack.classList.remove("hidden");
   }
   window.addEventListener("popstate", () => {
     if (suppressNextPopstate) { suppressNextPopstate = false; return; }
     const fn = screenStack.pop();
     if (fn) fn();
-    btnBack.classList.toggle("hidden", screenStack.length === 0);
+    if (screenStack.length === 0) unlockBodyScroll();
   });
-  btnBack.addEventListener("click", closeTopScreen);
 
   // Most modern mobile browsers already map an edge-swipe gesture to native
   // back navigation (which the popstate listener above already handles). This
@@ -615,60 +641,43 @@
     e.preventDefault();
     const id = a.getAttribute("href").slice(1);
     closeTopScreen(); // close the sidebar instantly
-    showPage(id);
+    if (id === "standings") { showEventOrResultSection("standings"); return; } // bug fix: no scroll, just show
+    const target = document.getElementById(id);
+    if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth" }), 50);
   }));
-  document.getElementById("brandHome").addEventListener("click", () => showPage("top"));
-  // showPage(): the site now behaves like a paged app (Home / Result / Event /
-  // Schedule / Profile) rather than one long scroll \u2014 only one of these
-  // sections is visible at a time. Both the bottom nav and the sidebar links
-  // drive the same function so they always agree on what's showing.
-  const PAGE_IDS = ["top", "standings", "results", "gallery", "schedulePage"];
-  function showPage(id) {
-    PAGE_IDS.forEach((pid) => {
-      const el = document.getElementById(pid);
-      if (el) el.classList.toggle("hidden", pid !== id);
-    });
-    document.querySelectorAll(".nav-item[data-page]").forEach((a) => a.classList.toggle("active", a.dataset.page === id));
-    btnBack.classList.add("hidden");
-    if (id === "schedulePage") renderPublicSchedule();
-    window.scrollTo(0, 0);
+  document.getElementById("brandHome").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+  // Bug fix: "Result" and "Live Results" (Team Points) used scrollIntoView,
+  // which visually drifted into whichever section was above it. Now we just
+  // toggle display:block/none between the two so only the clicked one shows.
+  const standingsSection = document.getElementById("standings");
+  const resultsSection = document.getElementById("results");
+  function showEventOrResultSection(id) {
+    if (standingsSection) standingsSection.style.display = id === "standings" ? "block" : "none";
+    if (resultsSection) resultsSection.style.display = id === "results" ? "block" : "none";
   }
-  document.querySelectorAll(".nav-item[data-page]").forEach((a) => a.addEventListener("click", (e) => {
-    e.preventDefault();
-    showPage(a.dataset.page);
-  }));
-  const navProfileBottom = document.getElementById("navProfileBottom");
-  if (navProfileBottom) navProfileBottom.addEventListener("click", (e) => { e.preventDefault(); openStudentProfile(); });
-
   document.querySelectorAll('a[href="#results"], a[href="#standings"]').forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
-    showPage(a.getAttribute("href").slice(1));
+    showEventOrResultSection(a.getAttribute("href").slice(1));
   }));
   document.querySelectorAll('a.primary-button[href^="#"], a.explore-card[href^="#"], .stat-card[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
-    showPage(a.getAttribute("href").slice(1));
+    const id = a.getAttribute("href").slice(1);
+    if (id === "results" || id === "standings") return; // handled above, no scroll
+    const target = document.getElementById(id);
+    if (target) target.scrollIntoView({ behavior: "smooth" });
   }));
-
-  // Public, read-only Schedule page \u2014 reuses the same admin schedule data
-  // (state.schedule), grouped by stage, sorted, no edit controls.
-  function renderPublicSchedule() {
-    const wrap = document.getElementById("publicScheduleWrap");
-    if (!wrap) return;
-    if (!state.schedule.length) { wrap.innerHTML = `<div class="empty-note" style="text-align:center;padding:2rem 1rem">Schedule hasn't been published yet \u2014 check back soon.</div>`; return; }
-    const groups = {};
-    state.schedule.forEach((s) => { (groups[s.stage] = groups[s.stage] || []).push(s); });
-    wrap.innerHTML = sortStageKeys(Object.keys(groups)).map((stage) => `
-      <div class="card" style="padding:.7rem .85rem;margin-bottom:.6rem">
-        <div style="font-weight:700;font-size:.8rem;color:var(--gold-light);margin-bottom:.4rem">${escapeHtml(stage)}</div>
-        ${groups[stage].slice().sort((a, b) => (a.start || "").localeCompare(b.start || "")).map((s) => {
-          const ev = state.events.find((e) => e.id === s.eventId);
-          return `<div class="result-row" style="margin-bottom:.35rem">
-            <div><div class="result-name">${ev ? escapeHtml(ev.name) : "(programme removed)"}</div><div class="result-meta">${ev ? escapeHtml(ev.category) : ""}</div></div>
-            <div class="result-meta">${formatTimeRange(s.start, s.end)}</div>
-          </div>`;
-        }).join("")}
-      </div>`).join("");
-  }
+  // Explore Festival sits up in the hero, far above Team Points/Live Standings,
+  // so (unlike the small nearby stat-card links) it needs an actual scroll —
+  // the generic handler above deliberately skips scrolling for #standings.
+  const exploreFestivalBtn = document.getElementById("exploreFestivalBtn");
+  if (exploreFestivalBtn) exploreFestivalBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    showEventOrResultSection("standings");
+    requestAnimationFrame(() => {
+      const el = document.getElementById("standings");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    });
+  });
 
   /* ---------------- live ticker ---------------- */
   function renderTicker() {
@@ -848,26 +857,59 @@
     const pts = computeTeamPoints();
     const sorted = [...state.teams].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
     const maxPts = Math.max(1, ...sorted.map((t) => pts[t.id] || 0));
+
+    // Top scorer card
+    const topScorerEl = document.getElementById("lrTopScorer");
+    if (topScorerEl) {
+      const top = sorted[0];
+      topScorerEl.innerHTML = top ? `
+        <div class="lr-top-card">
+          <svg class="lr-trophy" viewBox="0 0 24 24" fill="#FBBF24">
+            <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.36 1.05.59 2.12.59 3.06 0 1.01-.23 1.98-.64 2.86-.38.87-.94 1.59-1.64 2.15-.65.55-1.39.96-2.18 1.22-.79.26-1.59.34-2.36.18.98 1.22 2.49 2 4.23 2h8c1.74 0 3.25-.78 4.23-2-.77.16-1.57.08-2.36-.18-.79-.26-1.53-.67-2.18-1.22-.7-.56-1.26-1.28-1.64-2.15-.41-.88-.64-1.85-.64-2.86 0-.94.23-2.01.59-3.06C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2z"/>
+            <path d="M12 11.5A2.5 2.5 0 019.5 9 2.5 2.5 0 0112 6.5 2.5 2.5 0 0114.5 9a2.5 2.5 0 01-2.5 2.5z"/>
+          </svg>
+          <div class="lr-top-info">
+            <div class="lr-label">\u2605 TOP SCORER</div>
+            <div class="lr-team">${escapeHtml(top.name)}</div>
+            <div class="lr-points"><b>${pts[top.id] || 0}</b> Points</div>
+          </div>
+        </div>` : "";
+    }
+
+    // Ranked board
     document.getElementById("leaderboard").innerHTML = sorted.map((t, i) => {
-      const rankClass = i === 0 ? "rank1" : i === 1 ? "rank2" : i === 2 ? "rank3" : "rank-other";
-      const ptsClass = i === 0 ? "points-one" : i === 1 ? "points-two" : i === 2 ? "points-three" : "points-other";
-      const barColor = i === 0 ? "linear-gradient(90deg,#F5B301,#FFD966)" : i === 1 ? "linear-gradient(90deg,#2563EB,#60A5FA)" : i === 2 ? "linear-gradient(90deg,#7C3AED,#A78BFA)" : t.color;
+      const rankClass = i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
       const barPct = Math.round(((pts[t.id] || 0) / maxPts) * 100);
       return `
-      <div class="team-row">
-        <div class="rank-wrap">
-          <div class="rank-circle ${rankClass}">${i === 0 ? "\u265B" : i + 1}</div>
-          <div class="team-divider"></div>
-          <div class="team-info">
-            <h3>${escapeHtml(t.name)}</h3>
-            <div class="team-bar-track"><div class="team-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div>
-          </div>
-        </div>
-        <div class="points-wrap">
-          <div class="points ${ptsClass}"><strong>${pts[t.id] || 0}</strong><small>POINTS</small></div>
-        </div>
+      <div class="lr-board-row">
+        <div class="lr-rank ${rankClass}">${i + 1}</div>
+        <div class="lr-team-name">${escapeHtml(t.name)}</div>
+        <div class="lr-progress-bar"><div class="lr-progress-fill" style="width:${barPct}%"></div></div>
+        <div class="lr-points-cell"><div class="lr-num">${pts[t.id] || 0}</div><div class="lr-txt">Points</div></div>
       </div>`;
     }).join("");
+
+    // Stats: completed vs remaining programmes
+    const statsEl = document.getElementById("lrStats");
+    if (statsEl) {
+      const completed = state.events.filter((e) => state.results[e.id]).length;
+      const remaining = state.events.length - completed;
+      statsEl.innerHTML = `
+        <div class="lr-stat-item">
+          <div class="lr-stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6h-5.6z"/></svg>
+          </div>
+          <div class="lr-stat-value blue">${completed} EVENTS</div>
+          <div class="lr-stat-label">Completed</div>
+        </div>
+        <div class="lr-stat-item">
+          <div class="lr-stat-icon green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+          </div>
+          <div class="lr-stat-value green">${remaining} EVENTS</div>
+          <div class="lr-stat-label">Remaining</div>
+        </div>`;
+    }
   }
 
   /* ---------------- results portal (search + text list) ---------------- */
@@ -1625,53 +1667,53 @@
     document.getElementById("btnClosePoster").addEventListener("click", closeTopScreen);
   }
 
-  // ---- Student Dashboard: chest-number login gate, then a personal
-  // programmes/results view. Reuses the same modalOverlay/modalBody as the
-  // poster modals above (no separate overlay markup needed). ----
-  // ---- "My Profile" session: remembers the chest number in localStorage so
-  // re-opening Profile skips straight to the dashboard until Logout is tapped.
-  const STUDENT_SESSION_KEY = "meelad-student-chest";
-  function openStudentProfile() {
-    const saved = localStorage.getItem(STUDENT_SESSION_KEY);
-    const student = saved ? state.students.find((s) => String(s.chestNo) === saved) : null;
-    if (student) openStudentDashboard(student, { fresh: true });
-    else openStudentLogin();
-  }
+  // ---- Participant Dashboard: chest-number login gate, then a personal
+  // programmes/results view. Full-page screens (same pattern as Admin Mode),
+  // not a modal \u2014 so it feels like its own section of the app. ----
+  const studentLoginScreen = document.getElementById("studentLoginScreen");
+  const studentDashboardScreen = document.getElementById("studentDashboardScreen");
+  function closeStudentLoginScreen() { studentLoginScreen.classList.add("hidden"); document.body.classList.remove("no-scroll"); }
+  function closeStudentDashboardScreen() { studentDashboardScreen.classList.add("hidden"); document.body.classList.remove("no-scroll"); }
+
+  // Session persists in localStorage so returning to My Profile skips the
+  // chest-number prompt until the participant explicitly taps Logout.
+  const SD_SESSION_KEY = "meelad_student_session";
+  function sdSavedChestNo() { try { return localStorage.getItem(SD_SESSION_KEY); } catch { return null; } }
+  function sdSaveSession(chestNo) { try { localStorage.setItem(SD_SESSION_KEY, String(chestNo)); } catch {} }
+  function sdClearSession() { try { localStorage.removeItem(SD_SESSION_KEY); } catch {} }
 
   function openStudentLogin() {
-    modalBody.innerHTML = `
-      <div class="poster-head arch-top" style="position:relative">
-        <button class="icon-btn" id="btnBackStudent" aria-label="Back" style="position:absolute;top:.7rem;left:.7rem;background:rgba(255,255,255,.14);color:#fff;width:2.1rem;height:2.1rem;font-size:1.05rem">&#8592;</button>
-        <div class="admin-login-badge">\u{1F393}</div>
-        <div class="poster-name font-display">My Profile</div>
-        <div class="poster-event">Enter your chest number to view your programmes &amp; results</div>
-      </div>
-      <div class="tiraz"></div>
-      <div style="padding:1.25rem 1rem">
-        <div class="field-label" style="margin-bottom:.35rem">Chest Number</div>
-        <input id="sdChestInput" class="input" placeholder="e.g. 105" inputmode="numeric" style="margin-bottom:.6rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:1.05rem;letter-spacing:.05em" />
-        <div class="empty-note hidden" id="sdLoginError" style="margin-bottom:.6rem;color:var(--crimson)"></div>
-        <button class="btn btn-primary" id="btnStudentLogin" style="width:100%">\u2728 View My Profile</button>
-        <div class="muted" style="text-align:center;font-size:.68rem;margin-top:.75rem">Your chest number is on your registration card</div>
-      </div>`;
-    modalOverlay.classList.remove("hidden");
-    pushScreen(closeModal);
+    const saved = sdSavedChestNo();
+    const student = saved ? state.students.find((s) => String(s.chestNo) === saved) : null;
+    if (student) return openStudentDashboard(student);
+    document.body.classList.add("no-scroll");
+    document.getElementById("sdChestInput").value = "";
+    document.getElementById("sdLoginError").classList.add("hidden");
+    studentLoginScreen.classList.remove("hidden");
+    pushScreen(closeStudentLoginScreen);
+  }
 
-    document.getElementById("btnBackStudent").addEventListener("click", closeTopScreen);
+  document.getElementById("btnStudentLoginCancel").addEventListener("click", closeTopScreen);
+  document.getElementById("btnStudentDashBack").addEventListener("click", closeTopScreen);
+  document.getElementById("btnStudentDashClose").addEventListener("click", () => {
+    sdClearSession();
+    closeTopScreen();
+  });
+  (function () {
     const submit = () => {
       const val = document.getElementById("sdChestInput").value.trim();
       const err = document.getElementById("sdLoginError");
       if (!val) { err.textContent = "Enter your chest number"; err.classList.remove("hidden"); return; }
       const student = state.students.find((s) => String(s.chestNo) === val);
       if (!student) { err.textContent = "No participant found with that chest number"; err.classList.remove("hidden"); return; }
-      localStorage.setItem(STUDENT_SESSION_KEY, val);
+      sdSaveSession(student.chestNo);
       openStudentDashboard(student);
     };
     document.getElementById("btnStudentLogin").addEventListener("click", submit);
     document.getElementById("sdChestInput").addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-  }
+  })();
 
-  function openStudentDashboard(student, opts) {
+  function openStudentDashboard(student) {
     const team = state.teams.find((t) => t.id === student.team);
     const events = student.events.map((id) => state.events.find((e) => e.id === id)).filter(Boolean);
     const wins = getStudentWins(student.id);
@@ -1680,75 +1722,80 @@
     const initials = student.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
     const statCard = (icon, label, value) => `
-      <div class="card" style="display:flex;align-items:center;gap:.6rem;padding:.75rem;margin-bottom:0">
-        <div style="width:2.3rem;height:2.3rem;flex-shrink:0;border-radius:50%;background:rgba(201,162,39,.14);display:flex;align-items:center;justify-content:center;font-size:1.05rem">${icon}</div>
-        <div><div style="font-size:1.3rem;font-weight:700;line-height:1.1;font-family:'JetBrains Mono',monospace;color:var(--gold-light)">${value}</div><div class="muted" style="font-size:.62rem;letter-spacing:.03em">${label}</div></div>
+      <div class="sd-stat-card">
+        <div class="sd-stat-icon">${icon}</div>
+        <div><div class="sd-stat-value">${value}</div><div class="sd-stat-label">${label}</div></div>
       </div>`;
 
     const eventRow = (e) => {
       const published = !!state.results[e.id];
       const label = published ? "RESULT OUT" : (e.status === "ticked" ? "COMPLETED" : "UPCOMING");
-      const style = published ? "background:var(--emerald-light);color:#fff" : e.status === "ticked" ? "background:var(--gold-light);color:#111" : "background:var(--surface2);color:var(--muted)";
-      return `<div class="result-row">
-        <div><div class="result-name">${escapeHtml(e.name)}</div><div class="result-meta">${e.type} \u00b7 ${e.stageType || "Stage"}</div></div>
-        <span style="padding:.25rem .55rem;border-radius:.4rem;font-size:.62rem;font-weight:700;white-space:nowrap;${style}">${label}</span>
+      const cls = published ? "sd-chip-out" : e.status === "ticked" ? "sd-chip-done" : "sd-chip-upcoming";
+      return `<div class="sd-row">
+        <div><div class="sd-row-title">${escapeHtml(e.name)}</div><div class="sd-row-sub">${e.type} \u00b7 ${e.stageType || "Stage"}</div></div>
+        <span class="sd-chip ${cls}">${label}</span>
       </div>`;
     };
 
-    const winRow = (w) => `<div class="result-row">
-        <span class="win-rank">${RANK_ICON[w.rank]}</span>
-        <span class="result-name">${escapeHtml(w.eventName)}</span>
-        <span class="result-meta">+${RANK_POINTS[w.rank]} pts</span>
-      </div>`;
+    const resultRow = (w, i) => `<tr>
+        <td>${i + 1}. ${escapeHtml(w.eventName)}</td>
+        <td style="text-align:center">${RANK_ICON[w.rank] || ""}</td>
+        <td style="text-align:center;font-weight:600">${RANK_LABEL[w.rank] || ""}</td>
+        <td style="text-align:center;font-weight:700">${RANK_POINTS[w.rank] || 0}</td>
+      </tr>`;
 
-    modalBody.innerHTML = `
-      <div class="poster-head arch-top" style="position:relative">
-        <button class="icon-btn" id="btnBackStudent" aria-label="Back" style="position:absolute;top:.7rem;left:.7rem;background:rgba(255,255,255,.14);color:#fff;width:2.1rem;height:2.1rem;font-size:1.05rem">&#8592;</button>
-        <button id="btnStudentLogout" style="position:absolute;top:.9rem;right:.9rem;background:none;border:none;color:rgba(255,255,255,.85);font-size:.68rem;font-weight:600;letter-spacing:.02em;padding:.3rem;cursor:pointer">Logout</button>
-        <div style="width:3.6rem;height:3.6rem;border-radius:50%;background:var(--emerald);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;margin:0 auto .55rem;border:2.5px solid var(--gold);box-shadow:0 0 16px -4px rgba(201,162,39,.65);font-family:'JetBrains Mono',monospace">${initials}</div>
-        <div class="poster-name font-display">${escapeHtml(student.name)}</div>
-        <div class="poster-code">CHEST NO. ${student.chestNo}</div>
-        <div class="poster-event">${team ? escapeHtml(team.name) : ""}${student.category ? " \u00b7 " + escapeHtml(student.category) : ""}</div>
-      </div>
-      <div class="tiraz"></div>
-      <div style="padding:0 1rem 1rem">
-        <div style="display:flex;align-items:center;justify-content:center;gap:.8rem;background:linear-gradient(135deg,var(--emerald-deep),var(--emerald));border-radius:.8rem;padding:1rem;margin:1rem 0;border:1px solid var(--gold)">
-          <div style="font-size:2rem">\u{1F3C6}</div>
+    document.getElementById("studentDashboardContent").innerHTML = `
+      <div class="sd-profile-card">
+        <div class="sd-avatar">${initials}</div>
+        <div class="sd-profile-info">
+          <p><span class="sd-label">STUDENT:</span> ${escapeHtml(student.name)}</p>
+          <p><span class="sd-label">CHEST NUMBER:</span> ${student.chestNo}</p>
+          <p><span class="sd-label">TEAM:</span> ${team ? escapeHtml(team.name) : "\u2014"}</p>
+          <p><span class="sd-label">CATEGORY:</span> ${escapeHtml(student.category)}</p>
+        </div>
+        <div class="sd-points-box">
+          <div style="font-size:2.2rem">\u{1F3C6}</div>
           <div>
-            <div style="font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--gold-light)">OVERALL POINTS</div>
-            <div style="font-size:2.1rem;font-weight:800;line-height:1;color:#FAF6EC;font-family:'JetBrains Mono',monospace">${totalPoints}</div>
+            <div class="sd-points-label">OVERALL POINTS</div>
+            <div class="sd-points-value">${totalPoints}</div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1.1rem">
-          ${statCard("\u{1F4C5}", "REGISTERED", events.length)}
-          ${statCard("\u2705", "COMPLETED", completed)}
-          ${statCard("\u{1F3C5}", "AWARDS", wins.length)}
-          ${statCard("\u2B50", "POINTS", totalPoints)}
+      </div>
+
+      <div class="sd-stats-grid">
+        ${statCard("\u{1F4C5}", "EVENTS REGISTERED", events.length)}
+        ${statCard("\u{1F3C5}", "EVENTS COMPLETED", completed)}
+        ${statCard("\u2B50", "AWARDS WON", wins.length)}
+        ${statCard("\u{1F4CA}", "TOTAL POINTS", totalPoints)}
+      </div>
+
+      <div class="sd-two-col">
+        <div class="sd-panel">
+          <div class="sd-panel-title">MY EVENTS</div>
+          <div style="display:flex;flex-direction:column;gap:.45rem">
+            ${events.length ? events.map(eventRow).join("") : `<div class="empty-note">No programmes registered yet.</div>`}
+          </div>
         </div>
-        <div class="card-title" style="margin-bottom:.5rem">\u{1F3AD} My Programmes</div>
-        <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.1rem">
-          ${events.length ? events.map(eventRow).join("") : `<div class="empty-note">No programmes registered yet.</div>`}
-        </div>
-        <div class="card-title" style="margin-bottom:.5rem">\u{1F396}\uFE0F Results &amp; Points</div>
-        <div style="display:flex;flex-direction:column;gap:.4rem">
-          ${wins.length ? wins.map(winRow).join("") : `<div class="empty-note">No published results yet.</div>`}
+        <div class="sd-panel">
+          <div class="sd-panel-title">RESULTS &amp; POINTS</div>
+          ${wins.length ? `
+          <div class="marks-table-wrap">
+            <table class="marks-table"><thead><tr><th style="text-align:left">EVENT</th><th>RANK</th><th>POSITION</th><th>POINTS</th></tr></thead>
+            <tbody>${wins.map(resultRow).join("")}</tbody></table>
+          </div>` : `<div class="empty-note">No published results yet.</div>`}
         </div>
       </div>`;
-    modalOverlay.classList.remove("hidden");
-    if (!opts || !opts.fresh) { /* came from the login form, already on the stack */ }
-    else pushScreen(closeModal); // opened straight from a saved session — needs its own back/swipe entry
-    document.getElementById("btnBackStudent").addEventListener("click", closeTopScreen);
-    document.getElementById("btnStudentLogout").addEventListener("click", () => {
-      localStorage.removeItem(STUDENT_SESSION_KEY);
-      closeTopScreen();
-    });
+
+    studentLoginScreen.classList.add("hidden");
+    studentDashboardScreen.classList.remove("hidden");
+    swapTopScreen(closeStudentDashboardScreen);
   }
 
   const navStudentDashboard = document.getElementById("navStudentDashboard");
   if (navStudentDashboard) navStudentDashboard.addEventListener("click", (e) => {
     e.preventDefault();
     closeSidebar();
-    openStudentProfile();
+    openStudentLogin();
   });
 
   // Combined result modal: shows 1st, 2nd & 3rd winners of one programme together
@@ -2129,7 +2176,6 @@
     document.getElementById("printOverlay").classList.add("hidden");
     screenStack.length = 0;
     currentAdminTab = null;
-    btnBack.classList.add("hidden");
     history.replaceState(null, "", location.pathname + location.search);
     window.scrollTo(0, 0);
   }
@@ -3177,7 +3223,7 @@
           return `
           <div class="history-row">
             <div style="display:flex;align-items:center;gap:.6rem">
-              <div class="rank-circle rank-other" style="width:1.7rem;height:1.7rem;font-size:.75rem">${i + 1}</div>
+              <div style="width:1.7rem;height:1.7rem;font-size:.75rem;flex-shrink:0;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:700">${i + 1}</div>
               <div>
                 <div class="history-row-title">${escapeHtml(row.student.name)} ${isVocal ? '<span style="color:var(--gold-light);font-weight:700;font-size:.68rem">\u2605 VOCAL</span>' : ""}${isPen ? '<span style="color:var(--emerald-light);font-weight:700;font-size:.68rem">\u2605 PEN</span>' : ""}</div>
                 <div class="muted" style="font-size:.68rem">${row.student.chestNo} \u00b7 ${row.student.category}</div>
@@ -3764,6 +3810,190 @@
 
   /* ---- Export tab ---- */
   let pickEventKind = null;
+  /* Fillable Valuation Sheet & Green Room Sign, used from inside the Green
+     Room tab's card flow (no separate top-level tab). Valuation Sheet is for
+     blind judging \u2014 only the Code Letter is shown, never chest no/name, so
+     judges can't identify who they're marking. Green Room Sign shows chest
+     no + name (auto-filled from registered participants) so students can
+     sign in and be assigned a code letter before judging. Drafts save to
+     localStorage per programme so nothing is lost on reload. */
+  const PS_MAX_ROWS = 9;
+  const PS_MARK_COLS = 5;
+
+  function psLocalKey(type, eventId) { return `meelad_printsheet_${type}_${eventId}`; }
+  function psLoadDraft(type, eventId) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(psLocalKey(type, eventId)));
+      if (saved) return saved;
+    } catch {}
+    return type === "valuation"
+      ? { stageNo: "", rows: Array.from({ length: PS_MAX_ROWS }, () => ({ codeLetter: "", marks: Array(PS_MARK_COLS).fill(""), total: "" })) }
+      : { rows: {}, extraRows: [] };
+  }
+  function psSaveDraft(type, eventId, draft) {
+    try { localStorage.setItem(psLocalKey(type, eventId), JSON.stringify(draft)); } catch {}
+  }
+
+  /* ===== Valuation Sheet: blind judging, Code Letter + 4 marks + total out of 100 ===== */
+  function renderValuationSheetInline(wrap, event, eventId) {
+    const draft = psLoadDraft("valuation", eventId);
+    draft.rows = draft.rows || [];
+    const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+    const rowHtml = (row, i) => `
+      <tr data-row="${i}">
+        <td class="p0"><input class="input ps-code" data-idx="${i}" value="${escapeAttr(row.codeLetter)}" style="width:100%;text-align:center;text-transform:uppercase" maxlength="3" /></td>
+        ${row.marks.map((m, mi) => `<td class="p0"><input type="number" class="input ps-mark" data-idx="${i}" data-mi="${mi}" value="${escapeAttr(m)}" style="width:100%;text-align:center" /></td>`).join("")}
+        <td class="p0"><input class="input ps-total" data-idx="${i}" value="${escapeAttr(row.total)}" style="width:100%;text-align:center;font-weight:700" /></td>
+      </tr>`;
+
+    wrap.innerHTML = `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+          <div>
+            <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
+            <div style="font-size:1.15rem;font-weight:700">Valuation Sheet</div>
+          </div>
+          <div class="muted" style="font-size:.68rem;white-space:nowrap">${dateStr}</div>
+        </div>
+        <hr class="print-hr" style="margin:.4rem 0 .6rem" />
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:.4rem;font-size:.8rem;margin-bottom:.6rem">
+          Stage No: <input id="psStageNo" class="input" value="${escapeAttr(draft.stageNo || "")}" style="width:5rem;text-align:center" />
+        </div>
+        <div class="marks-table-wrap">
+          <table class="marks-table" id="psValTable" style="table-layout:fixed">
+            <colgroup><col style="width:3.2rem" /></colgroup>
+            <thead>
+              <tr>
+                <th colspan="2">${escapeHtml(event.name)}</th>
+                <th colspan="${PS_MARK_COLS - 1}">${escapeHtml(event.category)}</th>
+                <th>${escapeHtml(event.type || "Individual")}</th>
+              </tr>
+              <tr>
+                <th>Code Letter</th>
+                <th colspan="${PS_MARK_COLS}">Marks</th>
+                <th>Mark out of 100</th>
+              </tr>
+            </thead>
+            <tbody>${draft.rows.map(rowHtml).join("")}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
+          <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:1.25rem;font-size:.7rem" class="muted">
+          <div>Judge's Name and Signature :</div>
+          <div>Judging Comments:</div>
+        </div>
+        <div style="border-bottom:1px solid var(--border);margin-top:2rem;width:33%"></div>
+      </div>`;
+
+    document.getElementById("psStageNo").addEventListener("input", (e) => { draft.stageNo = e.target.value; psSaveDraft("valuation", eventId, draft); });
+    wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].codeLetter = inp.value.toUpperCase(); psSaveDraft("valuation", eventId, draft); }));
+    wrap.querySelectorAll(".ps-mark").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].marks[inp.dataset.mi] = inp.value; psSaveDraft("valuation", eventId, draft); }));
+    wrap.querySelectorAll(".ps-total").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].total = inp.value; psSaveDraft("valuation", eventId, draft); }));
+
+    document.getElementById("btnPsPrint").addEventListener("click", () => {
+      document.getElementById("printTitle").textContent = "Valuation Sheet";
+      document.getElementById("printContent").innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+          <div>
+            <div style="font-size:.8rem;font-weight:600">${escapeHtml(state.hero.title)}</div>
+            <div style="font-size:1.35rem;font-weight:700">Valuation Sheet</div>
+          </div>
+          <div style="font-size:.75rem">${dateStr}</div>
+        </div>
+        <hr class="print-hr" />
+        <div style="text-align:right;font-size:.85rem;margin-bottom:.5rem">Stage No: <b>${escapeHtml(draft.stageNo || "")}</b></div>
+        <table class="schedule-print-table" style="table-layout:fixed">
+          <thead>
+            <tr><th colspan="2">${escapeHtml(event.name)}</th><th colspan="${PS_MARK_COLS - 1}">${escapeHtml(event.category)}</th><th>${escapeHtml(event.type || "Individual")}</th></tr>
+            <tr><th>Code Letter</th><th colspan="${PS_MARK_COLS}">Marks</th><th>Mark out of 100</th></tr>
+          </thead>
+          <tbody>${draft.rows.map((row) => `<tr><td>${escapeHtml(row.codeLetter)}</td>${row.marks.map((m) => `<td>${escapeHtml(String(m || ""))}</td>`).join("")}<td><b>${escapeHtml(String(row.total || ""))}</b></td></tr>`).join("")}</tbody>
+        </table>
+        <div style="margin-top:2.5rem;display:flex;justify-content:space-between;font-size:.85rem">
+          <div>Judge's Name and Signature :</div>
+          <div>Judging Comments:</div>
+        </div>
+        <div style="border-bottom:1px solid #333;margin-top:2rem;width:33%"></div>`;
+      document.getElementById("printOverlay").classList.remove("hidden");
+      pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+    });
+  }
+
+  /* ===== Green Room Sign: chest no + name auto, code letter manual ===== */
+  function renderGreenRoomSheetInline(wrap, event, eventId, participants) {
+    const draft = psLoadDraft("greenroom", eventId);
+    draft.rows = draft.rows || {}; draft.extraRows = draft.extraRows || [];
+
+    function rowHtml(id, chestNo, name, isExtra, idx) {
+      const r = draft.rows[id] || {};
+      return `<tr data-row="${id}">
+        <td>${idx}</td>
+        <td class="p0">${isExtra ? `<input class="input ps-chest" data-id="${id}" value="${escapeAttr(chestNo)}" style="width:100%;text-align:center" />` : chestNo}</td>
+        <td style="text-align:left">${isExtra ? `<input class="input ps-name" data-id="${id}" value="${escapeAttr(name)}" style="width:100%" />` : escapeHtml(name)}</td>
+        <td><input class="input ps-code" data-id="${id}" value="${escapeAttr(r.codeLetter || "")}" style="width:4rem;text-align:center;text-transform:uppercase" maxlength="3" /></td>
+        <td></td>
+      </tr>`;
+    }
+    const baseRows = participants.map((s, i) => rowHtml(s.id, s.chestNo, s.name, false, i + 1));
+    const extraRows = draft.extraRows.map((id, i) => {
+      const r = draft.rows[id] || {};
+      return rowHtml(id, r.chestNo || "", r.name || "", true, participants.length + i + 1);
+    });
+
+    wrap.innerHTML = `
+      <div class="card">
+        <div style="text-align:center;font-weight:700;letter-spacing:.04em;font-size:1rem;margin-bottom:.15rem">GREEN ROOM SIGN</div>
+        <div class="muted" style="text-align:center;font-size:.78rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
+        <div class="marks-table-wrap">
+          <table class="marks-table" id="psGrTable" style="table-layout:fixed">
+            <colgroup><col style="width:2.6rem" /><col style="width:4rem" /></colgroup>
+            <thead><tr><th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Sign</th></tr></thead>
+            <tbody>${baseRows.join("") + extraRows.join("")}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
+          <button class="btn btn-ghost" id="btnPsAddRow" style="width:auto;padding:.5rem .9rem">+ Add Row</button>
+          <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
+        </div>
+      </div>`;
+
+    function saveField(id, field, value) {
+      draft.rows[id] = draft.rows[id] || {};
+      draft.rows[id][field] = value;
+      psSaveDraft("greenroom", eventId, draft);
+    }
+    wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "codeLetter", inp.value.toUpperCase())));
+    wrap.querySelectorAll(".ps-chest").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "chestNo", inp.value)));
+    wrap.querySelectorAll(".ps-name").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "name", inp.value)));
+
+    document.getElementById("btnPsAddRow").addEventListener("click", () => {
+      const id = "extra-" + uid();
+      draft.extraRows.push(id);
+      psSaveDraft("greenroom", eventId, draft);
+      renderGreenRoomSheetInline(wrap, event, eventId, participants);
+    });
+
+    document.getElementById("btnPsPrint").addEventListener("click", () => {
+      const printBaseRows = participants.map((s, i) => `<tr><td>${i + 1}</td><td>${s.chestNo}</td><td style="text-align:left">${escapeHtml(s.name)}</td><td>${escapeHtml((draft.rows[s.id] || {}).codeLetter || "")}</td><td></td></tr>`);
+      const printExtraRows = draft.extraRows.map((id, i) => {
+        const r = draft.rows[id] || {};
+        return `<tr><td>${participants.length + i + 1}</td><td>${escapeHtml(r.chestNo || "")}</td><td style="text-align:left">${escapeHtml(r.name || "")}</td><td>${escapeHtml(r.codeLetter || "")}</td><td></td></tr>`;
+      });
+      document.getElementById("printTitle").textContent = "Green Room Sign";
+      document.getElementById("printContent").innerHTML = `
+        <div class="print-heading" style="text-align:center">GREEN ROOM SIGN</div>
+        <div class="muted" style="text-align:center;font-size:.85rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
+        <table class="schedule-print-table"><thead><tr><th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Sign</th></tr></thead>
+          <tbody>${printBaseRows.join("") + printExtraRows.join("")}</tbody>
+        </table>`;
+      document.getElementById("printOverlay").classList.remove("hidden");
+      pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+    });
+  }
+
   function renderExportTab() {
     const cards = [
       { id: "Call List", icon: "\u{1F4CB}" }, { id: "Valuation Sheet", icon: "\u{1F3C5}" },
@@ -3783,6 +4013,7 @@
         ${cards.map((c) => `<button class="export-card" data-kind="${c.id}"><div class="ic">${c.icon}</div><div class="t">${c.id}</div><div class="s">Tap to generate</div></button>`).join("")}
       </div>
       <div id="pickWrap"></div>
+      <div id="sheetWrap"></div>
       <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Auto-Checklist Tracker</div>
       <div id="checklistWrap"></div>
       <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Sheet History</div>
@@ -3802,6 +4033,7 @@
     renderPrintHistoryList();
     document.querySelectorAll(".export-card").forEach((b) => b.addEventListener("click", () => {
       pickEventKind = b.dataset.kind;
+      document.getElementById("sheetWrap").innerHTML = "";
       document.querySelectorAll(".export-card").forEach((c) => c.classList.toggle("active", c === b)); // bug fix: highlight the selected card
       document.getElementById("pickWrap").innerHTML = `
         <div class="card">
@@ -3817,7 +4049,20 @@
       document.getElementById("btnGenerate").addEventListener("click", () => {
         const eid = document.getElementById("pickEventSel").value;
         if (!eid) return showToast("Choose a programme first");
-        openPrintSheet(pickEventKind, eid);
+        const event = state.events.find((e) => e.id === eid);
+        const sheetWrap = document.getElementById("sheetWrap");
+        if (pickEventKind === "Valuation Sheet") {
+          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
+          renderValuationSheetInline(sheetWrap, event, eid);
+          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (pickEventKind === "Green Room Sign") {
+          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
+          const participants = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+          renderGreenRoomSheetInline(sheetWrap, event, eid, participants);
+          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          openPrintSheet(pickEventKind, eid);
+        }
       });
     }));
     document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);
@@ -3904,12 +4149,7 @@
             if (!publishEventResult(id)) { showToast("Enter at least one mark before publishing"); return; }
             renderLeaderboard(); renderResultsList(); renderTicker();
             showToast(`${ev.name} result published \u2014 now live on the home page`);
-            goFullyHome();
-            showEventOrResultSection("results");
-            setTimeout(() => {
-              const el = document.getElementById("results");
-              if (el) el.scrollIntoView({ behavior: "smooth" });
-            }, 60);
+            renderList();
           } else if (action === "unpublish") {
             unpublishEventResult(id);
             renderLeaderboard(); renderResultsList(); renderTicker();
