@@ -30,7 +30,16 @@
         if (json && json.success && json.data && json.data.url) return json.data.url;
         throw new Error("ImgBB upload failed");
       })
-      .catch(() => dataUrl); // if ImgBB is unreachable, fall back to storing the image directly rather than losing the upload
+      .catch((err) => {
+        // If ImgBB is unreachable/misconfigured, fall back to storing the image
+        // directly in Firebase rather than losing the upload — but this is a
+        // real problem worth flagging: several full-size photos stored this
+        // way can bloat the single festData write past what a slow venue
+        // connection can push through in one go, and past saves silently fail.
+        console.error("ImgBB upload failed, storing photo directly in Firebase instead:", err);
+        if (typeof showToast === "function") showToast("\u26A0\uFE0F Photo host unavailable \u2014 saved directly (larger, slower). Check the ImgBB key if this keeps happening.");
+        return dataUrl;
+      });
   }
 
   /* ---------------- data layer ---------------- */
@@ -311,10 +320,19 @@
     // through JSON strips every undefined (turning it into null / omitting
     // it) so this can never block a save again, no matter which field it is.
     const cleanState = JSON.parse(JSON.stringify(state));
-    dataRef.set(cleanState).catch((err) => {
-      console.error("Firebase write failed:", err);
-      showToast("Could not save to Firebase \u2014 check your connection");
-    });
+    const attempt = (retriesLeft) => {
+      dataRef.set(cleanState).catch((err) => {
+        console.error("Firebase write failed:", err);
+        // Venue wifi/mobile data is often flaky \u2014 retry once after a short
+        // pause before telling the admin it actually failed, since a single
+        // dropped write used to just silently discard whatever was just
+        // added/edited (it would only resurface as "changes disappeared"
+        // on the next reload, with no error ever shown at the time).
+        if (retriesLeft > 0) { suppressNextPersist = true; setTimeout(() => attempt(retriesLeft - 1), 1500); return; }
+        showToast("Could not save to Firebase \u2014 check your connection and try again");
+      });
+    };
+    attempt(1);
   }
 
   /* ---------------- mark-entry helpers ---------------- */
@@ -2527,8 +2545,8 @@
       const file = document.getElementById("heroPhotoFile").files[0];
       if (!file) return showToast("Choose a photo first");
       showToast("Uploading\u2026");
-      compressImageFile(file, 1400, 0.75).then((dataUrl) => {
-        state.hero.photoUrl = dataUrl;
+      compressImageFile(file, 1400, 0.75).then((dataUrl) => uploadToImgBB(dataUrl)).then((finalUrl) => {
+        state.hero.photoUrl = finalUrl;
         persist(); renderHero(); renderPosterTab();
         showToast("Home page photo updated");
       }).catch(() => showToast("Could not process that photo"));
@@ -2544,8 +2562,8 @@
       const file = document.getElementById("headerPhotoFile").files[0];
       if (!file) return showToast("Choose a photo first");
       showToast("Uploading\u2026");
-      compressImageFile(file, 900, 0.7).then((dataUrl) => {
-        state.hero.headerPhotoUrl = dataUrl;
+      compressImageFile(file, 900, 0.7).then((dataUrl) => uploadToImgBB(dataUrl)).then((finalUrl) => {
+        state.hero.headerPhotoUrl = finalUrl;
         persist(); renderHero(); renderPosterTab();
         showToast("Header background photo updated");
       }).catch(() => showToast("Could not process that photo"));
@@ -2587,7 +2605,7 @@
         const textColor = document.getElementById("ntFg").value;
         if (!file) return showToast("Choose a poster image first");
         showToast("Compressing template image\u2026");
-        compressImageFile(file, 1350, 0.82).then((imageUrl) => {
+        compressImageFile(file, 1350, 0.82).then((dataUrl) => uploadToImgBB(dataUrl)).then((imageUrl) => {
           state.customTemplates.push({ id: "custom-" + uid(), label: name, imageUrl, textY, textColor });
           persist(); showToast("Template added"); renderPosterTab();
         }).catch(() => showToast("Could not process that image"));
@@ -2620,7 +2638,7 @@
         const file = document.getElementById("rtImage").files[0];
         if (!file) return showToast("Choose a result frame image first");
         showToast("Compressing template image\u2026");
-        compressImageFile(file, 1080, 0.82).then((imageUrl) => {
+        compressImageFile(file, 1080, 0.82).then((dataUrl) => uploadToImgBB(dataUrl)).then((imageUrl) => {
           state.resultTemplates.push({ id: "result-" + uid(), imageUrl });
           persist(); showToast("Result template added"); renderPosterTab();
         }).catch(() => showToast("Could not process that image"));
@@ -2869,7 +2887,7 @@
       const file = mtInput.files[0];
       if (!file) return;
       showToast("Compressing template image\u2026");
-      compressImageFile(file, 1013, 0.85).then((imageUrl) => {
+      compressImageFile(file, 1013, 0.85).then((dataUrl) => uploadToImgBB(dataUrl)).then((imageUrl) => {
         state.masterCardTemplate = { imageUrl, placements: defaultCardPlacements() };
         persist(); showToast("Master template uploaded"); renderChestNumberTab();
       }).catch(() => showToast("Could not process that image"));
@@ -3775,8 +3793,8 @@
       if (!file) return showToast("Choose a PNG frame first");
       if (file.type !== "image/png") return showToast("Please choose a PNG file (needs a transparent centre)");
       showToast("Saving frame\u2026");
-      compressImagePngFile(file, 1400).then((dataUrl) => {
-        state.hero.galleryFrameUrl = dataUrl;
+      compressImagePngFile(file, 1400).then((dataUrl) => uploadToImgBB(dataUrl)).then((finalUrl) => {
+        state.hero.galleryFrameUrl = finalUrl;
         persist(); renderGalleryTab();
         showToast("Frame saved \u2014 new photos will use it");
       }).catch(() => showToast("Could not process that frame image"));
