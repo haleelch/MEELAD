@@ -353,7 +353,6 @@
 
   <!-- Top bar -->
   <header class="topbar no-print">
-    <button id="btnBack" class="icon-btn hidden" aria-label="Back">&#8592;</button>
     <button id="btnMenu" class="icon-btn" aria-label="Menu">&#9776;</button>
     <div class="brand" id="brandHome">
       <div class="brand-title" id="brandTitle" style="font-size:1.15rem"></div>
@@ -411,7 +410,7 @@
     </section>
 
     <!-- STATS (at-a-glance card) -->
-    <section class="stats-section">
+    <section class="stats-section" id="events">
       <div class="stat-cards-grid" id="statBoxWrap">
         <div class="stat-card stat-red" id="statBoxParticipants">
           <div class="stat-card-body">
@@ -446,18 +445,23 @@
     </section>
 
     <!-- STANDINGS -->
-    <section id="standings" class="section hidden">
-      <div class="lb-card">
-        <div class="lb-card-head">
-          <h2 class="lb-title">Team Points</h2>
-          <span class="lb-badge">&#127942; Leaderboard</span>
-        </div>
-        <div id="leaderboard" class="team-list"></div>
+    <section id="standings" class="section">
+      <div class="lr-header">
+        <svg class="lr-live-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        <span class="lr-live">LIVE</span>&nbsp;RESULTS
       </div>
+      <div id="lrTopScorer"></div>
+      <div class="lr-board">
+        <div class="lr-board-header"><div>RANK</div><div>TEAM</div><div>PROGRESS</div><div style="text-align:right">POINTS</div></div>
+        <div id="leaderboard"></div>
+      </div>
+      <div class="lr-stats" id="lrStats"></div>
     </section>
 
     <!-- RESULTS SEARCH -->
-    <section id="results" class="section hidden">
+    <section id="results" class="section">
       <div class="section-heading"><div class="heading-badge">&#128269;</div><div><div class="font-display heading-title">Result Download Options</div><div class="heading-sub">Find results by category, programme or name</div></div></div>
 
       <div class="tabgroup" id="genderTabs">
@@ -482,44 +486,14 @@
     </section>
 
     <!-- GALLERY -->
-    <section id="gallery" class="section hidden">
+    <section id="gallery" class="section">
       <div class="section-heading"><div class="heading-badge">&#128248;</div><div><div class="font-display heading-title">Event Gallery</div><div class="heading-sub">Photos from the venue</div></div></div>
       <div id="galleryGrid" class="gallery-grid"></div>
       <div id="galleryPagination" class="rf-pagination"></div>
     </section>
 
-    <!-- SCHEDULE (public, read-only) -->
-    <section id="schedulePage" class="section hidden">
-      <div class="section-heading"><div class="heading-badge">&#128197;</div><div><div class="font-display heading-title">Schedule</div><div class="heading-sub">Stage-wise programme timings</div></div></div>
-      <div id="publicScheduleWrap"></div>
-    </section>
-
     <footer class="footer no-print" id="siteFooter"></footer>
   </main>
-
-  <!-- Bottom navigation -->
-  <nav id="bottomNav" class="bottom-nav no-print">
-    <a href="#" class="nav-item active" data-page="top">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
-    </a>
-    <a href="#" class="nav-item" data-page="standings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
-      <span>Result</span>
-    </a>
-    <a href="#" class="nav-item" data-page="results">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span>Event</span>
-    </a>
-    <a href="#" class="nav-item" data-page="schedulePage">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span>Schedule</span>
-    </a>
-    <a href="#" class="nav-item" id="navProfileBottom">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Profile</span>
-    </a>
-  </nav>
 
   <!-- Victory poster / lightbox modal -->
   <div id="modalOverlay" class="modal-overlay hidden">
@@ -572,6 +546,34 @@
     <div id="adminContent" class="admin-content"></div>
   </div>
 
+  <!-- Participant login (full page, same pattern as Admin login) -->
+  <div id="studentLoginScreen" class="admin-screen hidden">
+    <div class="admin-login-card">
+      <div class="admin-login-badge">&#127891;</div>
+      <div class="font-display" style="font-size:1.4rem;color:var(--emerald-deep)">My Profile</div>
+      <div class="muted" style="font-size:.75rem;margin-bottom:1rem">Enter your chest number to view your programmes &amp; results</div>
+      <form id="studentLoginForm" autocomplete="off" onsubmit="return false">
+        <input id="sdChestInput" class="input" placeholder="Chest Number" inputmode="numeric" autocomplete="off" style="margin-bottom:.5rem;text-align:center;font-family:'JetBrains Mono',monospace;letter-spacing:.05em" />
+        <div id="sdLoginError" class="error hidden"></div>
+        <button id="btnStudentLogin" type="button" class="btn btn-primary" style="width:100%">View My Profile</button>
+        <button id="btnStudentLoginCancel" type="button" class="link-btn">Cancel</button>
+      </form>
+      <div class="muted" style="text-align:center;font-size:.68rem;margin-top:.5rem">Your chest number is on your registration card</div>
+    </div>
+  </div>
+
+  <!-- Participant dashboard (full page) -->
+  <div id="studentDashboardScreen" class="admin-screen hidden">
+    <div class="admin-topbar">
+      <button id="btnStudentDashBack" class="icon-btn" aria-label="Back">&#8592;</button>
+      <div class="font-display admin-topbar-title">&#127891; My Profile</div>
+      <button id="btnStudentDashClose" class="btn btn-ghost" style="width:auto;padding:.4rem .7rem;font-size:.72rem">Logout</button>
+    </div>
+    <div id="studentDashboardContent" class="admin-content"></div>
+  </div>
+
+
+
   <!-- Admin portrait menu (vertical, same design as guest sidebar) -->
   <div id="adminSidebarOverlay" class="overlay hidden"></div>
   <nav id="adminSidebar" class="sidebar no-print">
@@ -613,7 +615,35 @@
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+  <!-- Bottom nav (guest home page only) -->
+  <nav id="homeBottomNav" class="bottom-nav no-print">
+    <a href="#top" class="nav-item" data-bn="top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </a>
+    <a href="#standings" class="nav-item" data-bn="standings">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
+      Points
+    </a>
+    <a href="#results" class="nav-item" data-bn="results">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Result
+    </a>
+    <a href="#events" class="nav-item" data-bn="events">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Events
+    </a>
+    <a href="#schedule" class="nav-item hidden" data-bn="schedule" id="bnSchedule">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Schedule
+    </a>
+    <a href="#" class="nav-item" id="bnProfile" data-bn="profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+  </nav>
+
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
