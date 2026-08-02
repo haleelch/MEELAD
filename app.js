@@ -679,6 +679,24 @@
     });
   });
 
+  // Bottom nav (Home / Points / Result / Events / Schedule / Profile). Unlike
+  // the small stat-card links right above Standings, this can be tapped from
+  // anywhere on the page (e.g. while down at Gallery), so every item needs an
+  // actual scroll, not just the section-swap toggle used higher up.
+  const bnSchedule = document.getElementById("bnSchedule");
+  if (bnSchedule && document.getElementById("schedule")) bnSchedule.classList.remove("hidden"); // only show if a Schedule section actually exists
+  document.querySelectorAll("#homeBottomNav .nav-item").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    const which = a.dataset.bn;
+    if (which === "profile") { openStudentLogin(); return; }
+    if (which === "standings" || which === "results") showEventOrResultSection(which);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(which);
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    });
+    document.querySelectorAll("#homeBottomNav .nav-item").forEach((n) => n.classList.toggle("active", n === a));
+  }));
+
   /* ---------------- live ticker ---------------- */
   function renderTicker() {
     const live = state.events.filter((e) => e.status === "ticked");

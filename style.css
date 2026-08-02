@@ -197,6 +197,16 @@ a.stat-card:hover{transform:translateY(-2px);}
    underline/badge/pattern in BOTH themes — same pattern the app already
    uses for --explore-btn-color. Card background/text still follow the
    theme (dark navy-black in dark mode, white-cream in light mode). */
+/* ---- Bottom nav (guest home page) ---- */
+body{padding-bottom:4.2rem;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:.5rem 0 calc(.5rem + env(safe-area-inset-bottom));z-index:60;}
+.bottom-nav .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);text-decoration:none;flex:1;}
+.bottom-nav .nav-item.active{color:#2563EB;}
+.bottom-nav .nav-item svg{width:22px;height:22px;}
+.bottom-nav .nav-item.hidden{display:none;}
+/* Hide the bottom nav whenever a full-page/modal screen is open on top of the home page */
+body.no-scroll .bottom-nav{display:none;}
+
 /* ---- Live Results (standings section) \u2014 new design ---- */
 .lr-header{display:flex;align-items:center;gap:8px;font-size:1.35rem;font-weight:700;margin-bottom:1rem;}
 .lr-header .lr-live{color:#2563EB;}
