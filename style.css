@@ -56,13 +56,19 @@
 body.no-scroll{overflow:hidden;}
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'Poppins',sans-serif;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Poppins',sans-serif;padding-bottom:4.6rem;}
 .font-display{font-family:'Amiri',serif;}
 .hidden{display:none !important;}
 .muted{color:var(--muted);}
 a{text-decoration:none;color:inherit;}
 button{font-family:inherit;cursor:pointer;border:none;}
 input,select{font-family:inherit;}
+
+/* ---- bottom navigation ---- */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:.5rem 0 calc(.5rem + env(safe-area-inset-bottom));z-index:40;box-shadow:0 -2px 12px rgba(0,0,0,.08);}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:.2rem;font-size:.65rem;font-weight:600;color:var(--muted);flex:1;padding:.15rem 0;}
+.nav-item svg{width:1.35rem;height:1.35rem;}
+.nav-item.active{color:var(--emerald-light);}
 
 /* ---- shapes ---- */
 .arch-top{border-radius:50% 50% 0 0 / 26% 26% 0 0;}
@@ -197,49 +203,43 @@ a.stat-card:hover{transform:translateY(-2px);}
    underline/badge/pattern in BOTH themes — same pattern the app already
    uses for --explore-btn-color. Card background/text still follow the
    theme (dark navy-black in dark mode, white-cream in light mode). */
-/* ---- Bottom nav (guest home page) ---- */
-body{padding-bottom:4.2rem;}
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:.5rem 0 calc(.5rem + env(safe-area-inset-bottom));z-index:60;}
-.bottom-nav .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);text-decoration:none;flex:1;}
-.bottom-nav .nav-item.active{color:#2563EB;}
-.bottom-nav .nav-item svg{width:22px;height:22px;}
-.bottom-nav .nav-item.hidden{display:none;}
-/* Hide the bottom nav whenever a full-page/modal screen is open on top of the home page */
-body.no-scroll .bottom-nav{display:none;}
-
-/* ---- Live Results (standings section) \u2014 new design ---- */
-.lr-header{display:flex;align-items:center;gap:8px;font-size:1.35rem;font-weight:700;margin-bottom:1rem;}
-.lr-header .lr-live{color:#2563EB;}
-.lr-header .lr-live-icon{color:#2563EB;flex-shrink:0;}
-.lr-top-card{background:linear-gradient(135deg,#1E3A8A 0%,#2563EB 100%);border-radius:16px;padding:20px;display:flex;align-items:center;gap:16px;color:#fff;margin-bottom:16px;position:relative;overflow:hidden;}
-.lr-top-card svg.lr-trophy{width:56px;height:56px;flex-shrink:0;}
-.lr-top-info .lr-label{font-size:12px;color:#FBBF24;font-weight:700;letter-spacing:.03em;display:flex;align-items:center;gap:4px;}
-.lr-top-info .lr-team{font-size:22px;font-weight:800;margin:4px 0;}
-.lr-top-info .lr-points{font-size:18px;}
-.lr-top-info .lr-points b{color:#FBBF24;font-weight:800;font-size:26px;}
-.lr-board{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:8px;margin-bottom:16px;}
-.lr-board-header{display:grid;grid-template-columns:44px 76px 1fr 60px;padding:10px 12px;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.03em;}
-.lr-board-row{display:grid;grid-template-columns:44px 76px 1fr 60px;padding:13px 12px;align-items:center;border-bottom:1px solid var(--border);}
-.lr-board-row:last-child{border-bottom:none;}
-.lr-rank{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--surface2);font-weight:700;font-size:13px;}
-.lr-rank.gold{background:#FEF3C7;color:#92400E;}
-.lr-rank.silver{background:#E5E7EB;color:#374151;}
-.lr-rank.bronze{background:#FED7AA;color:#9A3412;}
-.lr-team-name{font-weight:700;font-size:.92rem;color:var(--text);}
-.lr-progress-bar{height:8px;background:var(--surface2);border-radius:10px;overflow:hidden;}
-.lr-progress-fill{height:100%;background:#2563EB;border-radius:10px;transition:width .4s ease;}
-.lr-points-cell{text-align:right;}
-.lr-points-cell .lr-num{font-size:17px;font-weight:700;color:#2563EB;}
-.lr-points-cell .lr-txt{font-size:10px;color:var(--muted);}
-.lr-stats{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.1rem;display:flex;justify-content:space-around;}
-.lr-stat-item{text-align:center;}
-.lr-stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;}
-.lr-stat-icon.blue{background:#DBEAFE;color:#2563EB;}
-.lr-stat-icon.green{background:#D1FAE5;color:#059669;}
-.lr-stat-label{font-size:11px;color:var(--muted);}
-.lr-stat-value{font-size:16px;font-weight:700;}
-.lr-stat-value.blue{color:#2563EB;}
-.lr-stat-value.green{color:#059669;}
+.lb-card{position:relative;overflow:hidden;border-radius:1.1rem;padding:1.3rem 1.15rem 1.5rem;
+  background:linear-gradient(165deg,var(--surface) 0%,var(--bg) 100%);
+  border:1px solid rgba(201,162,39,.4);
+  box-shadow:0 0 0 1px rgba(201,162,39,.08) inset,0 22px 44px -22px rgba(0,0,0,.55),0 0 34px -12px rgba(201,162,39,.3);
+}
+[data-theme="light"] .lb-card{box-shadow:0 0 0 1px rgba(201,162,39,.12) inset,0 14px 30px -18px rgba(17,24,39,.18),0 0 22px -10px rgba(201,162,39,.25);}
+.lb-card::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.06;
+  background-image:repeating-linear-gradient(45deg,#C9A227 0 1px,transparent 1px 16px),repeating-linear-gradient(-45deg,#C9A227 0 1px,transparent 1px 16px);}
+[data-theme="light"] .lb-card::before{opacity:.05;}
+.lb-card-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:1.15rem;flex-wrap:wrap;}
+.lb-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--text);margin:0;position:relative;display:inline-block;padding-bottom:.45rem;letter-spacing:.02em;}
+.lb-title::after{content:"";position:absolute;left:0;bottom:0;width:2.75rem;height:3px;border-radius:2px;background:linear-gradient(90deg,#C9A227,#F0D879);}
+.lb-badge{position:relative;display:flex;align-items:center;gap:.4rem;font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#C9A227;border:1.5px solid #C9A227;padding:.42rem .8rem;border-radius:999px;background:rgba(201,162,39,.08);white-space:nowrap;}
+[data-theme="light"] .lb-badge{background:#C9A227;color:#fff;}
+.team-list{position:relative;border-radius:.85rem;overflow:hidden;background:rgba(255,255,255,.03);border:1px solid rgba(201,162,39,.18);backdrop-filter:blur(6px);}
+[data-theme="light"] .team-list{background:rgba(255,255,255,.55);border-color:rgba(201,162,39,.25);}
+.team-row{min-height:4.7rem;display:flex;align-items:center;justify-content:space-between;padding:0 1rem;border-bottom:1px solid rgba(201,162,39,.14);}
+.team-row:last-child{border-bottom:none;}
+.rank-wrap{display:flex;align-items:center;gap:0;}
+.rank-circle{width:2.4rem;height:2.4rem;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;border:2px solid;font-family:'JetBrains Mono',monospace;}
+.rank-circle.rank1{background:rgba(245,179,1,.16);color:#F5B301;border-color:#F5B301;box-shadow:0 0 14px -4px rgba(245,179,1,.7);}
+.rank-circle.rank2{background:rgba(37,99,235,.16);color:#3B82F6;border-color:#3B82F6;box-shadow:0 0 14px -4px rgba(37,99,235,.6);}
+.rank-circle.rank3{background:rgba(124,58,237,.16);color:#8B5CF6;border-color:#8B5CF6;box-shadow:0 0 14px -4px rgba(124,58,237,.6);}
+.rank-circle.rank-other{background:var(--surface2);color:var(--muted);border-color:var(--border);}
+.team-divider{width:1px;height:2.5rem;background:rgba(201,162,39,.25);margin:0 1rem;}
+.team-info h3{font-size:.98rem;margin-bottom:.35rem;font-weight:600;color:var(--text);}
+.team-bar-track{width:100%;max-width:9rem;height:.4rem;border-radius:1rem;background:rgba(255,255,255,.08);overflow:hidden;}
+[data-theme="light"] .team-bar-track{background:rgba(17,24,39,.08);}
+.team-bar-fill{height:100%;border-radius:1rem;transition:width .4s ease;}
+.points-wrap{padding:.6rem 0;}
+.points{min-width:5rem;text-align:center;padding:.55rem .8rem;border-radius:.6rem;border:1.5px solid;}
+.points strong{display:block;font-size:1.25rem;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.points small{font-size:.58rem;font-weight:600;letter-spacing:.05em;}
+.points-one{color:#F5B301;background:rgba(245,179,1,.12);border-color:#F5B301;}
+.points-two{color:#3B82F6;background:rgba(37,99,235,.12);border-color:#3B82F6;}
+.points-three{color:#8B5CF6;background:rgba(124,58,237,.12);border-color:#8B5CF6;}
+.points-other{color:var(--home-primary);background:var(--home-accent-light);border-color:var(--border);}
 
 /* ---- results portal ---- */
 .tabgroup{display:flex;gap:0;margin-bottom:1rem;background:var(--surface2);border-radius:.65rem;padding:4px;}
@@ -317,33 +317,6 @@ body.no-scroll .bottom-nav{display:none;}
 .ic-teal{background:rgba(45,180,170,.35);}
 .atab.active{background:var(--emerald-deep);color:var(--gold-light);}
 .admin-content{max-width:700px;margin:0 auto;padding:1.25rem;}
-
-/* ---- Participant Dashboard ---- */
-.sd-profile-card{background:var(--surface);border:1px solid var(--border);border-radius:1rem;padding:1.25rem;margin-bottom:1rem;display:flex;flex-wrap:wrap;align-items:center;gap:1.25rem;}
-.sd-avatar{width:4.2rem;height:4.2rem;border-radius:50%;background:var(--emerald);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.35rem;flex-shrink:0;border:2.5px solid var(--gold);font-family:'JetBrains Mono',monospace;}
-.sd-profile-info{flex:1;min-width:10rem;}
-.sd-profile-info p{font-size:.82rem;margin:.2rem 0;color:var(--text);}
-.sd-label{color:var(--gold-light);font-weight:700;font-size:.72rem;letter-spacing:.02em;margin-right:.3rem;}
-.sd-points-box{display:flex;align-items:center;gap:.75rem;background:var(--surface2);border:1px solid var(--gold);border-radius:.8rem;padding:.85rem 1.25rem;margin-left:auto;}
-.sd-points-label{font-size:.68rem;font-weight:700;letter-spacing:.06em;color:var(--muted);}
-.sd-points-value{font-size:2.1rem;font-weight:800;line-height:1;color:var(--gold-light);font-family:'JetBrains Mono',monospace;}
-.sd-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.1rem;}
-@media (min-width:640px){ .sd-stats-grid{grid-template-columns:repeat(4,1fr);} }
-.sd-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:.9rem;padding:.85rem;display:flex;align-items:center;gap:.65rem;}
-.sd-stat-icon{width:2.4rem;height:2.4rem;flex-shrink:0;border-radius:50%;background:rgba(201,162,39,.14);display:flex;align-items:center;justify-content:center;font-size:1.1rem;}
-.sd-stat-value{font-size:1.35rem;font-weight:700;line-height:1.1;font-family:'JetBrains Mono',monospace;color:var(--gold-light);}
-.sd-stat-label{font-size:.62rem;color:var(--muted);letter-spacing:.02em;}
-.sd-two-col{display:grid;grid-template-columns:1fr;gap:1rem;}
-@media (min-width:760px){ .sd-two-col{grid-template-columns:1fr 1fr;} }
-.sd-panel{background:var(--surface);border:1px solid var(--border);border-radius:1rem;padding:1.1rem;}
-.sd-panel-title{color:var(--gold-light);font-weight:700;font-size:.85rem;letter-spacing:.03em;margin-bottom:.75rem;}
-.sd-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem .75rem;border-radius:.6rem;background:var(--surface2);border:1px solid var(--border);}
-.sd-row-title{font-size:.82rem;font-weight:600;color:var(--text);}
-.sd-row-sub{font-size:.68rem;color:var(--muted);}
-.sd-chip{padding:.25rem .55rem;border-radius:.4rem;font-size:.62rem;font-weight:700;white-space:nowrap;}
-.sd-chip-out{background:var(--emerald-light);color:#fff;}
-.sd-chip-done{background:var(--gold-light);color:#111;}
-.sd-chip-upcoming{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:.9rem;padding:1rem;margin-bottom:.75rem;}
 .card-title{font-size:.85rem;font-weight:600;color:var(--gold-light);margin-bottom:.75rem;}
 .field-label{font-size:.7rem;color:var(--muted);margin-bottom:.25rem;}
@@ -465,8 +438,6 @@ body.no-scroll .bottom-nav{display:none;}
 .marks-table-wrap{overflow-x:auto;margin-bottom:.75rem;}
 .marks-table{width:100%;border-collapse:collapse;font-size:.72rem;}
 .marks-table th,.marks-table td{padding:.4rem;border:1px solid var(--border);text-align:center;white-space:nowrap;}
-.marks-table td.p0{padding:0;}
-.marks-table td.p0 input{border:none;border-radius:0;width:100%;padding:.4rem;}
 .marks-table th{background:var(--surface2);color:var(--gold-light);}
 .marks-table input{width:3.5rem;padding:.3rem;border-radius:.4rem;border:1px solid var(--gold);text-align:center;}
 .marks-table input.input-error{border-color:#EF4444;background:#FEF2F2;box-shadow:0 0 0 1px #EF4444;}
@@ -601,15 +572,6 @@ body.no-scroll .bottom-nav{display:none;}
 .result-detail-table th{text-align:left;padding:.5rem .5rem;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:#9CA3AF;border-bottom:1px solid rgba(255,255,255,.12);white-space:nowrap;}
 .result-detail-table td{padding:.55rem .5rem;color:#F1F5F9;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
 .result-detail-table tr:last-child td{border-bottom:none;}
-
-/* The winners list (.result-row / .result-name / .win-rank) is normally
-   theme-adaptive, but here it's rendered inside .result-block and .rf-card,
-   which are ALWAYS dark regardless of site theme. Pin these instances to
-   dark-compatible colors so text doesn't go invisible in light mode. */
-.result-block .result-row,.rf-winners-list .result-row{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);}
-.result-block .result-name,.rf-winners-list .result-name{color:#F8FAFC;}
-.result-block .result-meta,.rf-winners-list .result-meta{color:#9CA3AF;}
-.result-block .win-rank,.rf-winners-list .win-rank{color:#FCD34D;}
 
 /* ---- explore section ---- */
 html{scroll-behavior:smooth;}
