@@ -183,7 +183,6 @@
   }
   const RANK_POINTS = { first: 7, second: 5, third: 3 };
   const RANK_LABEL = { first: "1st Place", second: "2nd Place", third: "3rd Place" };
-  const RANK_ORDINAL = { first: "1st", second: "2nd", third: "3rd" };
   const RANK_ICON = { first: "\u{1F947}", second: "\u{1F948}", third: "\u{1F949}" };
   const RANK_NUMBER = { first: 1, second: 2, third: 3 };
   const ORDINAL = (n) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
@@ -421,7 +420,7 @@
         ${winners.map((w) => {
           const team = state.teams.find((t) => t.id === w.student.team);
           return `<div class="result-row">
-            <span class="win-rank">${RANK_ICON[w.rank]} ${RANK_ORDINAL[w.rank]}</span>
+            <span class="win-rank">${RANK_ICON[w.rank]}</span>
             <span class="result-name">${escapeHtml(w.student.name)}</span>
             <span class="result-meta">${w.student.chestNo}${team ? " \u00b7 " + escapeHtml(team.name) : ""}</span>
           </div>`;
@@ -616,43 +615,60 @@
     e.preventDefault();
     const id = a.getAttribute("href").slice(1);
     closeTopScreen(); // close the sidebar instantly
-    if (id === "standings") { showEventOrResultSection("standings"); return; } // bug fix: no scroll, just show
-    const target = document.getElementById(id);
-    if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth" }), 50);
+    showPage(id);
   }));
-  document.getElementById("brandHome").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
-  // Bug fix: "Result" and "Live Results" (Team Points) used scrollIntoView,
-  // which visually drifted into whichever section was above it. Now we just
-  // toggle display:block/none between the two so only the clicked one shows.
-  const standingsSection = document.getElementById("standings");
-  const resultsSection = document.getElementById("results");
-  function showEventOrResultSection(id) {
-    if (standingsSection) standingsSection.style.display = id === "standings" ? "block" : "none";
-    if (resultsSection) resultsSection.style.display = id === "results" ? "block" : "none";
+  document.getElementById("brandHome").addEventListener("click", () => showPage("top"));
+  // showPage(): the site now behaves like a paged app (Home / Result / Event /
+  // Schedule / Profile) rather than one long scroll \u2014 only one of these
+  // sections is visible at a time. Both the bottom nav and the sidebar links
+  // drive the same function so they always agree on what's showing.
+  const PAGE_IDS = ["top", "standings", "results", "gallery", "schedulePage"];
+  function showPage(id) {
+    PAGE_IDS.forEach((pid) => {
+      const el = document.getElementById(pid);
+      if (el) el.classList.toggle("hidden", pid !== id);
+    });
+    document.querySelectorAll(".nav-item[data-page]").forEach((a) => a.classList.toggle("active", a.dataset.page === id));
+    btnBack.classList.add("hidden");
+    if (id === "schedulePage") renderPublicSchedule();
+    window.scrollTo(0, 0);
   }
+  document.querySelectorAll(".nav-item[data-page]").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    showPage(a.dataset.page);
+  }));
+  const navProfileBottom = document.getElementById("navProfileBottom");
+  if (navProfileBottom) navProfileBottom.addEventListener("click", (e) => { e.preventDefault(); openStudentProfile(); });
+
   document.querySelectorAll('a[href="#results"], a[href="#standings"]').forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
-    showEventOrResultSection(a.getAttribute("href").slice(1));
+    showPage(a.getAttribute("href").slice(1));
   }));
   document.querySelectorAll('a.primary-button[href^="#"], a.explore-card[href^="#"], .stat-card[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
-    const id = a.getAttribute("href").slice(1);
-    if (id === "results" || id === "standings") return; // handled above, no scroll
-    const target = document.getElementById(id);
-    if (target) target.scrollIntoView({ behavior: "smooth" });
+    showPage(a.getAttribute("href").slice(1));
   }));
-  // Explore Festival sits up in the hero, far above Team Points/Live Standings,
-  // so (unlike the small nearby stat-card links) it needs an actual scroll —
-  // the generic handler above deliberately skips scrolling for #standings.
-  const exploreFestivalBtn = document.getElementById("exploreFestivalBtn");
-  if (exploreFestivalBtn) exploreFestivalBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    showEventOrResultSection("standings");
-    requestAnimationFrame(() => {
-      const el = document.getElementById("standings");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    });
-  });
+
+  // Public, read-only Schedule page \u2014 reuses the same admin schedule data
+  // (state.schedule), grouped by stage, sorted, no edit controls.
+  function renderPublicSchedule() {
+    const wrap = document.getElementById("publicScheduleWrap");
+    if (!wrap) return;
+    if (!state.schedule.length) { wrap.innerHTML = `<div class="empty-note" style="text-align:center;padding:2rem 1rem">Schedule hasn't been published yet \u2014 check back soon.</div>`; return; }
+    const groups = {};
+    state.schedule.forEach((s) => { (groups[s.stage] = groups[s.stage] || []).push(s); });
+    wrap.innerHTML = sortStageKeys(Object.keys(groups)).map((stage) => `
+      <div class="card" style="padding:.7rem .85rem;margin-bottom:.6rem">
+        <div style="font-weight:700;font-size:.8rem;color:var(--gold-light);margin-bottom:.4rem">${escapeHtml(stage)}</div>
+        ${groups[stage].slice().sort((a, b) => (a.start || "").localeCompare(b.start || "")).map((s) => {
+          const ev = state.events.find((e) => e.id === s.eventId);
+          return `<div class="result-row" style="margin-bottom:.35rem">
+            <div><div class="result-name">${ev ? escapeHtml(ev.name) : "(programme removed)"}</div><div class="result-meta">${ev ? escapeHtml(ev.category) : ""}</div></div>
+            <div class="result-meta">${formatTimeRange(s.start, s.end)}</div>
+          </div>`;
+        }).join("")}
+      </div>`).join("");
+  }
 
   /* ---------------- live ticker ---------------- */
   function renderTicker() {
@@ -1609,38 +1625,53 @@
     document.getElementById("btnClosePoster").addEventListener("click", closeTopScreen);
   }
 
-  // ---- Participant Dashboard: chest-number login gate, then a personal
-  // programmes/results view. Full-page screens (same pattern as Admin Mode),
-  // not a modal \u2014 so it feels like its own section of the app. ----
-  const studentLoginScreen = document.getElementById("studentLoginScreen");
-  const studentDashboardScreen = document.getElementById("studentDashboardScreen");
-  function closeStudentLoginScreen() { studentLoginScreen.classList.add("hidden"); document.body.classList.remove("no-scroll"); }
-  function closeStudentDashboardScreen() { studentDashboardScreen.classList.add("hidden"); document.body.classList.remove("no-scroll"); }
-
-  function openStudentLogin() {
-    document.body.classList.add("no-scroll");
-    document.getElementById("sdChestInput").value = "";
-    document.getElementById("sdLoginError").classList.add("hidden");
-    studentLoginScreen.classList.remove("hidden");
-    pushScreen(closeStudentLoginScreen);
+  // ---- Student Dashboard: chest-number login gate, then a personal
+  // programmes/results view. Reuses the same modalOverlay/modalBody as the
+  // poster modals above (no separate overlay markup needed). ----
+  // ---- "My Profile" session: remembers the chest number in localStorage so
+  // re-opening Profile skips straight to the dashboard until Logout is tapped.
+  const STUDENT_SESSION_KEY = "meelad-student-chest";
+  function openStudentProfile() {
+    const saved = localStorage.getItem(STUDENT_SESSION_KEY);
+    const student = saved ? state.students.find((s) => String(s.chestNo) === saved) : null;
+    if (student) openStudentDashboard(student, { fresh: true });
+    else openStudentLogin();
   }
 
-  document.getElementById("btnStudentLoginCancel").addEventListener("click", closeTopScreen);
-  document.getElementById("btnStudentDashClose").addEventListener("click", closeTopScreen);
-  (function () {
+  function openStudentLogin() {
+    modalBody.innerHTML = `
+      <div class="poster-head arch-top" style="position:relative">
+        <button class="icon-btn" id="btnBackStudent" aria-label="Back" style="position:absolute;top:.7rem;left:.7rem;background:rgba(255,255,255,.14);color:#fff;width:2.1rem;height:2.1rem;font-size:1.05rem">&#8592;</button>
+        <div class="admin-login-badge">\u{1F393}</div>
+        <div class="poster-name font-display">My Profile</div>
+        <div class="poster-event">Enter your chest number to view your programmes &amp; results</div>
+      </div>
+      <div class="tiraz"></div>
+      <div style="padding:1.25rem 1rem">
+        <div class="field-label" style="margin-bottom:.35rem">Chest Number</div>
+        <input id="sdChestInput" class="input" placeholder="e.g. 105" inputmode="numeric" style="margin-bottom:.6rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:1.05rem;letter-spacing:.05em" />
+        <div class="empty-note hidden" id="sdLoginError" style="margin-bottom:.6rem;color:var(--crimson)"></div>
+        <button class="btn btn-primary" id="btnStudentLogin" style="width:100%">\u2728 View My Profile</button>
+        <div class="muted" style="text-align:center;font-size:.68rem;margin-top:.75rem">Your chest number is on your registration card</div>
+      </div>`;
+    modalOverlay.classList.remove("hidden");
+    pushScreen(closeModal);
+
+    document.getElementById("btnBackStudent").addEventListener("click", closeTopScreen);
     const submit = () => {
       const val = document.getElementById("sdChestInput").value.trim();
       const err = document.getElementById("sdLoginError");
       if (!val) { err.textContent = "Enter your chest number"; err.classList.remove("hidden"); return; }
       const student = state.students.find((s) => String(s.chestNo) === val);
       if (!student) { err.textContent = "No participant found with that chest number"; err.classList.remove("hidden"); return; }
+      localStorage.setItem(STUDENT_SESSION_KEY, val);
       openStudentDashboard(student);
     };
     document.getElementById("btnStudentLogin").addEventListener("click", submit);
     document.getElementById("sdChestInput").addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-  })();
+  }
 
-  function openStudentDashboard(student) {
+  function openStudentDashboard(student, opts) {
     const team = state.teams.find((t) => t.id === student.team);
     const events = student.events.map((id) => state.events.find((e) => e.id === id)).filter(Boolean);
     const wins = getStudentWins(student.id);
@@ -1649,80 +1680,75 @@
     const initials = student.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
     const statCard = (icon, label, value) => `
-      <div class="sd-stat-card">
-        <div class="sd-stat-icon">${icon}</div>
-        <div><div class="sd-stat-value">${value}</div><div class="sd-stat-label">${label}</div></div>
+      <div class="card" style="display:flex;align-items:center;gap:.6rem;padding:.75rem;margin-bottom:0">
+        <div style="width:2.3rem;height:2.3rem;flex-shrink:0;border-radius:50%;background:rgba(201,162,39,.14);display:flex;align-items:center;justify-content:center;font-size:1.05rem">${icon}</div>
+        <div><div style="font-size:1.3rem;font-weight:700;line-height:1.1;font-family:'JetBrains Mono',monospace;color:var(--gold-light)">${value}</div><div class="muted" style="font-size:.62rem;letter-spacing:.03em">${label}</div></div>
       </div>`;
 
     const eventRow = (e) => {
       const published = !!state.results[e.id];
       const label = published ? "RESULT OUT" : (e.status === "ticked" ? "COMPLETED" : "UPCOMING");
-      const cls = published ? "sd-chip-out" : e.status === "ticked" ? "sd-chip-done" : "sd-chip-upcoming";
-      return `<div class="sd-row">
-        <div><div class="sd-row-title">${escapeHtml(e.name)}</div><div class="sd-row-sub">${e.type} \u00b7 ${e.stageType || "Stage"}</div></div>
-        <span class="sd-chip ${cls}">${label}</span>
+      const style = published ? "background:var(--emerald-light);color:#fff" : e.status === "ticked" ? "background:var(--gold-light);color:#111" : "background:var(--surface2);color:var(--muted)";
+      return `<div class="result-row">
+        <div><div class="result-name">${escapeHtml(e.name)}</div><div class="result-meta">${e.type} \u00b7 ${e.stageType || "Stage"}</div></div>
+        <span style="padding:.25rem .55rem;border-radius:.4rem;font-size:.62rem;font-weight:700;white-space:nowrap;${style}">${label}</span>
       </div>`;
     };
 
-    const resultRow = (w, i) => `<tr>
-        <td>${i + 1}. ${escapeHtml(w.eventName)}</td>
-        <td style="text-align:center">${RANK_ICON[w.rank] || ""}</td>
-        <td style="text-align:center;font-weight:600">${RANK_LABEL[w.rank] || ""}</td>
-        <td style="text-align:center;font-weight:700">${RANK_POINTS[w.rank] || 0}</td>
-      </tr>`;
-
-    document.getElementById("studentDashboardContent").innerHTML = `
-      <div class="sd-profile-card">
-        <div class="sd-avatar">${initials}</div>
-        <div class="sd-profile-info">
-          <p><span class="sd-label">STUDENT:</span> ${escapeHtml(student.name)}</p>
-          <p><span class="sd-label">CHEST NUMBER:</span> ${student.chestNo}</p>
-          <p><span class="sd-label">TEAM:</span> ${team ? escapeHtml(team.name) : "\u2014"}</p>
-          <p><span class="sd-label">CATEGORY:</span> ${escapeHtml(student.category)}</p>
-        </div>
-        <div class="sd-points-box">
-          <div style="font-size:2.2rem">\u{1F3C6}</div>
-          <div>
-            <div class="sd-points-label">OVERALL POINTS</div>
-            <div class="sd-points-value">${totalPoints}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="sd-stats-grid">
-        ${statCard("\u{1F4C5}", "EVENTS REGISTERED", events.length)}
-        ${statCard("\u{1F3C5}", "EVENTS COMPLETED", completed)}
-        ${statCard("\u2B50", "AWARDS WON", wins.length)}
-        ${statCard("\u{1F4CA}", "TOTAL POINTS", totalPoints)}
-      </div>
-
-      <div class="sd-two-col">
-        <div class="sd-panel">
-          <div class="sd-panel-title">MY EVENTS</div>
-          <div style="display:flex;flex-direction:column;gap:.45rem">
-            ${events.length ? events.map(eventRow).join("") : `<div class="empty-note">No programmes registered yet.</div>`}
-          </div>
-        </div>
-        <div class="sd-panel">
-          <div class="sd-panel-title">RESULTS &amp; POINTS</div>
-          ${wins.length ? `
-          <div class="marks-table-wrap">
-            <table class="marks-table"><thead><tr><th style="text-align:left">EVENT</th><th>RANK</th><th>POSITION</th><th>POINTS</th></tr></thead>
-            <tbody>${wins.map(resultRow).join("")}</tbody></table>
-          </div>` : `<div class="empty-note">No published results yet.</div>`}
-        </div>
+    const winRow = (w) => `<div class="result-row">
+        <span class="win-rank">${RANK_ICON[w.rank]}</span>
+        <span class="result-name">${escapeHtml(w.eventName)}</span>
+        <span class="result-meta">+${RANK_POINTS[w.rank]} pts</span>
       </div>`;
 
-    studentLoginScreen.classList.add("hidden");
-    studentDashboardScreen.classList.remove("hidden");
-    swapTopScreen(closeStudentDashboardScreen);
+    modalBody.innerHTML = `
+      <div class="poster-head arch-top" style="position:relative">
+        <button class="icon-btn" id="btnBackStudent" aria-label="Back" style="position:absolute;top:.7rem;left:.7rem;background:rgba(255,255,255,.14);color:#fff;width:2.1rem;height:2.1rem;font-size:1.05rem">&#8592;</button>
+        <button id="btnStudentLogout" style="position:absolute;top:.9rem;right:.9rem;background:none;border:none;color:rgba(255,255,255,.85);font-size:.68rem;font-weight:600;letter-spacing:.02em;padding:.3rem;cursor:pointer">Logout</button>
+        <div style="width:3.6rem;height:3.6rem;border-radius:50%;background:var(--emerald);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;margin:0 auto .55rem;border:2.5px solid var(--gold);box-shadow:0 0 16px -4px rgba(201,162,39,.65);font-family:'JetBrains Mono',monospace">${initials}</div>
+        <div class="poster-name font-display">${escapeHtml(student.name)}</div>
+        <div class="poster-code">CHEST NO. ${student.chestNo}</div>
+        <div class="poster-event">${team ? escapeHtml(team.name) : ""}${student.category ? " \u00b7 " + escapeHtml(student.category) : ""}</div>
+      </div>
+      <div class="tiraz"></div>
+      <div style="padding:0 1rem 1rem">
+        <div style="display:flex;align-items:center;justify-content:center;gap:.8rem;background:linear-gradient(135deg,var(--emerald-deep),var(--emerald));border-radius:.8rem;padding:1rem;margin:1rem 0;border:1px solid var(--gold)">
+          <div style="font-size:2rem">\u{1F3C6}</div>
+          <div>
+            <div style="font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--gold-light)">OVERALL POINTS</div>
+            <div style="font-size:2.1rem;font-weight:800;line-height:1;color:#FAF6EC;font-family:'JetBrains Mono',monospace">${totalPoints}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1.1rem">
+          ${statCard("\u{1F4C5}", "REGISTERED", events.length)}
+          ${statCard("\u2705", "COMPLETED", completed)}
+          ${statCard("\u{1F3C5}", "AWARDS", wins.length)}
+          ${statCard("\u2B50", "POINTS", totalPoints)}
+        </div>
+        <div class="card-title" style="margin-bottom:.5rem">\u{1F3AD} My Programmes</div>
+        <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.1rem">
+          ${events.length ? events.map(eventRow).join("") : `<div class="empty-note">No programmes registered yet.</div>`}
+        </div>
+        <div class="card-title" style="margin-bottom:.5rem">\u{1F396}\uFE0F Results &amp; Points</div>
+        <div style="display:flex;flex-direction:column;gap:.4rem">
+          ${wins.length ? wins.map(winRow).join("") : `<div class="empty-note">No published results yet.</div>`}
+        </div>
+      </div>`;
+    modalOverlay.classList.remove("hidden");
+    if (!opts || !opts.fresh) { /* came from the login form, already on the stack */ }
+    else pushScreen(closeModal); // opened straight from a saved session — needs its own back/swipe entry
+    document.getElementById("btnBackStudent").addEventListener("click", closeTopScreen);
+    document.getElementById("btnStudentLogout").addEventListener("click", () => {
+      localStorage.removeItem(STUDENT_SESSION_KEY);
+      closeTopScreen();
+    });
   }
 
   const navStudentDashboard = document.getElementById("navStudentDashboard");
   if (navStudentDashboard) navStudentDashboard.addEventListener("click", (e) => {
     e.preventDefault();
     closeSidebar();
-    openStudentLogin();
+    openStudentProfile();
   });
 
   // Combined result modal: shows 1st, 2nd & 3rd winners of one programme together
@@ -2169,7 +2195,6 @@
     if (tab === "export") return renderExportTab();
     if (tab === "results") return renderResultsTab();
     if (tab === "schedule") return renderScheduleTab();
-    if (tab === "printsheets") return renderPrintSheetsTab();
   }
 
   /* ---- Dashboard tab ---- */
@@ -3739,242 +3764,6 @@
 
   /* ---- Export tab ---- */
   let pickEventKind = null;
-  /* ---- Print Sheets tab: fillable Valuation Sheet & Green Room Sign ----
-     Valuation Sheet is for blind judging \u2014 only the Code Letter is shown,
-     never the student's chest no or name, so judges can't identify who
-     they're marking. Green Room Sign is the opposite: chest no + name are
-     shown (auto-filled from registered participants) so students can sign
-     in and be assigned a code letter before judging. Drafts are saved to
-     localStorage per programme so nothing is lost on reload. ---- */
-  let printSheetView = "valuation"; // "valuation" | "greenroom"
-  const PS_MAX_ROWS = 9;
-  const PS_MARK_COLS = 5;
-
-  function psLocalKey(type, eventId) { return `meelad_printsheet_${type}_${eventId}`; }
-  function psLoadDraft(type, eventId) {
-    try {
-      const saved = JSON.parse(localStorage.getItem(psLocalKey(type, eventId)));
-      if (saved) return saved;
-    } catch {}
-    return type === "valuation"
-      ? { stageNo: "", rows: Array.from({ length: 5 }, () => ({ codeLetter: "", marks: Array(PS_MARK_COLS).fill(""), total: "" })) }
-      : { rows: {}, extraRows: [] };
-  }
-  function psSaveDraft(type, eventId, draft) {
-    try { localStorage.setItem(psLocalKey(type, eventId), JSON.stringify(draft)); } catch {}
-  }
-
-  function renderPrintSheetsTab() {
-    adminContent.innerHTML = `
-      <div class="card">
-        <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
-          <button type="button" class="radio-pill ps-type-btn ${printSheetView === "valuation" ? "selected" : ""}" data-type="valuation" style="flex:1;cursor:pointer">\u{1F3C5} Valuation Sheet</button>
-          <button type="button" class="radio-pill ps-type-btn ${printSheetView === "greenroom" ? "selected" : ""}" data-type="greenroom" style="flex:1;cursor:pointer">\u2B50 Green Room Sign</button>
-        </div>
-        <div class="field-label" style="margin-bottom:.4rem">Category</div>
-        <select id="psCategoryPick" class="input" style="margin-bottom:.6rem">
-          ${state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join("")}
-        </select>
-        <div class="field-label" style="margin-bottom:.4rem">Programme</div>
-        <select id="psEventPick" class="input" style="margin-bottom:.75rem"></select>
-        <div id="psSheetWrap"></div>
-      </div>`;
-
-    document.querySelectorAll(".ps-type-btn").forEach((b) => b.addEventListener("click", () => {
-      printSheetView = b.dataset.type;
-      renderPrintSheetsTab();
-    }));
-
-    function refreshEventOptions() {
-      const cat = document.getElementById("psCategoryPick").value;
-      const eligible = state.events.filter((e) => e.category === cat);
-      const evSel = document.getElementById("psEventPick");
-      evSel.innerHTML = eligible.length
-        ? eligible.map((e) => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join("")
-        : `<option value="">No programmes in this category</option>`;
-      renderSheet();
-    }
-    document.getElementById("psCategoryPick").addEventListener("change", refreshEventOptions);
-    document.getElementById("psEventPick").addEventListener("change", renderSheet);
-
-    function participantsFor(event) {
-      return event.type === "Group" ? groupAwareParticipants(event.id) : state.students.filter((s) => s.events.includes(event.id));
-    }
-
-    function renderSheet() {
-      const wrap = document.getElementById("psSheetWrap");
-      const eventId = document.getElementById("psEventPick").value;
-      const event = state.events.find((e) => e.id === eventId);
-      if (!event) { wrap.innerHTML = `<div class="empty-note">Choose a programme first.</div>`; return; }
-
-      if (printSheetView === "valuation") return renderValuationSheet(wrap, event, eventId);
-      return renderGreenRoomSheet(wrap, event, eventId, participantsFor(event));
-    }
-
-    /* ===== Valuation Sheet: blind judging, Code Letter + 5 marks only ===== */
-    function renderValuationSheet(wrap, event, eventId) {
-      const draft = psLoadDraft("valuation", eventId);
-      draft.rows = draft.rows || [];
-      const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-      const rowHtml = (row, i) => `
-        <tr data-row="${i}">
-          <td class="p0"><input class="input ps-code" data-idx="${i}" value="${escapeAttr(row.codeLetter)}" style="width:100%;text-align:center;text-transform:uppercase" maxlength="3" /></td>
-          ${row.marks.map((m, mi) => `<td class="p0"><input type="number" class="input ps-mark" data-idx="${i}" data-mi="${mi}" value="${escapeAttr(m)}" style="width:100%;text-align:center" /></td>`).join("")}
-          <td class="p0"><input class="input ps-total" data-idx="${i}" value="${escapeAttr(row.total)}" style="width:100%;text-align:center;font-weight:700" /></td>
-        </tr>`;
-
-      wrap.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
-          <div>
-            <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
-            <div style="font-size:1.15rem;font-weight:700">Valuation Sheet</div>
-          </div>
-          <div class="muted" style="font-size:.68rem;white-space:nowrap">${dateStr}</div>
-        </div>
-        <hr class="print-hr" style="margin:.4rem 0 .6rem" />
-        <div style="display:flex;justify-content:flex-end;align-items:center;gap:.4rem;font-size:.8rem;margin-bottom:.6rem">
-          Stage No: <input id="psStageNo" class="input" value="${escapeAttr(draft.stageNo || "")}" style="width:5rem;text-align:center" />
-        </div>
-        <div class="marks-table-wrap">
-          <table class="marks-table" id="psValTable" style="table-layout:fixed">
-            <thead>
-              <tr>
-                <th colspan="2">${escapeHtml(event.name)}</th>
-                <th colspan="4">${escapeHtml(event.category)}</th>
-                <th>${escapeHtml(event.type || "Individual")}</th>
-              </tr>
-              <tr>
-                <th>Code Letter</th>
-                <th colspan="${PS_MARK_COLS}">Marks</th>
-                <th>Mark out of 100</th>
-              </tr>
-            </thead>
-            <tbody>${draft.rows.map(rowHtml).join("")}</tbody>
-          </table>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
-          <button class="btn btn-ghost" id="btnPsAddRow" style="width:auto;padding:.5rem .9rem" ${draft.rows.length >= PS_MAX_ROWS ? "disabled" : ""}>+ Add Row (${draft.rows.length}/${PS_MAX_ROWS})</button>
-          <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
-        </div>
-        <div class="muted" style="font-size:.7rem;margin-top:1.25rem;text-align:center">Judge's Name and Signature:</div>
-        <div style="border-bottom:1px solid var(--border);margin-top:1.5rem"></div>
-        <div class="muted" style="font-size:.7rem;margin-top:.75rem">Judging Comments:</div>
-        <div style="border-bottom:1px solid var(--border);margin-top:.6rem"></div>`;
-
-      document.getElementById("psStageNo").addEventListener("input", (e) => { draft.stageNo = e.target.value; psSaveDraft("valuation", eventId, draft); });
-      wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].codeLetter = inp.value.toUpperCase(); psSaveDraft("valuation", eventId, draft); }));
-      wrap.querySelectorAll(".ps-mark").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].marks[inp.dataset.mi] = inp.value; psSaveDraft("valuation", eventId, draft); }));
-      wrap.querySelectorAll(".ps-total").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].total = inp.value; psSaveDraft("valuation", eventId, draft); }));
-
-      document.getElementById("btnPsAddRow").addEventListener("click", () => {
-        if (draft.rows.length >= PS_MAX_ROWS) return showToast(`Maximum ${PS_MAX_ROWS} rows on a Valuation Sheet`);
-        draft.rows.push({ codeLetter: "", marks: Array(PS_MARK_COLS).fill(""), total: "" });
-        psSaveDraft("valuation", eventId, draft);
-        renderSheet();
-      });
-
-      document.getElementById("btnPsPrint").addEventListener("click", () => {
-        document.getElementById("printTitle").textContent = "Valuation Sheet";
-        document.getElementById("printContent").innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
-            <div>
-              <div style="font-size:.8rem;font-weight:600">${escapeHtml(state.hero.title)}</div>
-              <div style="font-size:1.35rem;font-weight:700">Valuation Sheet</div>
-            </div>
-            <div style="font-size:.75rem">${dateStr}</div>
-          </div>
-          <hr class="print-hr" />
-          <div style="text-align:right;font-size:.85rem;margin-bottom:.5rem">Stage No: <b>${escapeHtml(draft.stageNo || "")}</b></div>
-          <table class="schedule-print-table" style="table-layout:fixed">
-            <thead>
-              <tr><th colspan="2">${escapeHtml(event.name)}</th><th colspan="4">${escapeHtml(event.category)}</th><th>${escapeHtml(event.type || "Individual")}</th></tr>
-              <tr><th>Code Letter</th><th colspan="${PS_MARK_COLS}">Marks</th><th>Mark out of 100</th></tr>
-            </thead>
-            <tbody>${draft.rows.map((row) => `<tr><td>${escapeHtml(row.codeLetter)}</td>${row.marks.map((m) => `<td>${escapeHtml(String(m || ""))}</td>`).join("")}<td><b>${escapeHtml(String(row.total || ""))}</b></td></tr>`).join("")}</tbody>
-          </table>
-          <div style="margin-top:2.5rem;text-align:center;font-size:.85rem">Judge's Name and Signature:</div>
-          <div style="border-bottom:1px solid #333;margin-top:2rem"></div>
-          <div style="margin-top:1rem;font-size:.85rem">Judging Comments:</div>
-          <div style="border-bottom:1px solid #333;margin-top:1rem"></div>
-          <div style="border-bottom:1px solid #333;margin-top:1.75rem"></div>`;
-        document.getElementById("printOverlay").classList.remove("hidden");
-        pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
-      });
-    }
-
-    /* ===== Green Room Sign: chest no + name auto, code letter manual ===== */
-    function renderGreenRoomSheet(wrap, event, eventId, participants) {
-      const draft = psLoadDraft("greenroom", eventId);
-      draft.rows = draft.rows || {}; draft.extraRows = draft.extraRows || [];
-
-      function rowHtml(id, chestNo, name, isExtra, idx) {
-        const r = draft.rows[id] || {};
-        return `<tr data-row="${id}">
-          <td>${idx}</td>
-          <td>${isExtra ? `<input class="input ps-chest" data-id="${id}" value="${escapeAttr(chestNo)}" style="width:5rem;text-align:center" />` : chestNo}</td>
-          <td style="text-align:left">${isExtra ? `<input class="input ps-name" data-id="${id}" value="${escapeAttr(name)}" style="width:100%" />` : escapeHtml(name)}</td>
-          <td><input class="input ps-code" data-id="${id}" value="${escapeAttr(r.codeLetter || "")}" style="width:4rem;text-align:center;text-transform:uppercase" maxlength="3" /></td>
-          <td></td>
-        </tr>`;
-      }
-      const baseRows = participants.map((s, i) => rowHtml(s.id, s.chestNo, s.name, false, i + 1));
-      const extraRows = draft.extraRows.map((id, i) => {
-        const r = draft.rows[id] || {};
-        return rowHtml(id, r.chestNo || "", r.name || "", true, participants.length + i + 1);
-      });
-
-      wrap.innerHTML = `
-        <div style="text-align:center;font-weight:700;letter-spacing:.04em;font-size:1rem;margin-bottom:.15rem">GREEN ROOM SIGN</div>
-        <div class="muted" style="text-align:center;font-size:.78rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
-        <div class="marks-table-wrap">
-          <table class="marks-table" id="psGrTable">
-            <thead><tr><th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Sign</th></tr></thead>
-            <tbody>${baseRows.join("") + extraRows.join("")}</tbody>
-          </table>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
-          <button class="btn btn-ghost" id="btnPsAddRow" style="width:auto;padding:.5rem .9rem">+ Add Row</button>
-          <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
-        </div>`;
-
-      function saveField(id, field, value) {
-        draft.rows[id] = draft.rows[id] || {};
-        draft.rows[id][field] = value;
-        psSaveDraft("greenroom", eventId, draft);
-      }
-      wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "codeLetter", inp.value.toUpperCase())));
-      wrap.querySelectorAll(".ps-chest").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "chestNo", inp.value)));
-      wrap.querySelectorAll(".ps-name").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "name", inp.value)));
-
-      document.getElementById("btnPsAddRow").addEventListener("click", () => {
-        const id = "extra-" + uid();
-        draft.extraRows.push(id);
-        psSaveDraft("greenroom", eventId, draft);
-        renderSheet();
-      });
-
-      document.getElementById("btnPsPrint").addEventListener("click", () => {
-        const printBaseRows = participants.map((s, i) => `<tr><td>${i + 1}</td><td>${s.chestNo}</td><td style="text-align:left">${escapeHtml(s.name)}</td><td>${escapeHtml((draft.rows[s.id] || {}).codeLetter || "")}</td><td></td></tr>`);
-        const printExtraRows = draft.extraRows.map((id, i) => {
-          const r = draft.rows[id] || {};
-          return `<tr><td>${participants.length + i + 1}</td><td>${escapeHtml(r.chestNo || "")}</td><td style="text-align:left">${escapeHtml(r.name || "")}</td><td>${escapeHtml(r.codeLetter || "")}</td><td></td></tr>`;
-        });
-        document.getElementById("printTitle").textContent = "Green Room Sign";
-        document.getElementById("printContent").innerHTML = `
-          <div class="print-heading" style="text-align:center">GREEN ROOM SIGN</div>
-          <div class="muted" style="text-align:center;font-size:.85rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
-          <table class="schedule-print-table"><thead><tr><th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Sign</th></tr></thead>
-            <tbody>${printBaseRows.join("") + printExtraRows.join("")}</tbody>
-          </table>`;
-        document.getElementById("printOverlay").classList.remove("hidden");
-        pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
-      });
-    }
-
-    refreshEventOptions();
-  }
-
   function renderExportTab() {
     const cards = [
       { id: "Call List", icon: "\u{1F4CB}" }, { id: "Valuation Sheet", icon: "\u{1F3C5}" },
@@ -4115,7 +3904,12 @@
             if (!publishEventResult(id)) { showToast("Enter at least one mark before publishing"); return; }
             renderLeaderboard(); renderResultsList(); renderTicker();
             showToast(`${ev.name} result published \u2014 now live on the home page`);
-            renderList();
+            goFullyHome();
+            showEventOrResultSection("results");
+            setTimeout(() => {
+              const el = document.getElementById("results");
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            }, 60);
           } else if (action === "unpublish") {
             unpublishEventResult(id);
             renderLeaderboard(); renderResultsList(); renderTicker();
