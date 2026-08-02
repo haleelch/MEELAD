@@ -111,7 +111,7 @@ input,select{font-family:inherit;}
 .side-link.active .atab-ic{background:rgba(255,255,255,.2);color:#fff;}
 
 /* ---- hero ---- */
-.hero-card-section{padding:1.25rem 1rem 0;}
+.hero-card-section{padding:1.25rem 1rem 0;scroll-margin-top:4.5rem;}
 .hero-card{
   position:relative;min-height:22rem;border-radius:1.75rem;overflow:hidden;
   display:flex;align-items:flex-end;
@@ -184,7 +184,7 @@ a.stat-card:hover{transform:translateY(-2px);}
 @media(max-width:480px){.stat-card-body{padding:.9rem .85rem .5rem;}}
 
 /* ---- sections ---- */
-.section{max-width:720px;margin:0 auto;padding:2.5rem 1.5rem 0;}
+.section{max-width:720px;margin:0 auto;padding:2.5rem 1.5rem 0;scroll-margin-top:4.5rem;}
 .section-heading{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;}
 .heading-badge{width:2.5rem;height:2.5rem;border-radius:50% 50% 0 0/26% 26% 0 0;background:var(--home-primary);display:flex;align-items:center;justify-content:center;font-size:1rem;color:#fff;}
 .heading-title{font-size:1.3rem;color:var(--home-primary);}
@@ -197,6 +197,11 @@ a.stat-card:hover{transform:translateY(-2px);}
    underline/badge/pattern in BOTH themes — same pattern the app already
    uses for --explore-btn-color. Card background/text still follow the
    theme (dark navy-black in dark mode, white-cream in light mode). */
+/* ---- Save-failure banner: stays visible (unlike the 2.8s toast) until a
+   save actually succeeds, so a blocked write to Firebase is never missed. ---- */
+#saveFailBanner{position:fixed;top:0;left:0;right:0;z-index:999;background:#DC2626;color:#fff;text-align:center;font-size:.78rem;font-weight:600;padding:.55rem 1rem;cursor:pointer;}
+#saveFailBanner.hidden{display:none;}
+
 /* ---- Bottom nav (guest home page) ---- */
 body{padding-bottom:4.2rem;}
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:.5rem 0 calc(.5rem + env(safe-area-inset-bottom));z-index:60;}
@@ -466,7 +471,9 @@ body.no-scroll .bottom-nav{display:none;}
 .marks-table{width:100%;border-collapse:collapse;font-size:.72rem;}
 .marks-table th,.marks-table td{padding:.4rem;border:1px solid var(--border);text-align:center;white-space:nowrap;}
 .marks-table td.p0{padding:0;}
-.marks-table td.p0 input{border:none;border-radius:0;width:100%;padding:.4rem;}
+.marks-table td.p0 input{border:none;border-radius:0;width:100%;padding:.55rem .3rem;background:var(--surface2);color:var(--text);font-weight:600;}
+.marks-table td.p0 input:focus{background:rgba(201,162,39,.16);outline:2px solid var(--gold);outline-offset:-2px;}
+[data-theme="light"] .marks-table td.p0 input{background:#EEF2F7;}
 .marks-table th{background:var(--surface2);color:var(--gold-light);}
 .marks-table input{width:3.5rem;padding:.3rem;border-radius:.4rem;border:1px solid var(--gold);text-align:center;}
 .marks-table input.input-error{border-color:#EF4444;background:#FEF2F2;box-shadow:0 0 0 1px #EF4444;}

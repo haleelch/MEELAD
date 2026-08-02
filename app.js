@@ -129,6 +129,10 @@
     dataRef = firebase.database().ref("festData");
   } catch (err) {
     console.error("Firebase init failed, running on local data only:", err);
+    document.addEventListener("DOMContentLoaded", () => {
+      const banner = document.getElementById("saveFailBanner");
+      if (banner) { banner.textContent = "\u26A0 Could not connect to the server \u2014 changes will not be saved."; banner.classList.remove("hidden"); }
+    });
   }
 
   const uid = () => Math.random().toString(36).slice(2, 9);
@@ -302,7 +306,11 @@
   // Mark Entry to crash on events that were missing assignedJudges.
   function persist() {
     ensureStateDefaults();
-    if (!dataRef) return;
+    if (!dataRef) {
+      const banner = document.getElementById("saveFailBanner");
+      if (banner) { banner.textContent = "\u26A0 Not connected to the server \u2014 changes will not be saved."; banner.classList.remove("hidden"); }
+      return;
+    }
     suppressNextPersist = true;
     // Firebase Realtime Database rejects any write containing an `undefined`
     // value anywhere in the object (e.g. state.hero.posterTemplate before a
@@ -311,9 +319,22 @@
     // through JSON strips every undefined (turning it into null / omitting
     // it) so this can never block a save again, no matter which field it is.
     const cleanState = JSON.parse(JSON.stringify(state));
-    dataRef.set(cleanState).catch((err) => {
+    dataRef.set(cleanState).then(() => {
+      const banner = document.getElementById("saveFailBanner");
+      if (banner) banner.classList.add("hidden");
+    }).catch((err) => {
       console.error("Firebase write failed:", err);
       showToast("Could not save to Firebase \u2014 check your connection");
+      // A toast alone fades in ~3s and is easy to miss if you're not looking
+      // right then. This banner stays up until a save actually succeeds \u2014
+      // the most common real-world cause is Firebase Realtime Database
+      // "test mode" rules expiring (they auto-deny all writes after 30 days),
+      // which otherwise fails completely silently: uploads to ImgBB still
+      // succeed, the UI still looks fine, but nothing ever reaches the
+      // server, so a refresh reverts everything. Check Firebase Console ->
+      // Realtime Database -> Rules if this banner keeps appearing.
+      const banner = document.getElementById("saveFailBanner");
+      if (banner) banner.classList.remove("hidden");
     });
   }
 
@@ -3874,13 +3895,14 @@
           </div>
           <div class="muted" style="font-size:.68rem;white-space:nowrap">${dateStr}</div>
         </div>
-        <hr class="print-hr" style="margin:.4rem 0 .6rem" />
-        <div style="display:flex;justify-content:flex-end;align-items:center;gap:.4rem;font-size:.8rem;margin-bottom:.6rem">
-          Stage No: <input id="psStageNo" class="input" value="${escapeAttr(draft.stageNo || "")}" style="width:5rem;text-align:center" />
-        </div>
+        <hr class="print-hr" style="margin:.4rem 0 .75rem" />
         <div class="marks-table-wrap">
-          <table class="marks-table" id="psValTable" style="table-layout:fixed">
-            <colgroup><col style="width:3.2rem" /></colgroup>
+          <table class="marks-table ps-val-table" id="psValTable" style="table-layout:fixed">
+            <colgroup>
+              <col style="width:3.4rem" />
+              ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:3.6rem" />`).join("")}
+              <col style="width:4.2rem" />
+            </colgroup>
             <thead>
               <tr>
                 <th colspan="2">${escapeHtml(event.name)}</th>
@@ -3897,6 +3919,7 @@
           </table>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
+          <button class="btn btn-ghost" id="btnPsClose" style="width:auto;padding:.5rem .9rem">Close</button>
           <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:1.25rem;font-size:.7rem" class="muted">
@@ -3906,11 +3929,17 @@
         <div style="border-bottom:1px solid var(--border);margin-top:2rem;width:33%"></div>
       </div>`;
 
-    document.getElementById("psStageNo").addEventListener("input", (e) => { draft.stageNo = e.target.value; psSaveDraft("valuation", eventId, draft); });
     wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].codeLetter = inp.value.toUpperCase(); psSaveDraft("valuation", eventId, draft); }));
     wrap.querySelectorAll(".ps-mark").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].marks[inp.dataset.mi] = inp.value; psSaveDraft("valuation", eventId, draft); }));
     wrap.querySelectorAll(".ps-total").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].total = inp.value; psSaveDraft("valuation", eventId, draft); }));
 
+    document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
+
+    // One tap = one print dialog. #printOverlay has to be populated because
+    // the site's print CSS only allows #printOverlay to be visible on paper
+    // (everything else is force-hidden), but it's never left open as its own
+    // extra screen \u2014 window.print() is triggered immediately and the
+    // overlay is closed right back down, so nothing appears "in between".
     document.getElementById("btnPsPrint").addEventListener("click", () => {
       document.getElementById("printTitle").textContent = "Valuation Sheet";
       document.getElementById("printContent").innerHTML = `
@@ -3922,7 +3951,6 @@
           <div style="font-size:.75rem">${dateStr}</div>
         </div>
         <hr class="print-hr" />
-        <div style="text-align:right;font-size:.85rem;margin-bottom:.5rem">Stage No: <b>${escapeHtml(draft.stageNo || "")}</b></div>
         <table class="schedule-print-table" style="table-layout:fixed">
           <thead>
             <tr><th colspan="2">${escapeHtml(event.name)}</th><th colspan="${PS_MARK_COLS - 1}">${escapeHtml(event.category)}</th><th>${escapeHtml(event.type || "Individual")}</th></tr>
@@ -3936,7 +3964,8 @@
         </div>
         <div style="border-bottom:1px solid #333;margin-top:2rem;width:33%"></div>`;
       document.getElementById("printOverlay").classList.remove("hidden");
-      pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+      window.print();
+      document.getElementById("printOverlay").classList.add("hidden");
     });
   }
 
@@ -3974,6 +4003,7 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
           <button class="btn btn-ghost" id="btnPsAddRow" style="width:auto;padding:.5rem .9rem">+ Add Row</button>
+          <button class="btn btn-ghost" id="btnPsClose" style="width:auto;padding:.5rem .9rem">Close</button>
           <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
         </div>
       </div>`;
@@ -3994,6 +4024,11 @@
       renderGreenRoomSheetInline(wrap, event, eventId, participants);
     });
 
+    document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
+
+    // One tap = one print dialog (see the matching comment in
+    // renderValuationSheetInline for why #printOverlay is still used
+    // internally but never left open as a visible extra step).
     document.getElementById("btnPsPrint").addEventListener("click", () => {
       const printBaseRows = participants.map((s, i) => `<tr><td>${i + 1}</td><td>${s.chestNo}</td><td style="text-align:left">${escapeHtml(s.name)}</td><td>${escapeHtml((draft.rows[s.id] || {}).codeLetter || "")}</td><td></td></tr>`);
       const printExtraRows = draft.extraRows.map((id, i) => {
@@ -4008,7 +4043,8 @@
           <tbody>${printBaseRows.join("") + printExtraRows.join("")}</tbody>
         </table>`;
       document.getElementById("printOverlay").classList.remove("hidden");
-      pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
+      window.print();
+      document.getElementById("printOverlay").classList.add("hidden");
     });
   }
 
@@ -4775,6 +4811,9 @@
   function escapeAttr(str) { return escapeHtml(str); }
 
   /* ---------------- init ---------------- */
+  const saveFailBannerEl = document.getElementById("saveFailBanner");
+  if (saveFailBannerEl) saveFailBannerEl.addEventListener("click", () => { persist(); });
+
   function renderAll() {
     renderTicker(); renderHero(); renderCounters(); renderLeaderboard(); renderFilters(); renderResultsList(); renderGallery();
   }
@@ -4789,8 +4828,22 @@
           state = remote;
           ensureStateDefaults();
         } else {
-          // first time this project is used: seed Firebase with our starter data
-          persist();
+          // The database read back empty. This does NOT automatically re-seed
+          // Firebase anymore \u2014 that used to call persist() here, which
+          // meant ANY empty/null read (a genuine first-ever load, but also a
+          // transient glitch, a wrong path, timing issue, etc.) would
+          // silently overwrite the real database with fresh local seed data,
+          // permanently destroying whatever was actually saved. Now it only
+          // shows local starter data for THIS view and puts up a banner;
+          // nothing is written to Firebase until an admin explicitly saves
+          // something, and even then only that one real change is written
+          // (not a full blind reseed).
+          console.warn("Firebase read back empty at 'festData' \u2014 not auto-saving. If you expected existing data, do not make changes yet; check the Firebase Console Data tab first.");
+          const banner = document.getElementById("saveFailBanner");
+          if (banner) {
+            banner.textContent = "\u26A0 No saved data found on the server \u2014 showing local starter data. If you expected your existing data, do NOT save yet \u2014 check Firebase Console first.";
+            banner.classList.remove("hidden");
+          }
         }
         firebaseReady = true;
         renderAll();
