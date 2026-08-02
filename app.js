@@ -818,13 +818,24 @@
         // Preload before showing it \u2014 fades in once fully loaded instead of
         // popping in abruptly (which felt jarring / slow to visitors).
         photoLayer.style.opacity = "0";
-        const img = new Image();
-        img.onload = () => {
+        const applyPhoto = () => {
           photoLayer.style.backgroundImage = `url('${state.hero.photoUrl}')`;
           photoLayer.dataset.loadedUrl = state.hero.photoUrl;
           // Force a reflow so the opacity transition actually plays.
           void photoLayer.offsetWidth;
           photoLayer.style.opacity = "1";
+        };
+        const img = new Image();
+        let retried = false;
+        img.onload = applyPhoto;
+        img.onerror = () => {
+          // A remote (ImgBB) photo can fail to preload on a slow/flaky venue
+          // connection \u2014 without this, the photo used to stay permanently
+          // invisible (stuck at opacity:0) with no retry. Retry once, then
+          // apply it anyway so the browser's own image loader gets a shot
+          // at it rather than leaving the section blank forever.
+          if (!retried) { retried = true; setTimeout(() => { img.src = state.hero.photoUrl; }, 1200); }
+          else applyPhoto();
         };
         img.src = state.hero.photoUrl;
       }
