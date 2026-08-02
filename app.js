@@ -662,59 +662,39 @@
     e.preventDefault();
     const id = a.getAttribute("href").slice(1);
     closeTopScreen(); // close the sidebar instantly
-    if (id === "standings") { showEventOrResultSection("standings"); return; } // bug fix: no scroll, just show
     const target = document.getElementById(id);
     if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth" }), 50);
   }));
   document.getElementById("brandHome").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
-  // Bug fix: "Result" and "Live Results" (Team Points) used scrollIntoView,
-  // which visually drifted into whichever section was above it. Now we just
-  // toggle display:block/none between the two so only the clicked one shows.
-  const standingsSection = document.getElementById("standings");
-  const resultsSection = document.getElementById("results");
-  function showEventOrResultSection(id) {
-    if (standingsSection) standingsSection.style.display = id === "standings" ? "block" : "none";
-    if (resultsSection) resultsSection.style.display = id === "results" ? "block" : "none";
-  }
-  document.querySelectorAll('a[href="#results"], a[href="#standings"]').forEach((a) => a.addEventListener("click", (e) => {
-    e.preventDefault();
-    showEventOrResultSection(a.getAttribute("href").slice(1));
-  }));
-  document.querySelectorAll('a.primary-button[href^="#"], a.explore-card[href^="#"], .stat-card[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
+  // Points (#standings) and Result (#results) both stay visible on the one
+  // scrollable home page now — no more show/hide toggle between them. Every
+  // link to either just scrolls to it.
+  document.querySelectorAll('a[href="#results"], a[href="#standings"], a.primary-button[href^="#"], a.explore-card[href^="#"], .stat-card[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
     const id = a.getAttribute("href").slice(1);
-    if (id === "results" || id === "standings") return; // handled above, no scroll
     const target = document.getElementById(id);
     if (target) target.scrollIntoView({ behavior: "smooth" });
   }));
-  // Explore Festival sits up in the hero, far above Team Points/Live Standings,
-  // so (unlike the small nearby stat-card links) it needs an actual scroll —
-  // the generic handler above deliberately skips scrolling for #standings.
+  // Explore Festival sits up in the hero, far above Team Points/Live Standings.
   const exploreFestivalBtn = document.getElementById("exploreFestivalBtn");
   if (exploreFestivalBtn) exploreFestivalBtn.addEventListener("click", (e) => {
     e.preventDefault();
-    showEventOrResultSection("standings");
-    requestAnimationFrame(() => {
-      const el = document.getElementById("standings");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    });
+    const el = document.getElementById("standings");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
   });
 
   // Bottom nav (Home / Points / Result / Events / Schedule / Profile). Unlike
   // the small stat-card links right above Standings, this can be tapped from
   // anywhere on the page (e.g. while down at Gallery), so every item needs an
-  // actual scroll, not just the section-swap toggle used higher up.
+  // actual scroll straight to its exact section position.
   const bnSchedule = document.getElementById("bnSchedule");
   if (bnSchedule && document.getElementById("schedule")) bnSchedule.classList.remove("hidden"); // only show if a Schedule section actually exists
   document.querySelectorAll("#homeBottomNav .nav-item").forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
     const which = a.dataset.bn;
     if (which === "profile") { openStudentLogin(); return; }
-    if (which === "standings" || which === "results") showEventOrResultSection(which);
-    requestAnimationFrame(() => {
-      const el = document.getElementById(which);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    });
+    const el = document.getElementById(which);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
     document.querySelectorAll("#homeBottomNav .nav-item").forEach((n) => n.classList.toggle("active", n === a));
   }));
 
@@ -3919,8 +3899,8 @@
           </table>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
-          <button class="btn btn-ghost" id="btnPsClose" style="width:auto;padding:.5rem .9rem">Close</button>
-          <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
+          <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
+          <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print</button>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:1.25rem;font-size:.7rem" class="muted">
           <div>Judge's Name and Signature :</div>
@@ -3969,26 +3949,22 @@
     });
   }
 
-  /* ===== Green Room Sign: chest no + name auto, code letter manual ===== */
+  /* ===== Green Room Sign: chest no + name auto (fixed to registered participants), code letter & sign manual ===== */
   function renderGreenRoomSheetInline(wrap, event, eventId, participants) {
     const draft = psLoadDraft("greenroom", eventId);
-    draft.rows = draft.rows || {}; draft.extraRows = draft.extraRows || [];
+    draft.rows = draft.rows || {};
 
-    function rowHtml(id, chestNo, name, isExtra, idx) {
+    function rowHtml(id, chestNo, name, idx) {
       const r = draft.rows[id] || {};
       return `<tr data-row="${id}">
         <td>${idx}</td>
-        <td class="p0">${isExtra ? `<input class="input ps-chest" data-id="${id}" value="${escapeAttr(chestNo)}" style="width:100%;text-align:center" />` : chestNo}</td>
-        <td style="text-align:left">${isExtra ? `<input class="input ps-name" data-id="${id}" value="${escapeAttr(name)}" style="width:100%" />` : escapeHtml(name)}</td>
+        <td class="p0">${chestNo}</td>
+        <td style="text-align:left">${escapeHtml(name)}</td>
         <td><input class="input ps-code" data-id="${id}" value="${escapeAttr(r.codeLetter || "")}" style="width:4rem;text-align:center;text-transform:uppercase" maxlength="3" /></td>
         <td></td>
       </tr>`;
     }
-    const baseRows = participants.map((s, i) => rowHtml(s.id, s.chestNo, s.name, false, i + 1));
-    const extraRows = draft.extraRows.map((id, i) => {
-      const r = draft.rows[id] || {};
-      return rowHtml(id, r.chestNo || "", r.name || "", true, participants.length + i + 1);
-    });
+    const baseRows = participants.map((s, i) => rowHtml(s.id, s.chestNo, s.name, i + 1));
 
     wrap.innerHTML = `
       <div class="card">
@@ -3998,11 +3974,10 @@
           <table class="marks-table" id="psGrTable" style="table-layout:fixed">
             <colgroup><col style="width:2.6rem" /><col style="width:4rem" /></colgroup>
             <thead><tr><th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Sign</th></tr></thead>
-            <tbody>${baseRows.join("") + extraRows.join("")}</tbody>
+            <tbody>${baseRows.join("")}</tbody>
           </table>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
-          <button class="btn btn-ghost" id="btnPsAddRow" style="width:auto;padding:.5rem .9rem">+ Add Row</button>
           <button class="btn btn-ghost" id="btnPsClose" style="width:auto;padding:.5rem .9rem">Close</button>
           <button class="btn btn-primary" id="btnPsPrint" style="width:auto;padding:.5rem .9rem;margin-left:auto">\u{1F5A8} Print</button>
         </div>
@@ -4014,15 +3989,6 @@
       psSaveDraft("greenroom", eventId, draft);
     }
     wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "codeLetter", inp.value.toUpperCase())));
-    wrap.querySelectorAll(".ps-chest").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "chestNo", inp.value)));
-    wrap.querySelectorAll(".ps-name").forEach((inp) => inp.addEventListener("input", () => saveField(inp.dataset.id, "name", inp.value)));
-
-    document.getElementById("btnPsAddRow").addEventListener("click", () => {
-      const id = "extra-" + uid();
-      draft.extraRows.push(id);
-      psSaveDraft("greenroom", eventId, draft);
-      renderGreenRoomSheetInline(wrap, event, eventId, participants);
-    });
 
     document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
 
@@ -4031,16 +3997,12 @@
     // internally but never left open as a visible extra step).
     document.getElementById("btnPsPrint").addEventListener("click", () => {
       const printBaseRows = participants.map((s, i) => `<tr><td>${i + 1}</td><td>${s.chestNo}</td><td style="text-align:left">${escapeHtml(s.name)}</td><td>${escapeHtml((draft.rows[s.id] || {}).codeLetter || "")}</td><td></td></tr>`);
-      const printExtraRows = draft.extraRows.map((id, i) => {
-        const r = draft.rows[id] || {};
-        return `<tr><td>${participants.length + i + 1}</td><td>${escapeHtml(r.chestNo || "")}</td><td style="text-align:left">${escapeHtml(r.name || "")}</td><td>${escapeHtml(r.codeLetter || "")}</td><td></td></tr>`;
-      });
       document.getElementById("printTitle").textContent = "Green Room Sign";
       document.getElementById("printContent").innerHTML = `
         <div class="print-heading" style="text-align:center">GREEN ROOM SIGN</div>
         <div class="muted" style="text-align:center;font-size:.85rem;margin-bottom:.75rem">${escapeHtml(event.name)} \u00b7 ${escapeHtml(event.category)}</div>
         <table class="schedule-print-table"><thead><tr><th>No</th><th>Chest No</th><th>Name</th><th>Code Letter</th><th>Sign</th></tr></thead>
-          <tbody>${printBaseRows.join("") + printExtraRows.join("")}</tbody>
+          <tbody>${printBaseRows.join("")}</tbody>
         </table>`;
       document.getElementById("printOverlay").classList.remove("hidden");
       window.print();
