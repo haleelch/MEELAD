@@ -43,7 +43,11 @@
 [data-theme="light"] .poster-code,
 [data-theme="light"] .export-card.active .t,
 [data-theme="light"] .export-card.active .s,
-[data-theme="light"] #btnAdminGuestView{color:#ffffff;}
+[data-theme="light"] #btnStudentDashClose,
+[data-theme="light"] .sd-avatar,
+[data-theme="light"] #btnAdminGuestView{color:#ffffff !important;}
+[data-theme="light"] #btnStudentDashClose{background:rgba(255,255,255,.22) !important;}
+[data-theme="light"] .sd-avatar{border-color:#ffffff !important;}
 [data-theme="light"] #btnAdminGuestView{background:rgba(255,255,255,.15);}
 [data-theme="light"] .toast{border-color:#ffffff;}
 /* Bug fix: dashboard/admin overlay has its own internal scroll
@@ -526,6 +530,7 @@ body.no-scroll .bottom-nav{display:none;}
   .print-content table{page-break-inside:auto;}
   .print-content tr{page-break-inside:avoid;page-break-after:auto;}
   .print-masthead,.print-heading,.print-section-row{page-break-after:avoid;}
+  #printContent .muted{color:#000 !important;}
 }
 
 .schedule-print-header{text-align:center;border-bottom:3px solid #DC2626;padding-bottom:.75rem;margin-bottom:1.25rem;}
@@ -533,12 +538,12 @@ body.no-scroll .bottom-nav{display:none;}
 .schedule-print-header h2{font-size:.85rem;font-weight:600;color:#DC2626;letter-spacing:.5px;margin:.25rem 0 0;}
 .schedule-stage-block{margin-bottom:1.4rem;border-radius:.6rem;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);}
 .schedule-stage-header{background:#1E3A8A;color:#fff;padding:.6rem 1rem;font-size:.85rem;font-weight:700;}
-.schedule-print-table{width:100%;border-collapse:collapse;font-size:.8rem;}
-.schedule-print-table thead{background:#374151;color:#fff;}
-.schedule-print-table th{padding:.55rem .7rem;text-align:left;font-weight:600;white-space:nowrap;}
-.schedule-print-table td{padding:.55rem .7rem;border-bottom:1px solid #E5E7EB;color:#111827;}
-.schedule-print-table tbody tr:nth-child(even){background:#F9FAFB;}
+.schedule-print-table{width:100%;border-collapse:collapse;font-size:.8rem;border:2px solid #000;}
+.schedule-print-table thead{background:#fff;color:#000;}
+.schedule-print-table th{padding:.55rem .7rem;text-align:left;font-weight:700;white-space:nowrap;border:1px solid #000;color:#000;}
+.schedule-print-table td{padding:.55rem .7rem;border:1px solid #000;color:#000;}
 .schedule-print-footer{text-align:center;font-size:.68rem;color:#6B7280;margin-top:1.5rem;padding-top:.75rem;border-top:1px solid #E5E7EB;}
+
 
 /* ---- results feed cards (dark, matches result-card design) ---- */
 .rf-card{

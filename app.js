@@ -607,10 +607,30 @@
   }
   window.addEventListener("popstate", () => {
     if (suppressNextPopstate) { suppressNextPopstate = false; return; }
-    const fn = screenStack.pop();
-    if (fn) fn();
-    if (screenStack.length === 0) unlockBodyScroll();
+    if (screenStack.length) {
+      const fn = screenStack.pop();
+      if (fn) fn();
+      if (screenStack.length === 0) unlockBodyScroll();
+      return;
+    }
+    // No overlay screen was open, so this back-press happened right on the
+    // home page \u2014 without a guard the very next back would exit the site
+    // entirely. Re-arm a boundary history entry and warn the user; only a
+    // second back-press within 2s (when exitArmed is already true) is
+    // allowed to actually leave.
+    if (!exitArmed) {
+      exitArmed = true;
+      showToast("Press back again to exit");
+      history.pushState({ meelaHome: true }, "", location.pathname + location.search);
+      clearTimeout(exitArmTimer);
+      exitArmTimer = setTimeout(() => { exitArmed = false; }, 2000);
+    }
   });
+  // Boundary entry so the first back-press on the home page lands on this
+  // instead of immediately exiting the site/tab.
+  let exitArmed = false;
+  let exitArmTimer = null;
+  history.pushState({ meelaHome: true }, "", location.pathname + location.search);
 
   // Most modern mobile browsers already map an edge-swipe gesture to native
   // back navigation (which the popstate listener above already handles). This
