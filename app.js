@@ -2937,7 +2937,7 @@
             <div class="history-dots-menu hidden" data-id="${t.id}">
               <button class="history-menu-item" data-edit-team="${t.id}">Edit Team</button>
               <button class="history-menu-item" data-change-leader="${t.id}">Change Leader</button>
-              <button class="history-menu-item danger" data-id="${t.id}">Delete Team</button>
+              <button class="history-menu-item danger" data-delete-team="${t.id}">Delete Team</button>
             </div>
           </div>
         </div>
@@ -2998,11 +2998,11 @@
       persist(); renderTeamsList();
       showToast("Team leader updated");
     }));
-    document.querySelectorAll("#teamsListWrap .trash-btn").forEach((b) => b.addEventListener("click", () => {
-      const team = state.teams.find((t) => t.id === b.dataset.id);
+    document.querySelectorAll("#teamsListWrap [data-delete-team]").forEach((b) => b.addEventListener("click", () => {
+      const team = state.teams.find((t) => t.id === b.dataset.deleteTeam);
       if (!confirm(`Delete ${team ? team.name : "this team"}? This can't be undone.`)) return;
-      removeTeamEverywhere(b.dataset.id);
-      state.teams = state.teams.filter((t) => t.id !== b.dataset.id);
+      removeTeamEverywhere(b.dataset.deleteTeam);
+      state.teams = state.teams.filter((t) => t.id !== b.dataset.deleteTeam);
       persist(); renderCounters(); renderLeaderboard(); renderTeamsTab();
     }));
   }
@@ -3858,9 +3858,9 @@
 
     const rowHtml = (row, i) => `
       <tr data-row="${i}">
-        <td class="p0"><input class="input ps-code" data-idx="${i}" value="${escapeAttr(row.codeLetter)}" style="width:100%;text-align:center;text-transform:uppercase" maxlength="3" /></td>
-        ${row.marks.map((m, mi) => `<td class="p0"><input type="number" class="input ps-mark" data-idx="${i}" data-mi="${mi}" value="${escapeAttr(m)}" style="width:100%;text-align:center" /></td>`).join("")}
-        <td class="p0"><input class="input ps-total" data-idx="${i}" value="${escapeAttr(row.total)}" style="width:100%;text-align:center;font-weight:700" /></td>
+        <td style="height:2.4rem"></td>
+        ${row.marks.map(() => `<td></td>`).join("")}
+        <td></td>
       </tr>`;
 
     wrap.innerHTML = `
@@ -3905,10 +3905,6 @@
         </div>
         <div style="border-bottom:1px solid var(--border);margin-top:2rem;width:33%"></div>
       </div>`;
-
-    wrap.querySelectorAll(".ps-code").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].codeLetter = inp.value.toUpperCase(); psSaveDraft("valuation", eventId, draft); }));
-    wrap.querySelectorAll(".ps-mark").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].marks[inp.dataset.mi] = inp.value; psSaveDraft("valuation", eventId, draft); }));
-    wrap.querySelectorAll(".ps-total").forEach((inp) => inp.addEventListener("input", () => { draft.rows[inp.dataset.idx].total = inp.value; psSaveDraft("valuation", eventId, draft); }));
 
     document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
 
@@ -3970,7 +3966,7 @@
         <div>${escapeHtml(event.category)}</div>
       </div>
       <table class="schedule-print-table" style="table-layout:fixed">
-        <thead><tr><th style="width:4.5rem">Chest No</th><th>Participant</th><th style="width:5rem">Code Letter</th><th style="width:8rem">Participants Signature</th></tr></thead>
+        <thead><tr><th style="width:4rem">Chest No</th><th style="width:9rem">Participant</th><th style="width:4rem">Code Letter</th><th>Participants Signature</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div style="margin-top:1.5rem;font-size:.78rem" class="muted">
