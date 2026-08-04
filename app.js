@@ -1447,16 +1447,18 @@
     { key: "chest_number", label: "Chest No", sample: "303" },
     { key: "category", label: "Category", sample: "Junior" },
     { key: "school_class", label: "Class", sample: "7-A" },
+    { key: "qr_code", label: "QR Code", sample: "" },
   ];
 
   // Fixed default layout applied automatically whenever a template image is
   // uploaded \u2014 there is no manual drag/position editor any more.
   function defaultCardPlacements() {
     return [
-      { id: "pl-" + uid(), tag: "student_name", xPct: 26, yPct: 80, fontSize: 34, color: "#111827", align: "center", bold: false },
-      { id: "pl-" + uid(), tag: "school_class", xPct: 44, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: false },
-      { id: "pl-" + uid(), tag: "category", xPct: 26, yPct: 91, fontSize: 26, color: "#111827", align: "center", bold: false },
-      { id: "pl-" + uid(), tag: "chest_number", xPct: 76, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: true },
+      { id: "pl-" + uid(), tag: "student_name", xPct: 26, yPct: 80, fontSize: 34, color: "#111827", align: "center", bold: false, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "school_class", xPct: 44, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "category", xPct: 26, yPct: 91, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "chest_number", xPct: 76, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: true, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "qr_code", xPct: 76, yPct: 55, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
     ];
   }
 
@@ -1479,8 +1481,13 @@
     const ctx = canvas.getContext("2d");
 
     const templatePromise = mt.imageUrl ? loadImage(mt.imageUrl) : Promise.resolve(null);
+    const qrPlacement = (mt.placements || []).find((p) => p.tag === "qr_code");
+    const qrText = `${window.location.origin}${window.location.pathname}?chest=${encodeURIComponent(student.chestNo || "")}`;
+    const qrPromise = (qrPlacement && window.QRious)
+      ? Promise.resolve().then(() => new window.QRious({ value: qrText, size: qrPlacement.qrSize || 240 }).toDataURL()).then(loadImage).catch(() => null)
+      : Promise.resolve(null);
 
-    return templatePromise.then((img) => {
+    return Promise.all([templatePromise, qrPromise]).then(([img, qrImg]) => {
       if (img) {
         const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
         const w = img.width * scale, h = img.height * scale;
@@ -1492,13 +1499,20 @@
       }
       (mt.placements || []).forEach((p) => {
         const x = (p.xPct / 100) * canvas.width, y = (p.yPct / 100) * canvas.height;
-        const val = resolveCardTag(p.tag, student);
-        if (!val) return;
-        ctx.fillStyle = p.color || "#111827";
-        ctx.font = `${p.bold ? "bold " : ""}${p.fontSize || 30}px Georgia`;
-        ctx.textAlign = p.align || "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(val, x, y);
+        if (p.tag === "qr_code") {
+          if (qrImg) {
+            const size = p.qrSize || 120;
+            ctx.drawImage(qrImg, x - size / 2, y - size / 2, size, size);
+          }
+        } else {
+          const val = resolveCardTag(p.tag, student);
+          if (!val) return;
+          ctx.fillStyle = p.color || "#111827";
+          ctx.font = `${p.bold ? "bold " : ""}${p.fontSize || 30}px Georgia`;
+          ctx.textAlign = p.align || "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(val, x, y);
+        }
       });
       ctx.textBaseline = "alphabetic";
       return canvas.toDataURL("image/jpeg", 0.92);

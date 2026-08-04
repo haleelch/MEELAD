@@ -573,6 +573,16 @@
     <div id="studentDashboardContent" class="admin-content"></div>
   </div>
 
+  <!-- Full-screen poster/result view (replaces the old modal popup so poster
+       previews get proper back-button support like every other screen) -->
+  <div id="posterScreen" class="admin-screen hidden">
+    <div class="admin-topbar">
+      <button id="btnPosterScreenBack" class="icon-btn" aria-label="Back">&#8592;</button>
+      <div class="font-display admin-topbar-title" id="posterScreenTitle">Poster</div>
+    </div>
+    <div id="posterScreenContent" class="admin-content"></div>
+  </div>
+
 
 
   <!-- Admin portrait menu (vertical, same design as guest sidebar) -->
