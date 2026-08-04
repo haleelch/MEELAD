@@ -1026,8 +1026,8 @@
         <button type="button" class="rf-btn rf-btn-poster" id="btnResultBlockDownload">\u2B07 Download</button>
       </div>`;
     block.classList.remove("hidden");
-    document.getElementById("btnResultBlockShare").addEventListener("click", () => quickShareResult(event.id));
-    document.getElementById("btnResultBlockDownload").addEventListener("click", () => quickDownloadResult(event.id));
+    document.getElementById("btnResultBlockShare").addEventListener("click", () => openResultPosterModal(event.id));
+    document.getElementById("btnResultBlockDownload").addEventListener("click", () => openResultPosterModal(event.id));
   }
 
   // Same result view as the search-icon flow (category, item name, winners
@@ -1060,8 +1060,8 @@
       </div>`;
     }).join("");
     block.classList.remove("hidden");
-    block.querySelectorAll("[data-share]").forEach((b) => b.addEventListener("click", () => quickShareResult(b.dataset.share)));
-    block.querySelectorAll("[data-download]").forEach((b) => b.addEventListener("click", () => quickDownloadResult(b.dataset.download)));
+    block.querySelectorAll("[data-share]").forEach((b) => b.addEventListener("click", () => openResultPosterModal(b.dataset.share)));
+    block.querySelectorAll("[data-download]").forEach((b) => b.addEventListener("click", () => openResultPosterModal(b.dataset.download)));
   }
 
 
@@ -1189,7 +1189,7 @@
       expandedResultCard = expandedResultCard === id ? null : id;
       renderResultsFeed();
     }));
-    list.querySelectorAll("[data-share]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); quickShareResult(b.dataset.share); }));
+    list.querySelectorAll("[data-share]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); openResultPosterModal(b.dataset.share); }));
     list.querySelectorAll("[data-poster]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); openResultPosterModal(b.dataset.poster); }));
 
     if (pager) {
@@ -1207,40 +1207,9 @@
     }
   }
 
-  // Quick WhatsApp share straight from a feed card — same poster art + caption
-  // logic as the full picker modal (openResultPosterModal), just without the
-  // template-choosing step, using whatever result template is currently set.
-  function quickDownloadResult(eventId) {
-    const event = state.events.find((e) => e.id === eventId);
-    if (!event) return;
-    const winners = getWinnersForEvent(eventId);
-    if (!winners.length) return showToast("No winners recorded for this programme yet");
-
-    const templates = getAllResultTemplates();
-    const tpl = templates.some((t) => t.id === state.hero.resultTemplate) ? state.hero.resultTemplate : (templates[0] ? templates[0].id : null);
-
-    showToast("Preparing result poster\u2026");
-    drawResultPoster(event, winners, tpl)
-      .then((url) => { downloadDataUrl(url, `${event.name.replace(/\s+/g, "-")}-result.jpg`); showToast("Result poster downloaded"); })
-      .catch(() => showToast("Could not generate poster"));
-  }
-
-  function quickShareResult(eventId) {
-    const event = state.events.find((e) => e.id === eventId);
-    if (!event) return;
-    const winners = getWinnersForEvent(eventId);
-    if (!winners.length) return showToast("No winners recorded for this programme yet");
-
-    const templates = getAllResultTemplates();
-    const tpl = templates.some((t) => t.id === state.hero.resultTemplate) ? state.hero.resultTemplate : (templates[0] ? templates[0].id : null);
-
-    showToast("Preparing result poster\u2026");
-    const summary = winners.map((w) => `${RANK_LABEL[w.rank]}: ${w.student.name} (${w.student.chestNo})`).join(", ");
-    const text = `${state.hero.title}\n\nCongratulations!\n\nCheck More Results :\n${window.location.origin}\n\u00a9 Event crew`;
-    drawResultPoster(event, winners, tpl)
-      .then((url) => shareImageWithText(url, `${event.name.replace(/\s+/g, "-")}-result.jpg`, text))
-      .catch(() => showToast("Could not generate poster"));
-  }
+  // (Removed: quickDownloadResult/quickShareResult, which used to share/download
+  // straight from the feed with no way to pick a template first \u2014 every entry
+  // point now opens openResultPosterModal instead, template picker included.)
 
   /* ---------------- poster templates (canvas) ---------------- */
   function loadImage(src) {
@@ -1478,18 +1447,16 @@
     { key: "chest_number", label: "Chest No", sample: "303" },
     { key: "category", label: "Category", sample: "Junior" },
     { key: "school_class", label: "Class", sample: "7-A" },
-    { key: "qr_code", label: "QR Code", sample: "" },
   ];
 
   // Fixed default layout applied automatically whenever a template image is
   // uploaded \u2014 there is no manual drag/position editor any more.
   function defaultCardPlacements() {
     return [
-      { id: "pl-" + uid(), tag: "student_name", xPct: 26, yPct: 80, fontSize: 34, color: "#111827", align: "center", bold: false, qrSize: 140 },
-      { id: "pl-" + uid(), tag: "school_class", xPct: 44, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
-      { id: "pl-" + uid(), tag: "category", xPct: 26, yPct: 91, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
-      { id: "pl-" + uid(), tag: "chest_number", xPct: 76, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: true, qrSize: 140 },
-      { id: "pl-" + uid(), tag: "qr_code", xPct: 76, yPct: 55, fontSize: 26, color: "#111827", align: "center", bold: false, qrSize: 140 },
+      { id: "pl-" + uid(), tag: "student_name", xPct: 26, yPct: 80, fontSize: 34, color: "#111827", align: "center", bold: false },
+      { id: "pl-" + uid(), tag: "school_class", xPct: 44, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: false },
+      { id: "pl-" + uid(), tag: "category", xPct: 26, yPct: 91, fontSize: 26, color: "#111827", align: "center", bold: false },
+      { id: "pl-" + uid(), tag: "chest_number", xPct: 76, yPct: 80, fontSize: 26, color: "#111827", align: "center", bold: true },
     ];
   }
 
@@ -1511,14 +1478,9 @@
     canvas.width = 1013; canvas.height = 638;
     const ctx = canvas.getContext("2d");
 
-    const qrPlacement = (mt.placements || []).find((p) => p.tag === "qr_code");
-    const qrText = `${window.location.origin}${window.location.pathname}?chest=${encodeURIComponent(student.chestNo || "")}`;
-    const qrPromise = (qrPlacement && window.QRious)
-      ? Promise.resolve().then(() => new window.QRious({ value: qrText, size: qrPlacement.qrSize || 240 }).toDataURL()).then(loadImage).catch(() => null)
-      : Promise.resolve(null);
     const templatePromise = mt.imageUrl ? loadImage(mt.imageUrl) : Promise.resolve(null);
 
-    return Promise.all([templatePromise, qrPromise]).then(([img, qrImg]) => {
+    return templatePromise.then((img) => {
       if (img) {
         const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
         const w = img.width * scale, h = img.height * scale;
@@ -1530,20 +1492,13 @@
       }
       (mt.placements || []).forEach((p) => {
         const x = (p.xPct / 100) * canvas.width, y = (p.yPct / 100) * canvas.height;
-        if (p.tag === "qr_code") {
-          if (qrImg) {
-            const size = p.qrSize || 120;
-            ctx.drawImage(qrImg, x - size / 2, y - size / 2, size, size);
-          }
-        } else {
-          const val = resolveCardTag(p.tag, student);
-          if (!val) return;
-          ctx.fillStyle = p.color || "#111827";
-          ctx.font = `${p.bold ? "bold " : ""}${p.fontSize || 30}px Georgia`;
-          ctx.textAlign = p.align || "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(val, x, y);
-        }
+        const val = resolveCardTag(p.tag, student);
+        if (!val) return;
+        ctx.fillStyle = p.color || "#111827";
+        ctx.font = `${p.bold ? "bold " : ""}${p.fontSize || 30}px Georgia`;
+        ctx.textAlign = p.align || "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(val, x, y);
       });
       ctx.textBaseline = "alphabetic";
       return canvas.toDataURL("image/jpeg", 0.92);
@@ -1638,6 +1593,17 @@
   function closeModal() { modalOverlay.classList.add("hidden"); modalBody.innerHTML = ""; }
   modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) closeTopScreen(); });
 
+  const posterScreen = document.getElementById("posterScreen");
+  const posterScreenContent = document.getElementById("posterScreenContent");
+  function closePosterScreen() { posterScreen.classList.add("hidden"); document.body.classList.remove("no-scroll"); }
+  function openPosterScreen(title) {
+    document.getElementById("posterScreenTitle").textContent = title;
+    document.body.classList.add("no-scroll");
+    posterScreen.classList.remove("hidden");
+    pushScreen(closePosterScreen);
+  }
+  document.getElementById("btnPosterScreenBack").addEventListener("click", closeTopScreen);
+
   function openPosterModal({ student, rank, event, team }) {
     const templates = getAllTemplates();
     let selectedTemplate = templates.some((t) => t.id === state.hero.posterTemplate)
@@ -1653,7 +1619,7 @@
         </div>
       </div>`;
 
-    modalBody.innerHTML = `
+    posterScreenContent.innerHTML = `
       <div class="poster-head arch-top">
         <div style="font-size:1.4rem;color:var(--gold)">\u2605</div>
         <div class="poster-rank">${RANK_LABEL[rank]}</div>
@@ -1670,10 +1636,8 @@
       <div class="modal-actions">
         <button class="btn btn-primary" id="btnDownloadPoster">\u2B07 Download Poster</button>
         <button class="btn btn-whatsapp" id="btnSharePoster">\u{1F4AC} Share</button>
-      </div>
-      <button class="modal-close" id="btnClosePoster">Close</button>`;
-    modalOverlay.classList.remove("hidden");
-    pushScreen(closeModal);
+      </div>`;
+    openPosterScreen(`${RANK_LABEL[rank]} \u2014 ${event.name}`);
 
     const carousel = document.getElementById("posterCarousel");
     if (carousel) {
@@ -1882,7 +1846,7 @@
         <div class="result-card-overlay" style="top:${t.textY || 55}%;color:${t.textColor || "#fff"}">${rowsHtml()}</div>
       </div>`;
 
-    modalBody.innerHTML = `
+    posterScreenContent.innerHTML = `
       <div class="poster-head arch-top">
         <div style="font-size:1.4rem;color:var(--gold)">\u{1F3C6}</div>
         <div class="poster-name font-display">${escapeHtml(event.name)}</div>
@@ -1901,10 +1865,8 @@
       <div class="modal-actions">
         <button class="btn btn-primary" id="btnDownloadResult">\u2B07 Download Poster</button>
         <button class="btn btn-whatsapp" id="btnShareResult">\u{1F4AC} Share</button>
-      </div>
-      <button class="modal-close" id="btnCloseResult">Close</button>`;
-    modalOverlay.classList.remove("hidden");
-    pushScreen(closeModal);
+      </div>`;
+    openPosterScreen(`\u{1F3C6} ${event.name}`);
 
     const carousel = document.getElementById("resultCarousel");
     if (carousel) {
@@ -1945,7 +1907,6 @@
         .then((url) => shareImageWithText(url, `${event.name.replace(/\s+/g, "-")}-result.jpg`, text))
         .catch(() => showToast("Could not generate poster"));
     });
-    document.getElementById("btnCloseResult").addEventListener("click", closeTopScreen);
   }
 
   /* ---------------- ID card modal (parent-facing) ---------------- */
@@ -2234,6 +2195,7 @@
     document.getElementById("printOverlay").classList.add("hidden");
     screenStack.length = 0;
     currentAdminTab = null;
+    adminReturnPushed = false;
     history.replaceState(null, "", location.pathname + location.search);
     window.scrollTo(0, 0);
   }
@@ -2267,17 +2229,24 @@
 
   /* ---------------- admin: tabs ---------------- */
   const adminContent = document.getElementById("adminContent");
+  let adminReturnPushed = false; // whether a "go back to Dashboard" step is already on the stack
   document.querySelectorAll(".admin-menu-link").forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
       const newTab = link.dataset.tab;
-      const prevTab = currentAdminTab;
       closeTopScreen(); // close drawer instantly
-      if (prevTab && prevTab !== newTab) {
-        // Push one back-nav step per tab switch, so pressing back walks
-        // through the tabs the admin actually visited (one step at a time)
-        // instead of jumping straight out to the public home page.
-        pushScreen(() => { currentAdminTab = prevTab; setActiveAdminTab(prevTab); });
+      // Back should always land on the Admin Dashboard (main menu) in one
+      // press, no matter how many tabs were visited in between \u2014 not walk
+      // backward through each tab one at a time. So only one "return to
+      // Dashboard" step is ever on the stack at once: it's pushed the first
+      // time the admin leaves Dashboard, and cleared once they're back on it
+      // (whether via Back or by tapping Dashboard directly) so it can be
+      // pushed fresh next time they leave again.
+      if (newTab === "dashboard") {
+        adminReturnPushed = false;
+      } else if (!adminReturnPushed) {
+        adminReturnPushed = true;
+        pushScreen(() => { adminReturnPushed = false; currentAdminTab = "dashboard"; setActiveAdminTab("dashboard"); });
       }
       currentAdminTab = newTab;
       setActiveAdminTab(newTab);
@@ -3876,7 +3845,7 @@
      sign in and be assigned a code letter before judging. Drafts save to
      localStorage per programme so nothing is lost on reload. */
   const PS_MAX_ROWS = 9;
-  const PS_MARK_COLS = 5;
+  const PS_MARK_COLS = 3;
 
   function psLocalKey(type, eventId) { return `meelad_printsheet_${type}_${eventId}`; }
   function psLoadDraft(type, eventId, rowCount) {
@@ -3893,17 +3862,15 @@
     try { localStorage.setItem(psLocalKey(type, eventId), JSON.stringify(draft)); } catch {}
   }
 
-  /* ===== Valuation Sheet: blind judging, Code Letter + 4 marks + total out of 100.
-     Each sheet is short, so an A4 print job leaves a lot of blank paper below
-     it. "Add Another Sheet" lets the admin stack a second programme's sheet
-     on the same page (own draft/rows, own header) with a cut-line between
-     them, so one A4 print can be scissor-cut into two separate sheets. ===== */
+  /* ===== Valuation Sheet: blind judging, Code Letter + 3 marks + total out of 100.
+     "Add Another Sheet" lets the admin queue up several programmes' sheets into
+     one print job \u2014 each still gets its own full page. ===== */
   function renderValuationSheetInline(wrap, event, eventId, participants) {
     const sheets = [{ event, eventId, participants }];
 
     const rowHtml = (row) => `
       <tr>
-        <td style="height:1.9rem"></td>
+        <td style="height:2.9rem"></td>
         ${row.marks.map(() => `<td></td>`).join("")}
         <td></td>
       </tr>`;
@@ -3924,9 +3891,9 @@
         <div class="marks-table-wrap">
           <table class="marks-table ps-val-table" style="table-layout:fixed">
             <colgroup>
-              <col style="width:3.4rem" />
-              ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:3.6rem" />`).join("")}
-              <col style="width:4.2rem" />
+              <col style="width:3.6rem" />
+              ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:4.6rem" />`).join("")}
+              <col style="width:4.6rem" />
             </colgroup>
             <thead>
               <tr>
@@ -3960,11 +3927,16 @@
       </div>
       <hr class="print-hr" />
       <table class="schedule-print-table" style="table-layout:fixed">
+        <colgroup>
+          <col style="width:15%" />
+          ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:${Math.floor(55 / PS_MARK_COLS)}%" />`).join("")}
+          <col style="width:15%" />
+        </colgroup>
         <thead>
-          <tr><th colspan="2">${escapeHtml(s.event.name)}</th><th colspan="${PS_MARK_COLS - 1}">${escapeHtml(s.event.category)}</th><th>${escapeHtml(s.event.type || "Individual")}</th></tr>
-          <tr><th>Code Letter</th><th colspan="${PS_MARK_COLS}">Marks</th><th>Mark out of 100</th></tr>
+          <tr><th colspan="2" style="text-align:center">${escapeHtml(s.event.name)}</th><th colspan="${PS_MARK_COLS - 1}" style="text-align:center">${escapeHtml(s.event.category)}</th><th style="text-align:center">${escapeHtml(s.event.type || "Individual")}</th></tr>
+          <tr><th style="text-align:center">Code Letter</th><th colspan="${PS_MARK_COLS}" style="text-align:center">Marks</th><th style="text-align:center">Mark out of 100</th></tr>
         </thead>
-        <tbody>${s.draft.rows.map((row) => `<tr><td>${escapeHtml(row.codeLetter)}</td>${row.marks.map((m) => `<td>${escapeHtml(String(m || ""))}</td>`).join("")}<td><b>${escapeHtml(String(row.total || ""))}</b></td></tr>`).join("")}</tbody>
+        <tbody>${s.draft.rows.map((row) => `<tr><td style="height:2.6rem;text-align:center">${escapeHtml(row.codeLetter)}</td>${row.marks.map((m) => `<td style="text-align:center">${escapeHtml(String(m || ""))}</td>`).join("")}<td style="text-align:center"><b>${escapeHtml(String(row.total || ""))}</b></td></tr>`).join("")}</tbody>
       </table>
       <div style="margin-top:2rem;display:flex;justify-content:space-between;font-size:.85rem">
         <div>Judge's Name and Signature :</div>
@@ -3976,11 +3948,11 @@
       const otherEvents = state.events.filter((e) => !sheets.some((s) => s.eventId === e.id));
       wrap.innerHTML = `
         <div class="card">
-          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u2702\ufe0f &nbsp;cut here&nbsp; \u2702\ufe0f</div>` : "")).join("")}
+          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u{1F4C4} next: ${escapeHtml(sheets[i + 1].event.name)}</div>` : "")).join("")}
           ${otherEvents.length ? `
           <div style="display:flex;gap:.5rem;margin-top:1rem;align-items:center">
             <select id="psAddEventSel" class="input" style="flex:1;font-size:.78rem">
-              <option value="">+ Add another programme to this page...</option>
+              <option value="">+ Add another programme to this print job...</option>
               ${otherEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
             </select>
             <button class="btn btn-ghost" id="btnPsAddSheet" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
@@ -4008,10 +3980,11 @@
       // (everything else is force-hidden), but it's never left open as its own
       // extra screen \u2014 window.print() is triggered immediately and the
       // overlay is closed right back down, so nothing appears "in between".
+      // Each sheet gets its own full page (no more 2-per-page stacking).
       document.getElementById("btnPsPrint").addEventListener("click", () => {
         document.getElementById("printTitle").textContent = "Valuation Sheet";
         document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
-          `<div>${printBlock(s)}</div>${i < sheets.length - 1 ? `<div class="ps-cut-line-print">\u2702 - - - - - - - - - - - - - - - - - - - - - - - - - - - - \u2702</div>` : ""}`
+          `<div${i > 0 ? ' style="break-before:page"' : ""}>${printBlock(s)}</div>`
         ).join("");
         document.getElementById("printOverlay").classList.remove("hidden");
         window.print();
@@ -4061,31 +4034,56 @@
       <div style="border-bottom:1px solid var(--border);margin:.4rem auto 0;width:50%"></div>`;
     };
 
-    wrap.innerHTML = `
-      <div class="card">
-        ${sheets.map((s, i) => sheetHtml(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u{1F4C4} next: ${escapeHtml(sheets[i + 1].event.name)}</div>` : "")).join("")}
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
-          <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
-          <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} sheets)` : ""}</button>
-        </div>
-      </div>`;
+    function renderAll() {
+      const otherEvents = state.events.filter((e) => !sheets.some((s) => s.eventId === e.id));
+      wrap.innerHTML = `
+        <div class="card">
+          ${sheets.map((s, i) => sheetHtml(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u{1F4C4} next: ${escapeHtml(sheets[i + 1].event.name)}</div>` : "")).join("")}
+          ${otherEvents.length ? `
+          <div style="display:flex;gap:.5rem;margin-top:1rem;align-items:center">
+            <select id="psAddEventSel" class="input" style="flex:1;font-size:.78rem">
+              <option value="">+ Add another programme to this print job...</option>
+              ${otherEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+            </select>
+            <button class="btn btn-ghost" id="btnPsAddSheet" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
+          </div>` : ""}
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
+            <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
+            <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} sheets)` : ""}</button>
+          </div>
+        </div>`;
 
-    document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
+      document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
 
-    // One tap = one print dialog (see the matching comment in
-    // renderValuationSheetInline for why #printOverlay is still used
-    // internally but never left open as a visible extra step). Each sheet
-    // after the first gets break-before:page so every programme prints on
-    // its own page in the same job.
-    document.getElementById("btnPsPrint").addEventListener("click", () => {
-      document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
-      document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
-        `<div${i > 0 ? ' style="break-before:page"' : ""}>${sheetHtml(s)}</div>`
-      ).join("");
-      document.getElementById("printOverlay").classList.remove("hidden");
-      window.print();
-      document.getElementById("printOverlay").classList.add("hidden");
-    });
+      const addBtn = document.getElementById("btnPsAddSheet");
+      if (addBtn) addBtn.addEventListener("click", () => {
+        const eid = document.getElementById("psAddEventSel").value;
+        if (!eid) return showToast("Choose a programme first");
+        const ev = state.events.find((e) => e.id === eid);
+        ev.status = "ticked";
+        const parts = ev.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+        sheets.push({ event: ev, eventId: eid, participants: parts });
+        persist(); renderTicker(); renderChecklist();
+        renderAll();
+      });
+
+      // One tap = one print dialog (see the matching comment in
+      // renderValuationSheetInline for why #printOverlay is still used
+      // internally but never left open as a visible extra step). Each sheet
+      // after the first gets break-before:page so every programme prints on
+      // its own page in the same job.
+      document.getElementById("btnPsPrint").addEventListener("click", () => {
+        document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
+        document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
+          `<div${i > 0 ? ' style="break-before:page"' : ""}>${sheetHtml(s)}</div>`
+        ).join("");
+        document.getElementById("printOverlay").classList.remove("hidden");
+        window.print();
+        document.getElementById("printOverlay").classList.add("hidden");
+      });
+    }
+
+    renderAll();
   }
 
   function renderExportTab() {
@@ -4129,46 +4127,22 @@
       pickEventKind = b.dataset.kind;
       document.getElementById("sheetWrap").innerHTML = "";
       document.querySelectorAll(".export-card").forEach((c) => c.classList.toggle("active", c === b)); // bug fix: highlight the selected card
-      if (pickEventKind === "Green Room Sign") {
-        document.getElementById("pickWrap").innerHTML = `
-          <div class="card">
-            <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select one or more programmes for "Green Room Sign" \u2014 all chosen sheets print together in one job, one page each</div>
-            <div style="max-height:14rem;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem;margin-bottom:.75rem">
-              ${state.events.map((e) => `
-                <label class="checkbox-row" style="cursor:pointer">
-                  <span>${escapeHtml(e.name)} <span class="muted" style="font-size:.68rem">(${escapeHtml(e.category)})</span></span>
-                  <input type="checkbox" class="grsEventChk" value="${e.id}" />
-                </label>`).join("")}
-            </div>
-            <button class="btn btn-primary" id="btnGenerate" style="width:100%">Generate</button>
-          </div>`;
-        document.getElementById("btnGenerate").addEventListener("click", () => {
-          const ids = Array.from(document.querySelectorAll(".grsEventChk:checked")).map((c) => c.value);
-          if (!ids.length) return showToast("Choose at least one programme");
-          const sheetWrap = document.getElementById("sheetWrap");
-          const sheets = ids.map((eid) => {
-            const ev = state.events.find((e) => e.id === eid);
-            ev.status = "ticked";
-            const participants = ev.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
-            return { event: ev, participants };
-          });
-          persist(); renderTicker(); renderChecklist();
-          renderGreenRoomSheetInline(sheetWrap, sheets);
-          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-        return;
-      }
       document.getElementById("pickWrap").innerHTML = `
         <div class="card">
           <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select programme for "${pickEventKind}"</div>
-          <div style="display:flex;gap:.5rem">
-            <select id="pickEventSel" class="input" style="flex:1">
-              <option value="">Choose programme...</option>
-              ${state.events.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
-            </select>
-            <button class="btn btn-primary" id="btnGenerate" style="width:auto;padding:.5rem .9rem">Generate</button>
-          </div>
+          <input id="pickEventSearch" class="input" placeholder="Search programme or category..." style="margin-bottom:.5rem" />
+          <select id="pickEventSel" class="input" size="6" style="width:100%">
+            ${state.events.map((e) => `<option value="${e.id}" data-search="${escapeAttr((e.name + " " + e.category).toLowerCase())}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+          </select>
+          <button class="btn btn-primary" id="btnGenerate" style="width:100%;margin-top:.6rem">Generate</button>
         </div>`;
+      document.getElementById("pickEventSearch").addEventListener("input", (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        document.querySelectorAll("#pickEventSel option").forEach((opt) => {
+          opt.classList.toggle("hidden", Boolean(q) && !opt.dataset.search.includes(q));
+          opt.hidden = Boolean(q) && !opt.dataset.search.includes(q);
+        });
+      });
       document.getElementById("btnGenerate").addEventListener("click", () => {
         const eid = document.getElementById("pickEventSel").value;
         if (!eid) return showToast("Choose a programme first");
@@ -4178,6 +4152,11 @@
           event.status = "ticked"; persist(); renderTicker(); renderChecklist();
           const valParticipants = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
           renderValuationSheetInline(sheetWrap, event, eid, valParticipants);
+          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (pickEventKind === "Green Room Sign") {
+          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
+          const grsParticipants = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+          renderGreenRoomSheetInline(sheetWrap, [{ event, eventId: eid, participants: grsParticipants }]);
           sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
         } else {
           openPrintSheet(pickEventKind, eid);
