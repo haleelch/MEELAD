@@ -415,6 +415,7 @@ body.no-scroll .bottom-nav{display:none;}
 .checklist-row{display:flex;justify-content:space-between;padding:.55rem .75rem;border-radius:.5rem;font-size:.72rem;margin-bottom:.3rem;background:var(--surface2);color:var(--text);}
 .checklist-row .muted{color:var(--muted);}
 .checklist-row.done{background:rgba(31,122,87,.18);}
+.checklist-row.in-progress{background:rgba(201,162,39,.16);}
 .tick{color:var(--emerald-light);}
 
 /* ---- chest number card print grid ---- */
@@ -439,6 +440,11 @@ body.no-scroll .bottom-nav{display:none;}
 }
 
 /* ---- print sheet (premium) ---- */
+.autocomplete-dropdown{position:absolute;top:calc(100% + .3rem);left:0;right:0;max-height:13rem;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:.6rem;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:20;}
+.autocomplete-item{padding:.6rem .8rem;font-size:.82rem;cursor:pointer;border-bottom:1px solid var(--border);}
+.autocomplete-item:last-child{border-bottom:none;}
+.autocomplete-item:active{background:var(--surface2);}
+.autocomplete-empty{padding:.7rem .8rem;font-size:.78rem;color:var(--muted);text-align:center;}
 .ps-cut-line{display:flex;align-items:center;justify-content:center;gap:.4rem;margin:1.1rem 0;padding:.4rem 0;border-top:1px dashed #999;border-bottom:1px dashed #999;font-size:.7rem;color:#888;letter-spacing:.04em;}
 .ps-cut-line-print{display:none;}
 @media print{

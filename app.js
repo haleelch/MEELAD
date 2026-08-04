@@ -2387,7 +2387,7 @@
     state.teams = state.teams.filter((t) => !batch.teamIds.includes(t.id));
     state.testDataBatch = { active: false, teamIds: [], eventIds: [], studentIds: [] };
     persist();
-    renderCounters(); renderLeaderboard(); renderTicker(); renderFilters(); renderResultsList();
+    renderCounters(); renderLeaderboard(); renderTicker(); renderFilters(); renderResultsList(); renderChecklist();
     showToast("Test data deleted \u2014 back to your real data");
     renderDashboardTab();
   }
@@ -3962,7 +3962,7 @@
       const otherEvents = state.events.filter((e) => !sheets.some((s) => s.eventId === e.id));
       wrap.innerHTML = `
         <div class="card">
-          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u{1F4C4} next: ${escapeHtml(sheets[i + 1].event.name)}</div>` : "")).join("")}
+          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u2702\ufe0f &nbsp;cut here&nbsp; \u2702\ufe0f</div>` : "")).join("")}
           ${otherEvents.length ? `
           <div style="display:flex;gap:.5rem;margin-top:1rem;align-items:center">
             <select id="psAddEventSel" class="input" style="flex:1;font-size:.78rem">
@@ -3994,11 +3994,13 @@
       // (everything else is force-hidden), but it's never left open as its own
       // extra screen \u2014 window.print() is triggered immediately and the
       // overlay is closed right back down, so nothing appears "in between".
-      // Each sheet gets its own full page (no more 2-per-page stacking).
+      // Unlike Green Room Sign, Valuation Sheet sheets are meant to be short
+      // enough to fit two per A4 page, cut apart afterwards \u2014 so no
+      // break-before:page here, just a dashed cut-line between them.
       document.getElementById("btnPsPrint").addEventListener("click", () => {
         document.getElementById("printTitle").textContent = "Valuation Sheet";
         document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
-          `<div${i > 0 ? ' style="break-before:page"' : ""}>${printBlock(s)}</div>`
+          `<div>${printBlock(s)}</div>${i < sheets.length - 1 ? `<div class="ps-cut-line-print">\u2702 - - - - - - - - - - - - - - - - - - - - - - - - - - - - \u2702</div>` : ""}`
         ).join("");
         document.getElementById("printOverlay").classList.remove("hidden");
         window.print();
@@ -4141,24 +4143,40 @@
       pickEventKind = b.dataset.kind;
       document.getElementById("sheetWrap").innerHTML = "";
       document.querySelectorAll(".export-card").forEach((c) => c.classList.toggle("active", c === b)); // bug fix: highlight the selected card
+      let pickedEventId = "";
       document.getElementById("pickWrap").innerHTML = `
         <div class="card">
           <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select programme for "${pickEventKind}"</div>
-          <input id="pickEventSearch" class="input" placeholder="Search programme or category..." style="margin-bottom:.5rem" />
-          <select id="pickEventSel" class="input" size="6" style="width:100%">
-            ${state.events.map((e) => `<option value="${e.id}" data-search="${escapeAttr((e.name + " " + e.category).toLowerCase())}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
-          </select>
+          <div style="position:relative">
+            <input id="pickEventSearch" class="input" placeholder="Tap to search programme or category..." autocomplete="off" style="width:100%" />
+            <div id="pickEventDropdown" class="autocomplete-dropdown hidden"></div>
+          </div>
           <button class="btn btn-primary" id="btnGenerate" style="width:100%;margin-top:.6rem">Generate</button>
         </div>`;
-      document.getElementById("pickEventSearch").addEventListener("input", (e) => {
-        const q = e.target.value.trim().toLowerCase();
-        document.querySelectorAll("#pickEventSel option").forEach((opt) => {
-          opt.classList.toggle("hidden", Boolean(q) && !opt.dataset.search.includes(q));
-          opt.hidden = Boolean(q) && !opt.dataset.search.includes(q);
-        });
+
+      const searchInput = document.getElementById("pickEventSearch");
+      const dropdown = document.getElementById("pickEventDropdown");
+      function showDropdown(q) {
+        const query = (q || "").trim().toLowerCase();
+        const matches = state.events.filter((e) => !query || (e.name + " " + e.category).toLowerCase().includes(query));
+        dropdown.innerHTML = matches.length
+          ? matches.map((e) => `<div class="autocomplete-item" data-id="${e.id}" data-name="${escapeAttr(e.name)}">${escapeHtml(e.name)} <span class="muted">(${escapeHtml(e.category)})</span></div>`).join("")
+          : `<div class="autocomplete-empty">No programme found</div>`;
+        dropdown.classList.remove("hidden");
+        dropdown.querySelectorAll(".autocomplete-item").forEach((it) => it.addEventListener("click", () => {
+          pickedEventId = it.dataset.id;
+          searchInput.value = it.dataset.name;
+          dropdown.classList.add("hidden");
+        }));
+      }
+      searchInput.addEventListener("focus", () => showDropdown(searchInput.value));
+      searchInput.addEventListener("input", () => { pickedEventId = ""; showDropdown(searchInput.value); });
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest("#pickEventSearch") && !e.target.closest("#pickEventDropdown")) dropdown.classList.add("hidden");
       });
+
       document.getElementById("btnGenerate").addEventListener("click", () => {
-        const eid = document.getElementById("pickEventSel").value;
+        const eid = pickedEventId;
         if (!eid) return showToast("Choose a programme first");
         const event = state.events.find((e) => e.id === eid);
         const sheetWrap = document.getElementById("sheetWrap");
@@ -4367,12 +4385,26 @@
     pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
   }
 
+  // Bug fix: status used to be a one-way "ticked" flag set the moment any
+  // sheet (Call List/Green Room Sign/etc.) was generated, with nothing in the
+  // app ever able to reset it \u2014 so it stayed stuck on "In Progress" even
+  // after the underlying marks/results were cleared or deleted. Basing it on
+  // getResultStatus() instead ties it to live data: it naturally falls back
+  // to Pending if marks are removed, and only reaches Completed once results
+  // are actually published, no separate reset code needed.
   function renderChecklist() {
-    document.getElementById("checklistWrap").innerHTML = state.events.map((e) => `
-      <div class="checklist-row ${e.status === "ticked" ? "done" : ""}">
+    const wrap = document.getElementById("checklistWrap");
+    if (!wrap) return; // Print/Export tab isn't the active admin tab right now
+    wrap.innerHTML = state.events.map((e) => {
+      const rs = getResultStatus(e);
+      const label = rs === "Published" ? "\u2713 Completed" : (rs === "Submitted" || e.status === "ticked") ? "\u2713 In Progress" : "Pending";
+      const cls = rs === "Published" ? "done" : (rs === "Submitted" || e.status === "ticked") ? "in-progress" : "";
+      return `
+      <div class="checklist-row ${cls}">
         <span>${escapeHtml(e.name)} <span class="muted">\u00b7 ${e.category}</span></span>
-        ${e.status === "ticked" ? '<span class="tick">\u2713 In Progress</span>' : '<span class="muted">Pending</span>'}
-      </div>`).join("");
+        ${cls ? `<span class="tick">${label}</span>` : `<span class="muted">${label}</span>`}
+      </div>`;
+    }).join("");
   }
 
   // Bug fix: stage groups used to render in whatever order they were first
