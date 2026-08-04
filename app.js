@@ -1594,19 +1594,41 @@
 
   // Opens the shared #printOverlay with every card in the category laid out
   // as real <img> tags (crisper for browser printing than a re-rasterised PDF).
+  //
+  // Bug fix: cards used to be embedded as raw base64 data: URLs straight from
+  // canvas.toDataURL(). With 8-12 full-resolution cards on one page that's
+  // several MB of inline text in the DOM, and mobile Chrome's print renderer
+  // silently produces a blank page when a print job's inline image payload
+  // gets too large \u2014 it doesn't error, it just prints nothing. Converting
+  // each data URL to a Blob object URL keeps the exact same image data but
+  // as a tiny memory reference in the HTML instead of megabytes of inline
+  // text, which is what the print renderer was choking on.
   function openBulkCardPrintSheet(category, perPage) {
     const students = state.students.filter((s) => s.category === category);
     if (!students.length) return showToast("No students found in this category");
     if (!state.masterCardTemplate || !state.masterCardTemplate.imageUrl) return showToast("Upload a master template first (Super Admin \u2192 Chest Number)");
     showToast(`Preparing ${students.length} card${students.length > 1 ? "s" : ""} for print\u2026`);
-    Promise.all(students.map((s) => drawMasterCard(s))).then((urls) => {
-      const cardsHtml = urls.map((u) => `<img src="${u}" class="bulk-card-print-img" />`).join("");
-      const gridClass = perPage === 12 ? "bulk-card-print-grid per-page-12" : "bulk-card-print-grid per-page-8";
-      document.getElementById("printTitle").textContent = "Chest Number Cards";
-      document.getElementById("printContent").innerHTML = `<div class="${gridClass}">${cardsHtml}</div>`;
-      document.getElementById("printOverlay").classList.remove("hidden");
-      pushScreen(() => document.getElementById("printOverlay").classList.add("hidden"));
-    }).catch(() => showToast("Could not prepare cards for print"));
+    Promise.all(students.map((s) => drawMasterCard(s)))
+      .then((dataUrls) => Promise.all(dataUrls.map((u) => fetch(u).then((r) => r.blob()).then((b) => URL.createObjectURL(b)))))
+      .then((blobUrls) => {
+        const gridClass = perPage === 12 ? "bulk-card-print-grid per-page-12" : "bulk-card-print-grid per-page-8";
+        const pages = [];
+        for (let i = 0; i < blobUrls.length; i += perPage) pages.push(blobUrls.slice(i, i + perPage));
+        const pagesHtml = pages.map((pageUrls, pi) => {
+          const cardsHtml = pageUrls.map((u) => `<img src="${u}" class="bulk-card-print-img" />`).join("");
+          const cls = gridClass + (pi === 0 ? "" : " page-break print-page-hidden");
+          const gridDiv = `<div class="${cls}">${cardsHtml}</div>`;
+          if (pi === 0) return gridDiv;
+          return `<div class="bulk-print-page-summary"><span class="chev">\u203a\u203a</span> Page ${pi + 1} \u2014 ${pageUrls.length} card${pageUrls.length > 1 ? "s" : ""} ready, prints automatically <span class="chev">\u2039\u2039</span></div>${gridDiv}`;
+        }).join("");
+        document.getElementById("printTitle").textContent = "Chest Number Cards";
+        document.getElementById("printContent").innerHTML = pagesHtml;
+        document.getElementById("printOverlay").classList.remove("hidden");
+        pushScreen(() => {
+          document.getElementById("printOverlay").classList.add("hidden");
+          blobUrls.forEach((u) => URL.revokeObjectURL(u));
+        });
+      }).catch(() => showToast("Could not prepare cards for print"));
   }
 
 
@@ -3857,44 +3879,50 @@
   const PS_MARK_COLS = 5;
 
   function psLocalKey(type, eventId) { return `meelad_printsheet_${type}_${eventId}`; }
-  function psLoadDraft(type, eventId) {
+  function psLoadDraft(type, eventId, rowCount) {
     try {
       const saved = JSON.parse(localStorage.getItem(psLocalKey(type, eventId)));
       if (saved) return saved;
     } catch {}
+    const rows = type === "valuation" ? Math.max(rowCount || PS_MAX_ROWS, 3) : PS_MAX_ROWS;
     return type === "valuation"
-      ? { stageNo: "", rows: Array.from({ length: PS_MAX_ROWS }, () => ({ codeLetter: "", marks: Array(PS_MARK_COLS).fill(""), total: "" })) }
+      ? { stageNo: "", rows: Array.from({ length: rows }, () => ({ codeLetter: "", marks: Array(PS_MARK_COLS).fill(""), total: "" })) }
       : { rows: {}, extraRows: [] };
   }
   function psSaveDraft(type, eventId, draft) {
     try { localStorage.setItem(psLocalKey(type, eventId), JSON.stringify(draft)); } catch {}
   }
 
-  /* ===== Valuation Sheet: blind judging, Code Letter + 4 marks + total out of 100 ===== */
-  function renderValuationSheetInline(wrap, event, eventId) {
-    const draft = psLoadDraft("valuation", eventId);
-    draft.rows = draft.rows || [];
-    const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  /* ===== Valuation Sheet: blind judging, Code Letter + 4 marks + total out of 100.
+     Each sheet is short, so an A4 print job leaves a lot of blank paper below
+     it. "Add Another Sheet" lets the admin stack a second programme's sheet
+     on the same page (own draft/rows, own header) with a cut-line between
+     them, so one A4 print can be scissor-cut into two separate sheets. ===== */
+  function renderValuationSheetInline(wrap, event, eventId, participants) {
+    const sheets = [{ event, eventId, participants }];
 
-    const rowHtml = (row, i) => `
-      <tr data-row="${i}">
-        <td style="height:2.4rem"></td>
+    const rowHtml = (row) => `
+      <tr>
+        <td style="height:1.9rem"></td>
         ${row.marks.map(() => `<td></td>`).join("")}
         <td></td>
       </tr>`;
 
-    wrap.innerHTML = `
-      <div class="card">
+    const previewBlock = (s) => {
+      const draft = psLoadDraft("valuation", s.eventId, s.participants ? s.participants.length : undefined);
+      draft.rows = draft.rows || [];
+      s.draft = draft;
+      return `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
           <div>
             <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
             <div style="font-size:1.15rem;font-weight:700">Valuation Sheet</div>
           </div>
-          <div class="muted" style="font-size:.68rem;white-space:nowrap">${dateStr}</div>
+          <div class="muted" style="font-size:.68rem;white-space:nowrap">${new Date().toLocaleDateString("en-GB")}</div>
         </div>
         <hr class="print-hr" style="margin:.4rem 0 .75rem" />
         <div class="marks-table-wrap">
-          <table class="marks-table ps-val-table" id="psValTable" style="table-layout:fixed">
+          <table class="marks-table ps-val-table" style="table-layout:fixed">
             <colgroup>
               <col style="width:3.4rem" />
               ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:3.6rem" />`).join("")}
@@ -3902,9 +3930,9 @@
             </colgroup>
             <thead>
               <tr>
-                <th colspan="2">${escapeHtml(event.name)}</th>
-                <th colspan="${PS_MARK_COLS - 1}">${escapeHtml(event.category)}</th>
-                <th>${escapeHtml(event.type || "Individual")}</th>
+                <th colspan="2">${escapeHtml(s.event.name)}</th>
+                <th colspan="${PS_MARK_COLS - 1}">${escapeHtml(s.event.category)}</th>
+                <th>${escapeHtml(s.event.type || "Individual")}</th>
               </tr>
               <tr>
                 <th>Code Letter</th>
@@ -3915,63 +3943,97 @@
             <tbody>${draft.rows.map(rowHtml).join("")}</tbody>
           </table>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
-          <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
-          <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print</button>
-        </div>
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:1.25rem;font-size:.7rem" class="muted">
           <div>Judge's Name and Signature :</div>
           <div>Judging Comments:</div>
         </div>
-        <div style="border-bottom:1px solid var(--border);margin-top:2rem;width:33%"></div>
-      </div>`;
+        <div style="border-bottom:1px solid var(--border);margin-top:2rem;width:33%"></div>`;
+    };
 
-    document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
+    const printBlock = (s) => `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+        <div>
+          <div style="font-size:.8rem;font-weight:600">${escapeHtml(state.hero.title)}</div>
+          <div style="font-size:1.35rem;font-weight:700">Valuation Sheet</div>
+        </div>
+        <div style="font-size:.75rem">${new Date().toLocaleDateString("en-GB")}</div>
+      </div>
+      <hr class="print-hr" />
+      <table class="schedule-print-table" style="table-layout:fixed">
+        <thead>
+          <tr><th colspan="2">${escapeHtml(s.event.name)}</th><th colspan="${PS_MARK_COLS - 1}">${escapeHtml(s.event.category)}</th><th>${escapeHtml(s.event.type || "Individual")}</th></tr>
+          <tr><th>Code Letter</th><th colspan="${PS_MARK_COLS}">Marks</th><th>Mark out of 100</th></tr>
+        </thead>
+        <tbody>${s.draft.rows.map((row) => `<tr><td>${escapeHtml(row.codeLetter)}</td>${row.marks.map((m) => `<td>${escapeHtml(String(m || ""))}</td>`).join("")}<td><b>${escapeHtml(String(row.total || ""))}</b></td></tr>`).join("")}</tbody>
+      </table>
+      <div style="margin-top:2rem;display:flex;justify-content:space-between;font-size:.85rem">
+        <div>Judge's Name and Signature :</div>
+        <div>Judging Comments:</div>
+      </div>
+      <div style="border-bottom:1px solid #333;margin-top:1.5rem;width:33%"></div>`;
 
-    // One tap = one print dialog. #printOverlay has to be populated because
-    // the site's print CSS only allows #printOverlay to be visible on paper
-    // (everything else is force-hidden), but it's never left open as its own
-    // extra screen \u2014 window.print() is triggered immediately and the
-    // overlay is closed right back down, so nothing appears "in between".
-    document.getElementById("btnPsPrint").addEventListener("click", () => {
-      document.getElementById("printTitle").textContent = "Valuation Sheet";
-      document.getElementById("printContent").innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
-          <div>
-            <div style="font-size:.8rem;font-weight:600">${escapeHtml(state.hero.title)}</div>
-            <div style="font-size:1.35rem;font-weight:700">Valuation Sheet</div>
+    function renderAll() {
+      const otherEvents = state.events.filter((e) => !sheets.some((s) => s.eventId === e.id));
+      wrap.innerHTML = `
+        <div class="card">
+          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u2702\ufe0f &nbsp;cut here&nbsp; \u2702\ufe0f</div>` : "")).join("")}
+          ${otherEvents.length ? `
+          <div style="display:flex;gap:.5rem;margin-top:1rem;align-items:center">
+            <select id="psAddEventSel" class="input" style="flex:1;font-size:.78rem">
+              <option value="">+ Add another programme to this page...</option>
+              ${otherEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+            </select>
+            <button class="btn btn-ghost" id="btnPsAddSheet" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
+          </div>` : ""}
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
+            <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
+            <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} sheets)` : ""}</button>
           </div>
-          <div style="font-size:.75rem">${dateStr}</div>
-        </div>
-        <hr class="print-hr" />
-        <table class="schedule-print-table" style="table-layout:fixed">
-          <thead>
-            <tr><th colspan="2">${escapeHtml(event.name)}</th><th colspan="${PS_MARK_COLS - 1}">${escapeHtml(event.category)}</th><th>${escapeHtml(event.type || "Individual")}</th></tr>
-            <tr><th>Code Letter</th><th colspan="${PS_MARK_COLS}">Marks</th><th>Mark out of 100</th></tr>
-          </thead>
-          <tbody>${draft.rows.map((row) => `<tr><td>${escapeHtml(row.codeLetter)}</td>${row.marks.map((m) => `<td>${escapeHtml(String(m || ""))}</td>`).join("")}<td><b>${escapeHtml(String(row.total || ""))}</b></td></tr>`).join("")}</tbody>
-        </table>
-        <div style="margin-top:2.5rem;display:flex;justify-content:space-between;font-size:.85rem">
-          <div>Judge's Name and Signature :</div>
-          <div>Judging Comments:</div>
-        </div>
-        <div style="border-bottom:1px solid #333;margin-top:2rem;width:33%"></div>`;
-      document.getElementById("printOverlay").classList.remove("hidden");
-      window.print();
-      document.getElementById("printOverlay").classList.add("hidden");
-    });
+        </div>`;
+
+      document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
+
+      const addBtn = document.getElementById("btnPsAddSheet");
+      if (addBtn) addBtn.addEventListener("click", () => {
+        const eid = document.getElementById("psAddEventSel").value;
+        if (!eid) return showToast("Choose a programme first");
+        const ev = state.events.find((e) => e.id === eid);
+        const parts = ev.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+        sheets.push({ event: ev, eventId: eid, participants: parts });
+        renderAll();
+      });
+
+      // One tap = one print dialog. #printOverlay has to be populated because
+      // the site's print CSS only allows #printOverlay to be visible on paper
+      // (everything else is force-hidden), but it's never left open as its own
+      // extra screen \u2014 window.print() is triggered immediately and the
+      // overlay is closed right back down, so nothing appears "in between".
+      document.getElementById("btnPsPrint").addEventListener("click", () => {
+        document.getElementById("printTitle").textContent = "Valuation Sheet";
+        document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
+          `<div>${printBlock(s)}</div>${i < sheets.length - 1 ? `<div class="ps-cut-line-print">\u2702 - - - - - - - - - - - - - - - - - - - - - - - - - - - - \u2702</div>` : ""}`
+        ).join("");
+        document.getElementById("printOverlay").classList.remove("hidden");
+        window.print();
+        document.getElementById("printOverlay").classList.add("hidden");
+      });
+    }
+
+    renderAll();
   }
 
   /* ===== Green Room Sign: read-only preview built straight from registered
      participants \u2014 no typing on screen at all. Code Letter and Signature
-     stay blank for the stage incharge to fill by hand at the venue. Select
-     programme + Generate is the only input; the preview is exactly what
-     prints, same pattern as the Valuation Sheet. ===== */
-  function renderGreenRoomSheetInline(wrap, event, eventId, participants) {
+     stay blank for the stage incharge to fill by hand at the venue. Accepts
+     one or several programmes (picked via checkboxes) so a stage manager can
+     print every Green Room Sign sheet for the day in a single print job \u2014
+     each programme gets its own full page. ===== */
+  function renderGreenRoomSheetInline(wrap, sheets) {
     const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    const rows = participants.map((s) => `<tr><td>${s.chestNo}</td><td style="text-align:left">${escapeHtml(s.name)}</td><td></td><td></td></tr>`).join("");
 
-    const sheetHtml = `
+    const sheetHtml = (s) => {
+      const rows = s.participants.map((p) => `<tr><td>${p.chestNo}</td><td style="text-align:left">${escapeHtml(p.name)}</td><td></td><td></td></tr>`).join("");
+      return `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
         <div>
           <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
@@ -3981,12 +4043,12 @@
       </div>
       <hr class="print-hr" style="margin:.4rem 0 .75rem" />
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;font-weight:700;font-size:.85rem">
-        <div>${escapeHtml(event.name)}</div>
-        <div class="muted" style="font-weight:500">${escapeHtml(event.type || "Individual")}</div>
-        <div>${escapeHtml(event.category)}</div>
+        <div>${escapeHtml(s.event.name)}</div>
+        <div class="muted" style="font-weight:500">${escapeHtml(s.event.type || "Individual")}</div>
+        <div>${escapeHtml(s.event.category)}</div>
       </div>
       <table class="schedule-print-table" style="table-layout:fixed">
-        <thead><tr><th style="width:4rem">Chest No</th><th style="width:9rem">Participant</th><th style="width:4rem">Code Letter</th><th>Participants Signature</th></tr></thead>
+        <thead><tr><th style="width:4rem">Chest No</th><th style="width:8rem">Participant</th><th style="width:5.5rem;white-space:normal">Code Letter</th><th style="white-space:normal">Participant's Signature</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div style="margin-top:1.5rem;font-size:.78rem" class="muted">
@@ -3995,13 +4057,14 @@
       </div>
       <div style="text-align:center;margin-top:2rem;font-size:.78rem" class="muted">Stage incharge's Name and Signature</div>
       <div style="border-bottom:1px solid var(--border);margin:.4rem auto 0;width:50%"></div>`;
+    };
 
     wrap.innerHTML = `
       <div class="card">
-        ${sheetHtml}
+        ${sheets.map((s, i) => sheetHtml(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u{1F4C4} next: ${escapeHtml(sheets[i + 1].event.name)}</div>` : "")).join("")}
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
           <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
-          <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print</button>
+          <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} sheets)` : ""}</button>
         </div>
       </div>`;
 
@@ -4009,10 +4072,14 @@
 
     // One tap = one print dialog (see the matching comment in
     // renderValuationSheetInline for why #printOverlay is still used
-    // internally but never left open as a visible extra step).
+    // internally but never left open as a visible extra step). Each sheet
+    // after the first gets break-before:page so every programme prints on
+    // its own page in the same job.
     document.getElementById("btnPsPrint").addEventListener("click", () => {
       document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
-      document.getElementById("printContent").innerHTML = sheetHtml;
+      document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
+        `<div${i > 0 ? ' style="break-before:page"' : ""}>${sheetHtml(s)}</div>`
+      ).join("");
       document.getElementById("printOverlay").classList.remove("hidden");
       window.print();
       document.getElementById("printOverlay").classList.add("hidden");
@@ -4060,6 +4127,35 @@
       pickEventKind = b.dataset.kind;
       document.getElementById("sheetWrap").innerHTML = "";
       document.querySelectorAll(".export-card").forEach((c) => c.classList.toggle("active", c === b)); // bug fix: highlight the selected card
+      if (pickEventKind === "Green Room Sign") {
+        document.getElementById("pickWrap").innerHTML = `
+          <div class="card">
+            <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select one or more programmes for "Green Room Sign" \u2014 all chosen sheets print together in one job, one page each</div>
+            <div style="max-height:14rem;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem;margin-bottom:.75rem">
+              ${state.events.map((e) => `
+                <label class="checkbox-row" style="cursor:pointer">
+                  <span>${escapeHtml(e.name)} <span class="muted" style="font-size:.68rem">(${escapeHtml(e.category)})</span></span>
+                  <input type="checkbox" class="grsEventChk" value="${e.id}" />
+                </label>`).join("")}
+            </div>
+            <button class="btn btn-primary" id="btnGenerate" style="width:100%">Generate</button>
+          </div>`;
+        document.getElementById("btnGenerate").addEventListener("click", () => {
+          const ids = Array.from(document.querySelectorAll(".grsEventChk:checked")).map((c) => c.value);
+          if (!ids.length) return showToast("Choose at least one programme");
+          const sheetWrap = document.getElementById("sheetWrap");
+          const sheets = ids.map((eid) => {
+            const ev = state.events.find((e) => e.id === eid);
+            ev.status = "ticked";
+            const participants = ev.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+            return { event: ev, participants };
+          });
+          persist(); renderTicker(); renderChecklist();
+          renderGreenRoomSheetInline(sheetWrap, sheets);
+          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        return;
+      }
       document.getElementById("pickWrap").innerHTML = `
         <div class="card">
           <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select programme for "${pickEventKind}"</div>
@@ -4078,12 +4174,8 @@
         const sheetWrap = document.getElementById("sheetWrap");
         if (pickEventKind === "Valuation Sheet") {
           event.status = "ticked"; persist(); renderTicker(); renderChecklist();
-          renderValuationSheetInline(sheetWrap, event, eid);
-          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else if (pickEventKind === "Green Room Sign") {
-          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
-          const participants = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
-          renderGreenRoomSheetInline(sheetWrap, event, eid, participants);
+          const valParticipants = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+          renderValuationSheetInline(sheetWrap, event, eid, valParticipants);
           sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
         } else {
           openPrintSheet(pickEventKind, eid);

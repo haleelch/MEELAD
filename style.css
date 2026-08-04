@@ -290,17 +290,21 @@ body.no-scroll .bottom-nav{display:none;}
 
 /* ---- modal ---- */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:90;display:flex;align-items:center;justify-content:center;padding:1rem;}
-.modal-body{width:100%;max-width:400px;border-radius:1rem;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.modal-body{width:100%;max-width:400px;border-radius:1rem;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.5);background:var(--surface);}
 .poster-head{padding:2.2rem 1.5rem;text-align:center;background:linear-gradient(180deg,var(--emerald-deep),var(--emerald));border-radius:1rem 1rem 0 0 / 30% 30% 0 0;}
 .poster-rank{font-size:.95rem;color:var(--gold-light);font-family:'Amiri',serif;}
 .poster-name{font-size:1.7rem;color:#FAF6EC;font-family:'Amiri',serif;margin-top:.4rem;}
 .poster-code{font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--gold-light);margin-top:.25rem;}
 .poster-event{font-size:.75rem;color:#C9DED2;margin-top:.25rem;}
-.modal-actions{display:flex;gap:.5rem;padding:1rem;background:var(--surface);}
+.modal-actions{display:flex;gap:.6rem;padding:1.1rem 1rem;background:linear-gradient(180deg,var(--surface),var(--surface2));}
 .btn{padding:.6rem .9rem;border-radius:.6rem;font-size:.82rem;font-weight:500;flex:1;text-align:center;}
 .btn-primary{background:var(--emerald-deep);color:var(--gold-light);}
 .btn-whatsapp{background:#25D366;color:#fff;}
 .btn-ghost{background:rgba(201,162,39,.12);color:var(--gold-light);}
+.modal-actions .btn{border-radius:999px;font-weight:700;padding:.8rem .9rem;box-shadow:0 6px 16px rgba(0,0,0,.3);letter-spacing:.01em;transition:transform .15s;}
+.modal-actions .btn:active{transform:scale(.96);}
+.modal-actions .btn-primary{background:linear-gradient(135deg,var(--gold-light),var(--gold));color:#12241C;border:1px solid rgba(255,255,255,.25);}
+.modal-actions .btn-whatsapp{background:linear-gradient(135deg,#2FE080,#1EA855);border:1px solid rgba(255,255,255,.25);}
 .modal-close{width:100%;text-align:center;font-size:.72rem;padding:.6rem;background:var(--surface2);color:var(--muted);}
 .gallery-preview{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;}
 .gallery-preview .cap{font-family:'Amiri',serif;font-size:1.3rem;margin-top:.4rem;}
@@ -414,20 +418,32 @@ body.no-scroll .bottom-nav{display:none;}
 .tick{color:var(--emerald-light);}
 
 /* ---- chest number card print grid ---- */
-.bulk-card-print-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+.bulk-card-print-grid{display:grid;grid-template-columns:1fr;gap:8px;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.08);box-sizing:border-box;padding:10px;aspect-ratio:210/297;max-width:420px;margin:0 auto;overflow:hidden;}
 .bulk-card-print-img{width:100%;aspect-ratio:1013/638;object-fit:contain;border:1px solid #ddd;}
 .bulk-card-print-grid.per-page-8{grid-template-columns:1fr 1fr;}
 .bulk-card-print-grid.per-page-12{grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.bulk-card-print-grid.print-page-hidden{display:none;}
+/* Collapsed placeholder shown on screen for page 2 onward, so the preview
+   doesn't have to lay out every full-size card image; the real card grid
+   for that page still exists in the DOM (print-page-hidden) and is only
+   switched on for the actual print job. */
+.bulk-print-page-summary{display:flex;align-items:center;justify-content:center;gap:.6rem;padding:1.3rem;margin-bottom:8px;border:1px dashed #bbb;border-radius:8px;color:#888;font-size:.78rem;background:#fafafa;max-width:420px;margin-left:auto;margin-right:auto;}
+.bulk-print-page-summary .chev{font-size:.9rem;letter-spacing:.12rem;color:#aaa;}
 @media print{
+  .bulk-print-page-summary{display:none !important;}
+  .bulk-card-print-grid{aspect-ratio:auto !important;max-width:none !important;box-shadow:none !important;border:none !important;padding:0 !important;}
+  .bulk-card-print-grid.print-page-hidden{display:grid !important;}
+  .bulk-card-print-grid.page-break{break-before:page;}
   .bulk-card-print-grid.per-page-8{grid-template-rows:repeat(4,1fr);}
-  .bulk-card-print-grid.per-page-8 .bulk-card-print-img:nth-child(8n+1){break-before:page;}
-  .bulk-card-print-grid.per-page-8 .bulk-card-print-img:nth-child(1){break-before:auto;}
   .bulk-card-print-grid.per-page-12{grid-template-rows:repeat(4,1fr);}
-  .bulk-card-print-grid.per-page-12 .bulk-card-print-img:nth-child(12n+1){break-before:page;}
-  .bulk-card-print-grid.per-page-12 .bulk-card-print-img:nth-child(1){break-before:auto;}
 }
 
 /* ---- print sheet (premium) ---- */
+.ps-cut-line{display:flex;align-items:center;justify-content:center;gap:.4rem;margin:1.1rem 0;padding:.4rem 0;border-top:1px dashed #999;border-bottom:1px dashed #999;font-size:.7rem;color:#888;letter-spacing:.04em;}
+.ps-cut-line-print{display:none;}
+@media print{
+  .ps-cut-line-print{display:block;text-align:center;font-size:.75rem;color:#555;margin:.9rem 0;letter-spacing:.05em;}
+}
 .print-sheet{max-width:560px;background:#fff;color:#111;max-height:85vh;display:flex;flex-direction:column;}
 .print-sheet-bar{display:flex;justify-content:space-between;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #e3dcc5;}
 .print-sheet-bar span{font-size:.8rem;font-weight:600;color:var(--emerald-deep);}
