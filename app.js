@@ -4047,10 +4047,12 @@
         <div class="muted" style="font-weight:500">${escapeHtml(s.event.type || "Individual")}</div>
         <div>${escapeHtml(s.event.category)}</div>
       </div>
+      <div class="marks-table-wrap">
       <table class="schedule-print-table" style="table-layout:fixed">
-        <thead><tr><th style="width:4rem">Chest No</th><th style="width:8rem">Participant</th><th style="width:5.5rem;white-space:normal">Code Letter</th><th style="white-space:normal">Participant's Signature</th></tr></thead>
+        <thead><tr><th style="width:3.2rem">Chest No</th><th style="width:6.4rem">Participant</th><th style="width:4rem;white-space:normal">Code Letter</th><th style="width:6.8rem;white-space:normal">Participant's Signature</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      </div>
       <div style="margin-top:1.5rem;font-size:.78rem" class="muted">
         <div>Competition Start Time:</div>
         <div style="margin-top:.4rem">Competition End Time:</div>
