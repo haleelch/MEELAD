@@ -614,21 +614,21 @@
       return;
     }
     // No overlay screen was open, so this back-press happened right on the
-    // home page — warn the user once; the very next back-press (within 2s)
-    // is left alone so it genuinely exits the site instead of being
-    // silently absorbed by another re-armed boundary entry.
-    if (!exitArmed) {
-      exitArmed = true;
-      showToast("Press back again to exit");
-      clearTimeout(exitArmTimer);
-      exitArmTimer = setTimeout(() => { exitArmed = false; }, 2000);
-    }
+    // home page — let it just exit normally (single press), no confirmation.
   });
-  // Boundary entry so the first back-press on the home page lands on this
-  // instead of immediately exiting the site/tab.
-  let exitArmed = false;
-  let exitArmTimer = null;
-  history.pushState({ meelaHome: true }, "", location.pathname + location.search);
+
+  // Some mobile browsers restore the page from the back-forward cache when
+  // the site is reopened after being closed, which can leave an overlay
+  // screen showing instead of the home page. Force everything closed so a
+  // reopen always lands on the home page.
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    while (screenStack.length) {
+      const fn = screenStack.pop();
+      if (fn) fn();
+    }
+    unlockBodyScroll();
+  });
 
   // Most modern mobile browsers already map an edge-swipe gesture to native
   // back navigation (which the popstate listener above already handles). This
@@ -4026,9 +4026,11 @@
 
       // One tap = one print dialog. #printOverlay has to be populated because
       // the site's print CSS only allows #printOverlay to be visible on paper
-      // (everything else is force-hidden), but it's never left open as its own
-      // extra screen \u2014 window.print() is triggered immediately and the
-      // overlay is closed right back down, so nothing appears "in between".
+      // (everything else is force-hidden). On mobile, window.print() doesn't
+      // block until the dialog closes, so hiding the overlay right after
+      // calling it (the old code) could hide the content before the PDF/print
+      // engine captured it \u2014 producing a blank page. We wait for the
+      // browser's "afterprint" event instead, with a timeout fallback.
       document.getElementById("btnPsPrint").addEventListener("click", () => {
         document.getElementById("printTitle").textContent = "Valuation Sheet";
         const pairs = [];
@@ -4039,8 +4041,16 @@
             <div class="ps-a4-half">${pair[1] ? printBlock(pair[1]) : ""}</div>
           </div>`).join("");
         document.getElementById("printOverlay").classList.remove("hidden");
-        window.print();
-        document.getElementById("printOverlay").classList.add("hidden");
+        let hidden = false;
+        const hideOverlay = () => {
+          if (hidden) return;
+          hidden = true;
+          document.getElementById("printOverlay").classList.add("hidden");
+          window.removeEventListener("afterprint", hideOverlay);
+        };
+        window.addEventListener("afterprint", hideOverlay);
+        setTimeout(() => window.print(), 50);
+        setTimeout(hideOverlay, 5000);
       });
     }
 
@@ -4098,15 +4108,25 @@
 
       document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
 
-      // One tap = one print dialog (see the matching comment in
-      // renderValuationSheetInline for why #printOverlay is still used
-      // internally but never left open as a visible extra step).
+      // One tap = one print dialog. On mobile, window.print() doesn't block
+      // until the dialog closes, so hiding the overlay right after calling it
+      // could hide the content before the print engine captured it, producing
+      // a blank page. We wait for the browser's "afterprint" event instead,
+      // with a timeout fallback.
       document.getElementById("btnPsPrint").addEventListener("click", () => {
         document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
         document.getElementById("printContent").innerHTML = `<div>${sheetHtml(sheets[0])}</div>`;
         document.getElementById("printOverlay").classList.remove("hidden");
-        window.print();
-        document.getElementById("printOverlay").classList.add("hidden");
+        let hidden = false;
+        const hideOverlay = () => {
+          if (hidden) return;
+          hidden = true;
+          document.getElementById("printOverlay").classList.add("hidden");
+          window.removeEventListener("afterprint", hideOverlay);
+        };
+        window.addEventListener("afterprint", hideOverlay);
+        setTimeout(() => window.print(), 50);
+        setTimeout(hideOverlay, 5000);
       });
     }
 
