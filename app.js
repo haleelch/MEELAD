@@ -3862,264 +3862,6 @@
 
   /* ---- Export tab ---- */
   let pickEventKind = null;
-  /* Fillable Valuation Sheet & Green Room Sign, used from inside the Green
-     Room tab's card flow (no separate top-level tab). Valuation Sheet is for
-     blind judging \u2014 only the Code Letter is shown, never chest no/name, so
-     judges can't identify who they're marking. Green Room Sign shows chest
-     no + name (auto-filled from registered participants) so students can
-     sign in and be assigned a code letter before judging. Drafts save to
-     localStorage per programme so nothing is lost on reload. */
-  const PS_MAX_ROWS = 9;
-  const PS_MARK_COLS = 3;
-
-  function psLocalKey(type, eventId) { return `meelad_printsheet_${type}_${eventId}`; }
-  function psLoadDraft(type, eventId, rowCount) {
-    try {
-      const saved = JSON.parse(localStorage.getItem(psLocalKey(type, eventId)));
-      if (saved) return saved;
-    } catch {}
-    const rows = type === "valuation" ? Math.max(rowCount || PS_MAX_ROWS, 3) : PS_MAX_ROWS;
-    return type === "valuation"
-      ? { stageNo: "", rows: Array.from({ length: rows }, () => ({ codeLetter: "", marks: Array(PS_MARK_COLS).fill(""), total: "" })) }
-      : { rows: {}, extraRows: [] };
-  }
-  function psSaveDraft(type, eventId, draft) {
-    try { localStorage.setItem(psLocalKey(type, eventId), JSON.stringify(draft)); } catch {}
-  }
-
-  /* ===== Valuation Sheet: blind judging, Code Letter + 3 marks + total out of 100.
-     Accepts an array of initial sheets (one per selected programme) so the
-     Category+Competitions picker can hand over several at once; "Add Another
-     Sheet" below still lets more be queued into the same print job. ===== */
-  function renderValuationSheetInline(wrap, initialSheets) {
-    const sheets = initialSheets.slice();
-    let selectedCategory = "";
-
-    const rowHtml = (row) => `
-      <tr>
-        <td style="height:2.9rem"></td>
-        ${row.marks.map(() => `<td></td>`).join("")}
-        <td></td>
-      </tr>`;
-
-    const previewBlock = (s) => {
-      const draft = psLoadDraft("valuation", s.eventId, s.participants ? s.participants.length : undefined);
-      draft.rows = draft.rows || [];
-      s.draft = draft;
-      return `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
-          <div>
-            <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
-            <div style="font-size:1.15rem;font-weight:700">Valuation Sheet</div>
-          </div>
-          <div class="muted" style="font-size:.68rem;white-space:nowrap">${new Date().toLocaleDateString("en-GB")}</div>
-        </div>
-        <hr class="print-hr" style="margin:.4rem 0 .75rem" />
-        <div class="marks-table-wrap">
-          <table class="marks-table ps-val-table" style="table-layout:fixed">
-            <colgroup>
-              <col style="width:3.6rem" />
-              ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:4.6rem" />`).join("")}
-              <col style="width:4.6rem" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th colspan="2">${escapeHtml(s.event.name)}</th>
-                <th colspan="${PS_MARK_COLS - 1}">${escapeHtml(s.event.category)}</th>
-                <th>${escapeHtml(s.event.type || "Individual")}</th>
-              </tr>
-              <tr>
-                <th>Code Letter</th>
-                <th colspan="${PS_MARK_COLS}">Marks</th>
-                <th>Mark out of 100</th>
-              </tr>
-            </thead>
-            <tbody>${draft.rows.map(rowHtml).join("")}</tbody>
-          </table>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:1.25rem;font-size:.7rem" class="muted">
-          <div>Judge's Name and Signature :</div>
-          <div>Judging Comments:</div>
-        </div>
-        <div style="border-bottom:1px solid var(--border);margin-top:2rem;width:33%"></div>`;
-    };
-
-    const printBlock = (s) => `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
-        <div>
-          <div style="font-size:.8rem;font-weight:600">${escapeHtml(state.hero.title)}</div>
-          <div style="font-size:1.35rem;font-weight:700">Valuation Sheet</div>
-        </div>
-        <div style="font-size:.75rem">${new Date().toLocaleDateString("en-GB")}</div>
-      </div>
-      <hr class="print-hr" />
-      <table class="schedule-print-table" style="table-layout:fixed">
-        <colgroup>
-          <col style="width:15%" />
-          ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:${Math.floor(55 / PS_MARK_COLS)}%" />`).join("")}
-          <col style="width:15%" />
-        </colgroup>
-        <thead>
-          <tr><th colspan="2" style="text-align:center">${escapeHtml(s.event.name)}</th><th colspan="${PS_MARK_COLS - 1}" style="text-align:center">${escapeHtml(s.event.category)}</th><th style="text-align:center">${escapeHtml(s.event.type || "Individual")}</th></tr>
-          <tr><th style="text-align:center">Code Letter</th><th colspan="${PS_MARK_COLS}" style="text-align:center">Marks</th><th style="text-align:center">Mark out of 100</th></tr>
-        </thead>
-        <tbody>${s.draft.rows.map((row) => `<tr><td style="height:2.6rem;text-align:center">${escapeHtml(row.codeLetter)}</td>${row.marks.map((m) => `<td style="text-align:center">${escapeHtml(String(m || ""))}</td>`).join("")}<td style="text-align:center"><b>${escapeHtml(String(row.total || ""))}</b></td></tr>`).join("")}</tbody>
-      </table>
-      <div style="margin-top:2rem;display:flex;justify-content:space-between;font-size:.85rem">
-        <div>Judge's Name and Signature :</div>
-        <div>Judging Comments:</div>
-      </div>
-      <div style="border-bottom:1px solid #333;margin-top:1.5rem;width:33%"></div>`;
-
-    function renderAll() {
-      const otherEvents = state.events.filter((e) => !sheets.some((s) => s.eventId === e.id));
-      const filteredEvents = selectedCategory ? otherEvents.filter((e) => e.category === selectedCategory) : otherEvents;
-      wrap.innerHTML = `
-        <div class="card">
-          <div class="field-label" style="margin-bottom:.3rem">Categories</div>
-          <select id="psCategoryFilter" class="input" style="font-size:.78rem">
-            <option value="">All categories...</option>
-            ${state.categories.map((c) => `<option value="${escapeAttr(c)}" ${c === selectedCategory ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
-          </select>
-          <div class="muted" style="font-size:.68rem;margin:.3rem 0 .9rem">Leave empty to include all</div>
-
-          <div class="field-label" style="margin-bottom:.3rem">Competitions</div>
-          <div class="judge-chips">
-            ${sheets.map((s) => `<span class="judge-chip">${escapeHtml(s.event.name)} <button type="button" data-remove-sheet="${s.eventId}">&times;</button></span>`).join("") || '<span class="muted" style="font-size:.72rem">None selected yet</span>'}
-          </div>
-          ${filteredEvents.length ? `
-          <div style="display:flex;gap:.5rem;align-items:center">
-            <select id="psAddEventSel" class="input" style="flex:1;font-size:.78rem">
-              <option value="">+ Select a programme to add...</option>
-              ${filteredEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
-            </select>
-            <button class="btn btn-ghost" id="btnPsAddSheet" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
-          </div>` : ""}
-          <div class="muted" style="font-size:.68rem;margin:.3rem 0 1.1rem">Leave empty to include all</div>
-
-          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u2702\ufe0f &nbsp;cut here&nbsp; \u2702\ufe0f</div>` : "")).join("")}
-          <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
-            <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
-            <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} sheets)` : ""}</button>
-          </div>
-        </div>`;
-
-      document.getElementById("psCategoryFilter").addEventListener("change", (e) => {
-        selectedCategory = e.target.value;
-        renderAll();
-      });
-
-      document.querySelectorAll("[data-remove-sheet]").forEach((btn) => btn.addEventListener("click", () => {
-        const idx = sheets.findIndex((s) => s.eventId === btn.dataset.removeSheet);
-        if (idx > -1) sheets.splice(idx, 1);
-        renderAll();
-      }));
-
-      document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
-
-      const addBtn = document.getElementById("btnPsAddSheet");
-      if (addBtn) addBtn.addEventListener("click", () => {
-        const eid = document.getElementById("psAddEventSel").value;
-        if (!eid) return showToast("Choose a programme first");
-        const ev = state.events.find((e) => e.id === eid);
-        const parts = ev.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
-        sheets.push({ event: ev, eventId: eid, participants: parts });
-        renderAll();
-      });
-
-      // One tap = one print dialog. #printOverlay has to be populated because
-      // the site's print CSS only allows #printOverlay to be visible on paper
-      // (everything else is force-hidden), but it's never left open as its own
-      // extra screen \u2014 window.print() is triggered immediately and the
-      // overlay is closed right back down, so nothing appears "in between".
-      // Two sheets share one A4 page, split exactly at the vertical center
-      // (.ps-a4-pair/.ps-a4-half, each flexed to exactly half the printable
-      // page height) with a dashed cut line right on the center boundary; a
-      // trailing odd sheet gets the top half of its own page with the bottom
-      // half left blank.
-      document.getElementById("btnPsPrint").addEventListener("click", () => {
-        document.getElementById("printTitle").textContent = "Valuation Sheet";
-        const pairs = [];
-        for (let i = 0; i < sheets.length; i += 2) pairs.push([sheets[i], sheets[i + 1]]);
-        document.getElementById("printContent").innerHTML = pairs.map((pair) => `
-          <div class="ps-a4-pair">
-            <div class="ps-a4-half">${printBlock(pair[0])}</div>
-            <div class="ps-a4-half">${pair[1] ? printBlock(pair[1]) : ""}</div>
-          </div>`).join("");
-        document.getElementById("printOverlay").classList.remove("hidden");
-        window.print();
-        document.getElementById("printOverlay").classList.add("hidden");
-      });
-    }
-
-    renderAll();
-  }
-
-  /* ===== Green Room Sign: read-only preview built straight from registered
-     participants \u2014 no typing on screen at all. Code Letter and Signature
-     stay blank for the stage incharge to fill by hand at the venue. Accepts
-     one or several programmes (picked via checkboxes) so a stage manager can
-     print every Green Room Sign sheet for the day in a single print job \u2014
-     each programme gets its own full page. ===== */
-  function renderGreenRoomSheetInline(wrap, sheets) {
-    const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-    const sheetHtml = (s) => {
-      const rows = s.participants.map((p) => `<tr><td>${p.chestNo}</td><td style="text-align:left">${escapeHtml(p.name)}</td><td></td><td></td></tr>`).join("");
-      return `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
-        <div>
-          <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
-          <div style="font-size:1.15rem;font-weight:700">Green Room Sign Sheet</div>
-        </div>
-        <div class="muted" style="font-size:.68rem;white-space:nowrap">${dateStr}</div>
-      </div>
-      <hr class="print-hr" style="margin:.4rem 0 .75rem" />
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;font-weight:700;font-size:.85rem">
-        <div>${escapeHtml(s.event.name)}</div>
-        <div class="muted" style="font-weight:500">${escapeHtml(s.event.type || "Individual")}</div>
-        <div>${escapeHtml(s.event.category)}</div>
-      </div>
-      <div class="marks-table-wrap">
-      <table class="schedule-print-table" style="table-layout:fixed">
-        <thead><tr><th style="width:3.2rem">Chest No</th><th style="width:6.4rem">Participant</th><th style="width:4rem;white-space:normal">Code Letter</th><th style="width:6.8rem;white-space:normal">Participant's Signature</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      </div>
-      <div style="margin-top:1.5rem;font-size:.78rem" class="muted">
-        <div>Competition Start Time:</div>
-        <div style="margin-top:.4rem">Competition End Time:</div>
-      </div>
-      <div style="text-align:center;margin-top:2rem;font-size:.78rem" class="muted">Stage incharge's Name and Signature</div>
-      <div style="border-bottom:1px solid var(--border);margin:.4rem auto 0;width:50%"></div>`;
-    };
-
-    function renderAll() {
-      wrap.innerHTML = `
-        <div class="card">
-          ${sheetHtml(sheets[0])}
-          <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
-            <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
-            <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print</button>
-          </div>
-        </div>`;
-
-      document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
-
-      // One tap = one print dialog (see the matching comment in
-      // renderValuationSheetInline for why #printOverlay is still used
-      // internally but never left open as a visible extra step).
-      document.getElementById("btnPsPrint").addEventListener("click", () => {
-        document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
-        document.getElementById("printContent").innerHTML = `<div>${sheetHtml(sheets[0])}</div>`;
-        document.getElementById("printOverlay").classList.remove("hidden");
-        window.print();
-        document.getElementById("printOverlay").classList.add("hidden");
-      });
-    }
-
-    renderAll();
-  }
 
   function renderExportTab() {
     const cards = [
@@ -4141,8 +3883,6 @@
       </div>
       <div id="pickWrap"></div>
       <div id="sheetWrap"></div>
-      <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Auto-Checklist Tracker</div>
-      <div id="checklistWrap"></div>
       <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Sheet History</div>
       <div class="card" style="padding:.5rem .75rem"><div id="historyListWrap"></div></div>
       <button class="btn btn-primary" id="btnExportCsv" style="width:100%;margin-top:1.25rem;padding:.75rem">\u{1F4CA} Download Full Database (CSV)</button>
@@ -4156,7 +3896,6 @@
       });
     }
 
-    renderChecklist();
     renderPrintHistoryList();
     document.querySelectorAll(".export-card").forEach((b) => b.addEventListener("click", () => {
       pickEventKind = b.dataset.kind;
@@ -4164,19 +3903,20 @@
       document.querySelectorAll(".export-card").forEach((c) => c.classList.toggle("active", c === b)); // bug fix: highlight the selected card
       const pickWrap = document.getElementById("pickWrap");
 
-      // Valuation Sheet & Green Room Sign: Category + Competitions picker
-      // comes first, before anything is generated \u2014 pick a category to
-      // narrow the list, add one or more programmes as chips, then Generate
-      // opens all of them at once, ready for a single print job.
-      if (pickEventKind === "Valuation Sheet") {
+      // Valuation Sheet & Green Room Sign: Category bar + Programme bar,
+      // one programme at a time -- pick a category to narrow the list, then
+      // pick a single programme and Generate prints it straight away
+      // (goes through openPrintSheet, so it's logged in Sheet History too).
+      if (pickEventKind === "Valuation Sheet" || pickEventKind === "Green Room Sign") {
         let pickCategory = "";
-        let pickedIds = [];
+        let pickedEventId = "";
 
         function renderPicker() {
-          const available = state.events.filter((e) => !pickedIds.includes(e.id) && (!pickCategory || e.category === pickCategory));
+          const available = state.events.filter((e) => !pickCategory || e.category === pickCategory);
+          if (pickedEventId && !available.some((e) => e.id === pickedEventId)) pickedEventId = "";
           pickWrap.innerHTML = `
             <div class="card">
-              <div class="muted" style="font-size:.72rem;margin-bottom:.6rem">Select programme(s) for "${pickEventKind}"</div>
+              <div class="muted" style="font-size:.72rem;margin-bottom:.6rem">Select a programme for "${pickEventKind}"</div>
               <div class="field-label" style="margin-bottom:.3rem">Categories</div>
               <select id="pickCategoryFilter" class="input" style="font-size:.78rem">
                 <option value="">All categories...</option>
@@ -4184,53 +3924,21 @@
               </select>
               <div class="muted" style="font-size:.68rem;margin:.3rem 0 .9rem">Leave empty to include all</div>
 
-              <div class="field-label" style="margin-bottom:.3rem">Competitions</div>
-              <div class="judge-chips">
-                ${pickedIds.map((id) => {
-                  const e = state.events.find((ev) => ev.id === id);
-                  return e ? `<span class="judge-chip">${escapeHtml(e.name)} <button type="button" data-remove-pick="${id}">&times;</button></span>` : "";
-                }).join("") || '<span class="muted" style="font-size:.72rem">None selected yet</span>'}
-              </div>
-              ${available.length ? `
-              <div style="display:flex;gap:.5rem;align-items:center">
-                <select id="pickEventSel" class="input" style="flex:1;font-size:.78rem">
-                  <option value="">+ Select a programme to add...</option>
-                  ${available.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
-                </select>
-                <button class="btn btn-ghost" id="btnPickAdd" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
-              </div>` : ""}
-              <div class="muted" style="font-size:.68rem;margin:.3rem 0 1.1rem">Leave empty to include all</div>
+              <div class="field-label" style="margin-bottom:.3rem">Programme</div>
+              <select id="pickEventSel" class="input" style="font-size:.78rem">
+                <option value="">Select a programme...</option>
+                ${available.map((e) => `<option value="${e.id}" ${e.id === pickedEventId ? "selected" : ""}>${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+              </select>
 
-              <button class="btn btn-primary" id="btnGenerate" style="width:100%">Generate${pickedIds.length > 1 ? ` (${pickedIds.length} sheets)` : ""}</button>
+              <button class="btn btn-primary" id="btnGenerate" style="width:100%;margin-top:.9rem">Generate</button>
             </div>`;
 
           document.getElementById("pickCategoryFilter").addEventListener("change", (e) => { pickCategory = e.target.value; renderPicker(); });
-
-          pickWrap.querySelectorAll("[data-remove-pick]").forEach((btn) => btn.addEventListener("click", () => {
-            pickedIds = pickedIds.filter((id) => id !== btn.dataset.removePick);
-            renderPicker();
-          }));
-
-          const addBtn = document.getElementById("btnPickAdd");
-          if (addBtn) addBtn.addEventListener("click", () => {
-            const eid = document.getElementById("pickEventSel").value;
-            if (!eid) return showToast("Choose a programme first");
-            pickedIds.push(eid);
-            renderPicker();
-          });
+          document.getElementById("pickEventSel").addEventListener("change", (e) => { pickedEventId = e.target.value; });
 
           document.getElementById("btnGenerate").addEventListener("click", () => {
-            if (!pickedIds.length) return showToast("Choose at least one programme first");
-            const sheetWrap = document.getElementById("sheetWrap");
-            const builtSheets = pickedIds.map((eid) => {
-              const event = state.events.find((e) => e.id === eid);
-              event.status = "ticked";
-              const parts = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
-              return { event, eventId: eid, participants: parts };
-            });
-            persist(); renderTicker(); renderChecklist();
-            if (pickEventKind === "Valuation Sheet") renderValuationSheetInline(sheetWrap, builtSheets);
-            sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (!pickedEventId) return showToast("Choose a programme first");
+            openPrintSheet(pickEventKind, pickedEventId);
           });
         }
 
@@ -4238,7 +3946,7 @@
         return;
       }
 
-      // ---- Call List and Green Room Sign: single-programme search picker ----
+      // ---- Call List: single-programme search picker ----
       let pickedEventId = "";
       pickWrap.innerHTML = `
         <div class="card">
@@ -4274,16 +3982,7 @@
       document.getElementById("btnGenerate").addEventListener("click", () => {
         const eid = pickedEventId;
         if (!eid) return showToast("Choose a programme first");
-        if (pickEventKind === "Green Room Sign") {
-          const event = state.events.find((e) => e.id === eid);
-          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
-          const parts = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
-          const sheetWrap = document.getElementById("sheetWrap");
-          renderGreenRoomSheetInline(sheetWrap, [{ event, eventId: eid, participants: parts }]);
-          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else {
-          openPrintSheet(pickEventKind, eid);
-        }
+        openPrintSheet(pickEventKind, eid);
       });
     }));
     document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);
