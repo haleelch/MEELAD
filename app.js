@@ -1364,11 +1364,9 @@
 
   // Combined result poster: 1st, 2nd & 3rd winners of one programme, laid out
   // as a fixed 1080x1080 (Instagram square) design matching the approved
-  // reference design exactly. Category, event name, winner names/teams and
-  // the festival name are filled in automatically from live data.
-  // Only injects 3 things onto the template image: rank number, winner name,
-  // team/school name. Nothing else is added — no titles, category, dates or
-  // footer text. The template graphic itself already carries all of that.
+  // reference design/coordinates exactly (category, programme name, rank
+  // number, winner name & team for each of the top 3). The festival name is
+  // not drawn here \u2014 it's already part of the template graphic itself.
   function drawResultPoster(event, winners, templateOverride) {
     const template = templateOverride || state.hero.resultTemplate;
     const custom = template ? state.resultTemplates.find((rt) => rt.id === template) : null;
@@ -1376,28 +1374,39 @@
     const canvas = document.createElement("canvas");
     canvas.width = 1080; canvas.height = 1080;
     const ctx = canvas.getContext("2d");
-    const cx = canvas.width / 2;
+
+    // Exact coordinates from the approved reference template (left/top of
+    // each text box in the 1080x1080 design). Canvas fillText draws from the
+    // text baseline, so each CSS "top" is converted with baseline(top, size).
+    const RANK_SLOTS = [
+      { rankX: 45, rankY: 690, nameX: 104, nameY: 674, teamX: 104, teamY: 732 },
+      { rankX: 45, rankY: 810, nameX: 104, nameY: 794, teamX: 104, teamY: 852 },
+      { rankX: 45, rankY: 930, nameX: 104, nameY: 914, teamX: 104, teamY: 972 },
+    ];
+    const baseline = (top, fontSize) => top + fontSize * 0.85;
 
     const paintWinners = () => {
-      const PAD_X = 70;
-      const startY = canvas.height * 0.58;
-      const rowGap = 92;
       ctx.textAlign = "left";
-      winners.forEach((w, i) => {
-        const blockY = startY + i * rowGap;
+      ctx.shadowBlur = 0;
 
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#EC4899"; ctx.font = "800 30px Poppins, sans-serif";
-        ctx.fillText(String(i + 1), PAD_X, blockY + 18);
+      ctx.fillStyle = "#fff"; ctx.font = "500 26px Poppins, sans-serif";
+      ctx.fillText(event.category || "", 138, baseline(246, 26));
 
-        const textX = PAD_X + 46;
-        ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 6;
-        ctx.fillStyle = "#fff"; ctx.font = "800 32px Poppins, sans-serif";
-        ctx.fillText(w.student.name.toUpperCase(), textX, blockY + 18);
+      ctx.fillStyle = "#ff198b"; ctx.font = "700 50px Poppins, sans-serif";
+      ctx.fillText(event.name || "", 138, baseline(304, 50));
 
-        ctx.shadowBlur = 0;
-        ctx.font = "500 20px Poppins, sans-serif"; ctx.fillStyle = "#D1D5DB";
-        ctx.fillText(w.team ? w.team.name : "", textX, blockY + 46);
+      winners.slice(0, 3).forEach((w, i) => {
+        const slot = RANK_SLOTS[i];
+        if (!slot) return;
+
+        ctx.fillStyle = "#ff2b8b"; ctx.font = "700 46px Poppins, sans-serif";
+        ctx.fillText(String(i + 1), slot.rankX, baseline(slot.rankY, 46));
+
+        ctx.fillStyle = "#fff"; ctx.font = "700 48px Poppins, sans-serif";
+        ctx.fillText((w.student.name || "").toUpperCase(), slot.nameX, baseline(slot.nameY, 48));
+
+        ctx.fillStyle = "#fff"; ctx.font = "400 28px Poppins, sans-serif";
+        ctx.fillText(w.team ? w.team.name : "", slot.teamX, baseline(slot.teamY, 28));
       });
     };
 
@@ -3862,6 +3871,226 @@
 
   /* ---- Export tab ---- */
   let pickEventKind = null;
+  /* Fillable Valuation Sheet & Green Room Sign, used from inside the Green
+     Room tab's card flow (no separate top-level tab). Valuation Sheet is for
+     blind judging \u2014 only the Code Letter is shown, never chest no/name, so
+     judges can't identify who they're marking. Green Room Sign shows chest
+     no + name (auto-filled from registered participants) so students can
+     sign in and be assigned a code letter before judging. Drafts save to
+     localStorage per programme so nothing is lost on reload. */
+  const PS_MAX_ROWS = 9;
+  const PS_MARK_COLS = 5;
+
+  function psLocalKey(type, eventId) { return `meelad_printsheet_${type}_${eventId}`; }
+  function psLoadDraft(type, eventId, rowCount) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(psLocalKey(type, eventId)));
+      if (saved) return saved;
+    } catch {}
+    const rows = type === "valuation" ? Math.max(rowCount || PS_MAX_ROWS, 3) : PS_MAX_ROWS;
+    return type === "valuation"
+      ? { stageNo: "", rows: Array.from({ length: rows }, () => ({ codeLetter: "", marks: Array(PS_MARK_COLS).fill(""), total: "" })) }
+      : { rows: {}, extraRows: [] };
+  }
+  function psSaveDraft(type, eventId, draft) {
+    try { localStorage.setItem(psLocalKey(type, eventId), JSON.stringify(draft)); } catch {}
+  }
+
+  /* ===== Valuation Sheet: blind judging, Code Letter + PS_MARK_COLS marks +
+     total out of 100. One programme per sheet \u2014 no name/chest no shown,
+     so judges can't identify who they're marking. ===== */
+  function renderValuationSheetInline(wrap, initialSheets) {
+    const sheets = initialSheets.slice();
+
+    const rowHtml = (row) => `
+      <tr>
+        <td style="height:2.9rem"></td>
+        ${row.marks.map(() => `<td></td>`).join("")}
+        <td></td>
+      </tr>`;
+
+    const previewBlock = (s) => {
+      const draft = psLoadDraft("valuation", s.eventId, s.participants ? s.participants.length : undefined);
+      draft.rows = draft.rows || [];
+      s.draft = draft;
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+          <div>
+            <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
+            <div style="font-size:1.15rem;font-weight:700">Valuation Sheet</div>
+          </div>
+          <div class="muted" style="font-size:.68rem;white-space:nowrap">${new Date().toLocaleDateString("en-GB")}</div>
+        </div>
+        <hr class="print-hr" style="margin:.4rem 0 .75rem" />
+        <div class="marks-table-wrap">
+          <table class="marks-table ps-val-table" style="table-layout:fixed">
+            <colgroup>
+              <col style="width:3.6rem" />
+              ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:4.6rem" />`).join("")}
+              <col style="width:4.6rem" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th colspan="2">${escapeHtml(s.event.name)}</th>
+                <th colspan="${PS_MARK_COLS - 1}">${escapeHtml(s.event.category)}</th>
+                <th>${escapeHtml(s.event.type || "Individual")}</th>
+              </tr>
+              <tr>
+                <th>Code Letter</th>
+                <th colspan="${PS_MARK_COLS}">Marks</th>
+                <th>Mark out of 100</th>
+              </tr>
+            </thead>
+            <tbody>${draft.rows.map(rowHtml).join("")}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:1.25rem;font-size:.7rem" class="muted">
+          <div>Judge's Name and Signature :</div>
+          <div>Judging Comments:</div>
+        </div>
+        <div style="border-bottom:1px solid var(--border);margin-top:2rem;width:33%"></div>`;
+    };
+
+    const printBlock = (s) => `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+        <div>
+          <div style="font-size:.8rem;font-weight:600">${escapeHtml(state.hero.title)}</div>
+          <div style="font-size:1.35rem;font-weight:700">Valuation Sheet</div>
+        </div>
+        <div style="font-size:.75rem">${new Date().toLocaleDateString("en-GB")}</div>
+      </div>
+      <hr class="print-hr" />
+      <table class="schedule-print-table" style="table-layout:fixed">
+        <colgroup>
+          <col style="width:15%" />
+          ${Array(PS_MARK_COLS).fill(0).map(() => `<col style="width:${Math.floor(55 / PS_MARK_COLS)}%" />`).join("")}
+          <col style="width:15%" />
+        </colgroup>
+        <thead>
+          <tr><th colspan="2" style="text-align:center">${escapeHtml(s.event.name)}</th><th colspan="${PS_MARK_COLS - 1}" style="text-align:center">${escapeHtml(s.event.category)}</th><th style="text-align:center">${escapeHtml(s.event.type || "Individual")}</th></tr>
+          <tr><th style="text-align:center">Code Letter</th><th colspan="${PS_MARK_COLS}" style="text-align:center">Marks</th><th style="text-align:center">Mark out of 100</th></tr>
+        </thead>
+        <tbody>${s.draft.rows.map((row) => `<tr><td style="height:2.6rem;text-align:center">${escapeHtml(row.codeLetter)}</td>${row.marks.map((m) => `<td style="text-align:center">${escapeHtml(String(m || ""))}</td>`).join("")}<td style="text-align:center"><b>${escapeHtml(String(row.total || ""))}</b></td></tr>`).join("")}</tbody>
+      </table>
+      <div style="margin-top:2rem;display:flex;justify-content:space-between;font-size:.85rem">
+        <div>Judge's Name and Signature :</div>
+        <div>Judging Comments:</div>
+      </div>
+      <div style="border-bottom:1px solid #333;margin-top:1.5rem;width:33%"></div>`;
+
+    function renderAll() {
+      // sheets[0] is the picked programme. "Add" duplicates it as a second
+      // copy so the same programme's sheet fills both halves of one A4 page
+      // \u2014 cut it and hand one half to each of two judges. Two sheets per
+      // page (.ps-a4-pair/.ps-a4-half); a trailing odd sheet gets the top
+      // half of its own page with the bottom half left blank.
+      wrap.innerHTML = `
+        <div class="card">
+          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u2702\ufe0f &nbsp;cut here&nbsp; \u2702\ufe0f</div>` : "")).join("")}
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
+            <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
+            <button class="btn btn-ghost" id="btnPsAdd" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">+ Add (2nd judge copy)</button>
+            <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} copies)` : ""}</button>
+          </div>
+        </div>`;
+
+      document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
+
+      document.getElementById("btnPsAdd").addEventListener("click", () => {
+        const base = sheets[0];
+        sheets.push({ event: base.event, eventId: base.eventId, participants: base.participants });
+        renderAll();
+        wrap.scrollIntoView({ behavior: "smooth", block: "end" });
+      });
+
+      // One tap = one print dialog. #printOverlay has to be populated because
+      // the site's print CSS only allows #printOverlay to be visible on paper
+      // (everything else is force-hidden), but it's never left open as its own
+      // extra screen \u2014 window.print() is triggered immediately and the
+      // overlay is closed right back down, so nothing appears "in between".
+      document.getElementById("btnPsPrint").addEventListener("click", () => {
+        document.getElementById("printTitle").textContent = "Valuation Sheet";
+        const pairs = [];
+        for (let i = 0; i < sheets.length; i += 2) pairs.push([sheets[i], sheets[i + 1]]);
+        document.getElementById("printContent").innerHTML = pairs.map((pair) => `
+          <div class="ps-a4-pair">
+            <div class="ps-a4-half">${printBlock(pair[0])}</div>
+            <div class="ps-a4-half">${pair[1] ? printBlock(pair[1]) : ""}</div>
+          </div>`).join("");
+        document.getElementById("printOverlay").classList.remove("hidden");
+        window.print();
+        document.getElementById("printOverlay").classList.add("hidden");
+      });
+    }
+
+    renderAll();
+  }
+
+  /* ===== Green Room Sign: read-only preview built straight from registered
+     participants \u2014 no typing on screen at all. Code Letter and Signature
+     stay blank for the stage incharge to fill by hand at the venue. Accepts
+     one or several programmes (picked via checkboxes) so a stage manager can
+     print every Green Room Sign sheet for the day in a single print job \u2014
+     each programme gets its own full page. ===== */
+  function renderGreenRoomSheetInline(wrap, sheets) {
+    const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+    const sheetHtml = (s) => {
+      const rows = s.participants.map((p) => `<tr><td>${p.chestNo}</td><td style="text-align:left">${escapeHtml(p.name)}</td><td></td><td></td></tr>`).join("");
+      return `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+        <div>
+          <div class="muted" style="font-size:.72rem">${escapeHtml(state.hero.title)}</div>
+          <div style="font-size:1.15rem;font-weight:700">Green Room Sign Sheet</div>
+        </div>
+        <div class="muted" style="font-size:.68rem;white-space:nowrap">${dateStr}</div>
+      </div>
+      <hr class="print-hr" style="margin:.4rem 0 .75rem" />
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;font-weight:700;font-size:.85rem">
+        <div>${escapeHtml(s.event.name)}</div>
+        <div class="muted" style="font-weight:500">${escapeHtml(s.event.type || "Individual")}</div>
+        <div>${escapeHtml(s.event.category)}</div>
+      </div>
+      <div class="marks-table-wrap">
+      <table class="schedule-print-table" style="table-layout:fixed">
+        <thead><tr><th style="width:3.2rem">Chest No</th><th style="width:6.4rem">Participant</th><th style="width:4rem;white-space:normal">Code Letter</th><th style="width:6.8rem;white-space:normal">Participant's Signature</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>
+      <div style="margin-top:1.5rem;font-size:.78rem" class="muted">
+        <div>Competition Start Time:</div>
+        <div style="margin-top:.4rem">Competition End Time:</div>
+      </div>
+      <div style="text-align:center;margin-top:2rem;font-size:.78rem" class="muted">Stage incharge's Name and Signature</div>
+      <div style="border-bottom:1px solid var(--border);margin:.4rem auto 0;width:50%"></div>`;
+    };
+
+    function renderAll() {
+      wrap.innerHTML = `
+        <div class="card">
+          ${sheetHtml(sheets[0])}
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
+            <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
+            <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print</button>
+          </div>
+        </div>`;
+
+      document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
+
+      // One tap = one print dialog (see the matching comment in
+      // renderValuationSheetInline for why #printOverlay is still used
+      // internally but never left open as a visible extra step).
+      document.getElementById("btnPsPrint").addEventListener("click", () => {
+        document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
+        document.getElementById("printContent").innerHTML = `<div>${sheetHtml(sheets[0])}</div>`;
+        document.getElementById("printOverlay").classList.remove("hidden");
+        window.print();
+        document.getElementById("printOverlay").classList.add("hidden");
+      });
+    }
+
+    renderAll();
+  }
 
   function renderExportTab() {
     const cards = [
@@ -3883,6 +4112,8 @@
       </div>
       <div id="pickWrap"></div>
       <div id="sheetWrap"></div>
+      <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Auto-Checklist Tracker</div>
+      <div id="checklistWrap"></div>
       <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Sheet History</div>
       <div class="card" style="padding:.5rem .75rem"><div id="historyListWrap"></div></div>
       <button class="btn btn-primary" id="btnExportCsv" style="width:100%;margin-top:1.25rem;padding:.75rem">\u{1F4CA} Download Full Database (CSV)</button>
@@ -3896,6 +4127,7 @@
       });
     }
 
+    renderChecklist();
     renderPrintHistoryList();
     document.querySelectorAll(".export-card").forEach((b) => b.addEventListener("click", () => {
       pickEventKind = b.dataset.kind;
@@ -3903,11 +4135,10 @@
       document.querySelectorAll(".export-card").forEach((c) => c.classList.toggle("active", c === b)); // bug fix: highlight the selected card
       const pickWrap = document.getElementById("pickWrap");
 
-      // Valuation Sheet & Green Room Sign: Category bar + Programme bar,
-      // one programme at a time -- pick a category to narrow the list, then
-      // pick a single programme and Generate prints it straight away
-      // (goes through openPrintSheet, so it's logged in Sheet History too).
-      if (pickEventKind === "Valuation Sheet" || pickEventKind === "Green Room Sign") {
+      // Valuation Sheet: Category bar + Programme bar, one programme at a
+      // time \u2014 pick a category to narrow the list, pick a single
+      // programme, then Generate opens that sheet straight away.
+      if (pickEventKind === "Valuation Sheet") {
         let pickCategory = "";
         let pickedEventId = "";
 
@@ -3938,7 +4169,13 @@
 
           document.getElementById("btnGenerate").addEventListener("click", () => {
             if (!pickedEventId) return showToast("Choose a programme first");
-            openPrintSheet(pickEventKind, pickedEventId);
+            const sheetWrap = document.getElementById("sheetWrap");
+            const event = state.events.find((e) => e.id === pickedEventId);
+            event.status = "ticked";
+            const parts = event.type === "Group" ? groupAwareParticipants(pickedEventId) : state.students.filter((s) => s.events.includes(pickedEventId));
+            persist(); renderTicker(); renderChecklist();
+            renderValuationSheetInline(sheetWrap, [{ event, eventId: pickedEventId, participants: parts }]);
+            sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
           });
         }
 
@@ -3946,7 +4183,7 @@
         return;
       }
 
-      // ---- Call List: single-programme search picker ----
+      // ---- Call List and Green Room Sign: single-programme search picker ----
       let pickedEventId = "";
       pickWrap.innerHTML = `
         <div class="card">
@@ -3982,7 +4219,16 @@
       document.getElementById("btnGenerate").addEventListener("click", () => {
         const eid = pickedEventId;
         if (!eid) return showToast("Choose a programme first");
-        openPrintSheet(pickEventKind, eid);
+        if (pickEventKind === "Green Room Sign") {
+          const event = state.events.find((e) => e.id === eid);
+          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
+          const parts = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+          const sheetWrap = document.getElementById("sheetWrap");
+          renderGreenRoomSheetInline(sheetWrap, [{ event, eventId: eid, participants: parts }]);
+          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          openPrintSheet(pickEventKind, eid);
+        }
       });
     }));
     document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);
@@ -4430,12 +4676,12 @@
     if (kind === "Green Room Sign" && event.type === "Group") {
       body = `
         <div class="print-section-row"><b>${escapeHtml(event.name.toUpperCase())}</b><span>${event.type}</span><b>${event.category.toUpperCase()}</b></div>
-        <table><thead><tr><th>Team</th><th>Leader Name</th><th>Code Letter</th><th>Leader Signature</th></tr></thead><tbody>
+        <table><thead><tr><th>Chest No</th><th>Team</th><th>Leader Name</th><th>Code Letter</th><th>Leader Signature</th></tr></thead><tbody>
           ${participants.map((s) => {
             const team = state.teams.find((t) => t.id === s.team);
-            return `<tr><td>${team ? escapeHtml(team.name) : ""}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+            return `<tr><td>${s.chestNo}</td><td>${team ? escapeHtml(team.name) : ""}</td><td>${escapeHtml(s.name)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
           }).join("")}
-          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
         </tbody></table>
         <div style="margin-top:1.25rem;font-size:.78rem">
           <div style="margin-bottom:.4rem">Competition Start Time: ______________</div>
