@@ -614,14 +614,12 @@
       return;
     }
     // No overlay screen was open, so this back-press happened right on the
-    // home page \u2014 without a guard the very next back would exit the site
-    // entirely. Re-arm a boundary history entry and warn the user; only a
-    // second back-press within 2s (when exitArmed is already true) is
-    // allowed to actually leave.
+    // home page — warn the user once; the very next back-press (within 2s)
+    // is left alone so it genuinely exits the site instead of being
+    // silently absorbed by another re-armed boundary entry.
     if (!exitArmed) {
       exitArmed = true;
       showToast("Press back again to exit");
-      history.pushState({ meelaHome: true }, "", location.pathname + location.search);
       clearTimeout(exitArmTimer);
       exitArmTimer = setTimeout(() => { exitArmed = false; }, 2000);
     }
@@ -2145,6 +2143,15 @@
 
   function setActiveAdminTab(tab) {
     if (SUPER_ONLY_TABS.includes(tab) && !isSuperAdmin()) tab = "dashboard";
+    // If a student profile's back-step is still pushed but the admin left
+    // via a different tab instead of "Back to list", drop that stale entry
+    // so it doesn't silently eat a future back-press.
+    if (tab !== "students" && typeof profileScreenPushed !== "undefined" && profileScreenPushed) {
+      const idx = screenStack.indexOf(studentProfileCloseFn);
+      if (idx !== -1) screenStack.splice(idx, 1);
+      profileScreenPushed = false;
+      studentsView = { mode: "list", id: null };
+    }
     safeStorageSet(ADMIN_LAST_TAB_KEY, tab); // so a reload lands back on this same tab instead of the home page
     document.querySelectorAll(".admin-menu-link").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
     document.querySelectorAll(".side-link[data-admin-tab]").forEach((l) => l.classList.toggle("active", l.dataset.adminTab === tab));
@@ -2221,6 +2228,7 @@
     screenStack.length = 0;
     currentAdminTab = null;
     adminReturnPushed = false;
+    if (typeof profileScreenPushed !== "undefined") profileScreenPushed = false;
     history.replaceState(null, "", location.pathname + location.search);
     window.scrollTo(0, 0);
   }
@@ -3549,6 +3557,17 @@
   /* ---- Students / Participants tab ---- */
   let studentForm = { name: "", cls: "", phone: "", gender: "Boys", category: state.categories[0], team: state.teams[0] ? state.teams[0].id : "", events: [] };
   let studentsView = { mode: "list", id: null };
+  // The student profile subview used to be a plain in-memory toggle with no
+  // history entry of its own — so hardware back / swipe (which only know
+  // about screenStack) skipped straight past it to whatever was already on
+  // the stack (the Admin Dashboard "return" step), instead of landing back
+  // on the Students list. Now it gets its own tracked back-navigation step.
+  let profileScreenPushed = false;
+  function studentProfileCloseFn() {
+    profileScreenPushed = false;
+    studentsView = { mode: "list", id: null };
+    renderStudentsTab();
+  }
 
   function eligibleEventsFor(gender, category) {
     return state.events.filter((e) => e.category === category && (e.gender === gender || e.gender === "General"));
@@ -3662,6 +3681,7 @@
       if (e.target.closest(".history-dots-wrap")) return;
       studentsView = { mode: "profile", id: card.dataset.open };
       renderStudentsTab();
+      if (!profileScreenPushed) { profileScreenPushed = true; pushScreen(studentProfileCloseFn); }
     }));
     document.querySelectorAll("#studentsListWrap .history-dots-btn").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -3735,7 +3755,9 @@
     // Firebase until "Save Changes" is pressed.
     let draft = { name: student.name, cls: student.cls || "", phone: student.phone || "", gender: student.gender, category: student.category, team: student.team, events: [...student.events] };
 
-    document.getElementById("btnProfileBack").addEventListener("click", () => { studentsView = { mode: "list", id: null }; renderStudentsTab(); });
+    document.getElementById("btnProfileBack").addEventListener("click", () => {
+      if (profileScreenPushed) closeTopScreen(); else studentProfileCloseFn();
+    });
     document.getElementById("pName").addEventListener("input", (e) => { draft.name = e.target.value; });
     document.getElementById("pClass").addEventListener("input", (e) => { draft.cls = e.target.value; });
     document.getElementById("pPhone").addEventListener("input", (e) => { draft.phone = e.target.value; });
@@ -3777,8 +3799,7 @@
       state.students = state.students.filter((s) => s.id !== studentId);
       persist(); renderCounters();
       showToast("Student deleted");
-      studentsView = { mode: "list", id: null };
-      renderStudentsTab();
+      if (profileScreenPushed) closeTopScreen(); else studentProfileCloseFn();
     });
   }
 
@@ -4112,8 +4133,6 @@
       </div>
       <div id="pickWrap"></div>
       <div id="sheetWrap"></div>
-      <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Auto-Checklist Tracker</div>
-      <div id="checklistWrap"></div>
       <div style="font-size:.85rem;font-weight:500;color:var(--gold-light);margin:1.25rem 0 .5rem">Sheet History</div>
       <div class="card" style="padding:.5rem .75rem"><div id="historyListWrap"></div></div>
       <button class="btn btn-primary" id="btnExportCsv" style="width:100%;margin-top:1.25rem;padding:.75rem">\u{1F4CA} Download Full Database (CSV)</button>
@@ -4127,7 +4146,6 @@
       });
     }
 
-    renderChecklist();
     renderPrintHistoryList();
     document.querySelectorAll(".export-card").forEach((b) => b.addEventListener("click", () => {
       pickEventKind = b.dataset.kind;
@@ -4184,10 +4202,18 @@
       }
 
       // ---- Call List and Green Room Sign: single-programme search picker ----
+      // Both Call List and Green Room Sign get a Category dropdown above the
+      // search box to narrow the list first.
       let pickedEventId = "";
+      let pickCategory = "";
       pickWrap.innerHTML = `
         <div class="card">
           <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select programme for "${pickEventKind}"</div>
+          <div class="field-label" style="margin-bottom:.3rem">Category</div>
+          <select id="pickCategoryFilter" class="input" style="font-size:.78rem;margin-bottom:.6rem">
+            <option value="">All categories...</option>
+            ${state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join("")}
+          </select>
           <div style="position:relative">
             <input id="pickEventSearch" class="input" placeholder="Tap to search programme or category..." autocomplete="off" style="width:100%" />
             <div id="pickEventDropdown" class="autocomplete-dropdown hidden"></div>
@@ -4199,7 +4225,9 @@
       const dropdown = document.getElementById("pickEventDropdown");
       function showDropdown(q) {
         const query = (q || "").trim().toLowerCase();
-        const matches = state.events.filter((e) => !query || (e.name + " " + e.category).toLowerCase().includes(query));
+        const matches = state.events
+          .filter((e) => !pickCategory || e.category === pickCategory)
+          .filter((e) => !query || (e.name + " " + e.category).toLowerCase().includes(query));
         dropdown.innerHTML = matches.length
           ? matches.map((e) => `<div class="autocomplete-item" data-id="${e.id}" data-name="${escapeAttr(e.name)}">${escapeHtml(e.name)} <span class="muted">(${escapeHtml(e.category)})</span></div>`).join("")
           : `<div class="autocomplete-empty">No programme found</div>`;
@@ -4210,6 +4238,9 @@
           dropdown.classList.add("hidden");
         }));
       }
+      document.getElementById("pickCategoryFilter").addEventListener("change", (e) => {
+        pickCategory = e.target.value; pickedEventId = ""; searchInput.value = ""; showDropdown("");
+      });
       searchInput.addEventListener("focus", () => showDropdown(searchInput.value));
       searchInput.addEventListener("input", () => { pickedEventId = ""; showDropdown(searchInput.value); });
       document.addEventListener("click", (e) => {
