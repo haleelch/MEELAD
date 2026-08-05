@@ -450,6 +450,15 @@ body.no-scroll .bottom-nav{display:none;}
 @media print{
   .ps-cut-line-print{display:block;text-align:center;font-size:.75rem;color:#555;margin:.9rem 0;letter-spacing:.05em;}
 }
+/* Valuation Sheet print pairing: two sheets share one A4 page, split exactly
+   at the vertical center with a dashed cut line on the boundary. */
+@media print{
+  .ps-a4-pair{height:273mm;display:flex;flex-direction:column;}
+  .ps-a4-pair + .ps-a4-pair{break-before:page;}
+  .ps-a4-half{flex:1 1 0;min-height:0;overflow:hidden;box-sizing:border-box;}
+  .ps-a4-half:first-child{border-bottom:1px dashed #999;padding-bottom:.5rem;}
+  .ps-a4-half:last-child{padding-top:.5rem;}
+}
 .print-sheet{max-width:560px;background:#fff;color:#111;max-height:85vh;display:flex;flex-direction:column;}
 .print-sheet-bar{display:flex;justify-content:space-between;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #e3dcc5;}
 .print-sheet-bar span{font-size:.8rem;font-weight:600;color:var(--emerald-deep);}
@@ -717,10 +726,10 @@ html{scroll-behavior:smooth;}
 .loader-box{width:65%;max-width:230px;aspect-ratio:1.5/1;position:relative;}
 .loader-svg{width:100%;height:100%;}
 .rect-path{
-  fill:none;stroke:url(#gradient);stroke-width:3;stroke-linecap:round;
+  fill:none;stroke:#FAF9F6;stroke-width:3;stroke-linecap:round;
   stroke-dasharray:1000;stroke-dashoffset:1000;
   animation:drawRect 1.2s ease 2;
-  filter:drop-shadow(0 0 8px #00ff88) drop-shadow(0 0 15px #ff0066);
+  filter:drop-shadow(0 0 8px rgba(250,249,246,.65)) drop-shadow(0 0 15px rgba(250,249,246,.35));
 }
 .arrow{
   fill:#ffaa00;opacity:0;
@@ -729,8 +738,8 @@ html{scroll-behavior:smooth;}
 }
 .arabic-text{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  font-family:'Amiri',serif;font-size:32px;color:#ff0000;font-weight:700;opacity:0;
-  text-shadow:0 0 10px #ff0000,0 0 20px #ff0000;
+  font-family:'Playfair Display',serif;font-size:26px;letter-spacing:.06em;color:#FAF9F6;font-weight:700;opacity:0;white-space:nowrap;
+  text-shadow:0 0 10px rgba(250,249,246,.6),0 0 20px rgba(250,249,246,.35);
   animation:glowText 1s ease 0s forwards;
 }
 @keyframes drawRect{to{stroke-dashoffset:0;}}

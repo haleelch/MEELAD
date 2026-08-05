@@ -2122,6 +2122,7 @@
   const adminScreen = document.getElementById("adminScreen");
   const ADMIN_SESSION_KEY = "meelad_admin_session";
   const ADMIN_ROLE_KEY = "meelad_admin_role";
+  const ADMIN_LAST_TAB_KEY = "meelad_admin_last_tab";
   function safeStorageGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function safeStorageSet(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* ignore */ } }
   function safeStorageRemove(key) { try { localStorage.removeItem(key); } catch (e) { /* ignore */ } }
@@ -2135,6 +2136,7 @@
 
   function setActiveAdminTab(tab) {
     if (SUPER_ONLY_TABS.includes(tab) && !isSuperAdmin()) tab = "dashboard";
+    safeStorageSet(ADMIN_LAST_TAB_KEY, tab); // so a reload lands back on this same tab instead of the home page
     document.querySelectorAll(".admin-menu-link").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
     document.querySelectorAll(".side-link[data-admin-tab]").forEach((l) => l.classList.toggle("active", l.dataset.adminTab === tab));
     renderAdminTab(tab);
@@ -2222,6 +2224,11 @@
     superOnly.forEach((el) => { el.style.display = isSuperAdmin() ? "" : "none"; });
   }
   if (adminAuthed) applyRoleVisibility();
+  // Reload while logged in used to always drop back to the public home
+  // page, losing whatever admin tab was open. Session is already checked
+  // above (adminAuthed) — if it's valid, re-enter the admin panel straight
+  // to the last tab that was active instead of showing the starting page.
+  if (adminAuthed) openAdminEntry(safeStorageGet(ADMIN_LAST_TAB_KEY) || "dashboard");
 
   /* ---------------- admin: portrait drawer menu ---------------- */
   const adminSidebar = document.getElementById("adminSidebar");
@@ -3881,6 +3888,7 @@
      one print job \u2014 each still gets its own full page. ===== */
   function renderValuationSheetInline(wrap, event, eventId, participants) {
     const sheets = [{ event, eventId, participants }];
+    let selectedCategory = "";
 
     const rowHtml = (row) => `
       <tr>
@@ -3960,22 +3968,47 @@
 
     function renderAll() {
       const otherEvents = state.events.filter((e) => !sheets.some((s) => s.eventId === e.id));
+      const filteredEvents = selectedCategory ? otherEvents.filter((e) => e.category === selectedCategory) : otherEvents;
       wrap.innerHTML = `
         <div class="card">
-          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u2702\ufe0f &nbsp;cut here&nbsp; \u2702\ufe0f</div>` : "")).join("")}
-          ${otherEvents.length ? `
-          <div style="display:flex;gap:.5rem;margin-top:1rem;align-items:center">
+          <div class="field-label" style="margin-bottom:.3rem">Categories</div>
+          <select id="psCategoryFilter" class="input" style="font-size:.78rem">
+            <option value="">All categories...</option>
+            ${state.categories.map((c) => `<option value="${escapeAttr(c)}" ${c === selectedCategory ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+          </select>
+          <div class="muted" style="font-size:.68rem;margin:.3rem 0 .9rem">Leave empty to include all</div>
+
+          <div class="field-label" style="margin-bottom:.3rem">Competitions</div>
+          <div class="judge-chips">
+            ${sheets.map((s) => `<span class="judge-chip">${escapeHtml(s.event.name)} <button type="button" data-remove-sheet="${s.eventId}">&times;</button></span>`).join("") || '<span class="muted" style="font-size:.72rem">None selected yet</span>'}
+          </div>
+          ${filteredEvents.length ? `
+          <div style="display:flex;gap:.5rem;align-items:center">
             <select id="psAddEventSel" class="input" style="flex:1;font-size:.78rem">
-              <option value="">+ Add another programme to this print job...</option>
-              ${otherEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+              <option value="">+ Select a programme to add...</option>
+              ${filteredEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
             </select>
             <button class="btn btn-ghost" id="btnPsAddSheet" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
           </div>` : ""}
+          <div class="muted" style="font-size:.68rem;margin:.3rem 0 1.1rem">Leave empty to include all</div>
+
+          ${sheets.map((s, i) => previewBlock(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u2702\ufe0f &nbsp;cut here&nbsp; \u2702\ufe0f</div>` : "")).join("")}
           <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
             <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
             <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} sheets)` : ""}</button>
           </div>
         </div>`;
+
+      document.getElementById("psCategoryFilter").addEventListener("change", (e) => {
+        selectedCategory = e.target.value;
+        renderAll();
+      });
+
+      document.querySelectorAll("[data-remove-sheet]").forEach((btn) => btn.addEventListener("click", () => {
+        const idx = sheets.findIndex((s) => s.eventId === btn.dataset.removeSheet);
+        if (idx > -1) sheets.splice(idx, 1);
+        renderAll();
+      }));
 
       document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
 
@@ -3994,14 +4027,20 @@
       // (everything else is force-hidden), but it's never left open as its own
       // extra screen \u2014 window.print() is triggered immediately and the
       // overlay is closed right back down, so nothing appears "in between".
-      // Unlike Green Room Sign, Valuation Sheet sheets are meant to be short
-      // enough to fit two per A4 page, cut apart afterwards \u2014 so no
-      // break-before:page here, just a dashed cut-line between them.
+      // Two sheets share one A4 page, split exactly at the vertical center
+      // (.ps-a4-pair/.ps-a4-half, each flexed to exactly half the printable
+      // page height) with a dashed cut line right on the center boundary; a
+      // trailing odd sheet gets the top half of its own page with the bottom
+      // half left blank.
       document.getElementById("btnPsPrint").addEventListener("click", () => {
         document.getElementById("printTitle").textContent = "Valuation Sheet";
-        document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
-          `<div>${printBlock(s)}</div>${i < sheets.length - 1 ? `<div class="ps-cut-line-print">\u2702 - - - - - - - - - - - - - - - - - - - - - - - - - - - - \u2702</div>` : ""}`
-        ).join("");
+        const pairs = [];
+        for (let i = 0; i < sheets.length; i += 2) pairs.push([sheets[i], sheets[i + 1]]);
+        document.getElementById("printContent").innerHTML = pairs.map((pair) => `
+          <div class="ps-a4-pair">
+            <div class="ps-a4-half">${printBlock(pair[0])}</div>
+            <div class="ps-a4-half">${pair[1] ? printBlock(pair[1]) : ""}</div>
+          </div>`).join("");
         document.getElementById("printOverlay").classList.remove("hidden");
         window.print();
         document.getElementById("printOverlay").classList.add("hidden");
@@ -4018,6 +4057,7 @@
      print every Green Room Sign sheet for the day in a single print job \u2014
      each programme gets its own full page. ===== */
   function renderGreenRoomSheetInline(wrap, sheets) {
+    let selectedCategory = "";
     const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
     const sheetHtml = (s) => {
@@ -4052,22 +4092,47 @@
 
     function renderAll() {
       const otherEvents = state.events.filter((e) => !sheets.some((s) => s.eventId === e.id));
+      const filteredEvents = selectedCategory ? otherEvents.filter((e) => e.category === selectedCategory) : otherEvents;
       wrap.innerHTML = `
         <div class="card">
-          ${sheets.map((s, i) => sheetHtml(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u{1F4C4} next: ${escapeHtml(sheets[i + 1].event.name)}</div>` : "")).join("")}
-          ${otherEvents.length ? `
-          <div style="display:flex;gap:.5rem;margin-top:1rem;align-items:center">
+          <div class="field-label" style="margin-bottom:.3rem">Categories</div>
+          <select id="psCategoryFilter" class="input" style="font-size:.78rem">
+            <option value="">All categories...</option>
+            ${state.categories.map((c) => `<option value="${escapeAttr(c)}" ${c === selectedCategory ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+          </select>
+          <div class="muted" style="font-size:.68rem;margin:.3rem 0 .9rem">Leave empty to include all</div>
+
+          <div class="field-label" style="margin-bottom:.3rem">Competitions</div>
+          <div class="judge-chips">
+            ${sheets.map((s) => `<span class="judge-chip">${escapeHtml(s.event.name)} <button type="button" data-remove-sheet="${s.eventId}">&times;</button></span>`).join("") || '<span class="muted" style="font-size:.72rem">None selected yet</span>'}
+          </div>
+          ${filteredEvents.length ? `
+          <div style="display:flex;gap:.5rem;align-items:center">
             <select id="psAddEventSel" class="input" style="flex:1;font-size:.78rem">
-              <option value="">+ Add another programme to this print job...</option>
-              ${otherEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+              <option value="">+ Select a programme to add...</option>
+              ${filteredEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
             </select>
             <button class="btn btn-ghost" id="btnPsAddSheet" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
           </div>` : ""}
+          <div class="muted" style="font-size:.68rem;margin:.3rem 0 1.1rem">Leave empty to include all</div>
+
+          ${sheets.map((s, i) => sheetHtml(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u{1F4C4} next: ${escapeHtml(sheets[i + 1].event.name)}</div>` : "")).join("")}
           <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
             <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
             <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} sheets)` : ""}</button>
           </div>
         </div>`;
+
+      document.getElementById("psCategoryFilter").addEventListener("change", (e) => {
+        selectedCategory = e.target.value;
+        renderAll();
+      });
+
+      document.querySelectorAll("[data-remove-sheet]").forEach((btn) => btn.addEventListener("click", () => {
+        const idx = sheets.findIndex((s) => s.eventId === btn.dataset.removeSheet);
+        if (idx > -1) sheets.splice(idx, 1);
+        renderAll();
+      }));
 
       document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
 
