@@ -4062,7 +4062,6 @@
      print every Green Room Sign sheet for the day in a single print job \u2014
      each programme gets its own full page. ===== */
   function renderGreenRoomSheetInline(wrap, sheets) {
-    let selectedCategory = "";
     const dateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
     const sheetHtml = (s) => {
@@ -4096,75 +4095,23 @@
     };
 
     function renderAll() {
-      const otherEvents = state.events.filter((e) => !sheets.some((s) => s.eventId === e.id));
-      const filteredEvents = selectedCategory ? otherEvents.filter((e) => e.category === selectedCategory) : otherEvents;
       wrap.innerHTML = `
         <div class="card">
-          <div class="field-label" style="margin-bottom:.3rem">Categories</div>
-          <select id="psCategoryFilter" class="input" style="font-size:.78rem">
-            <option value="">All categories...</option>
-            ${state.categories.map((c) => `<option value="${escapeAttr(c)}" ${c === selectedCategory ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
-          </select>
-          <div class="muted" style="font-size:.68rem;margin:.3rem 0 .9rem">Leave empty to include all</div>
-
-          <div class="field-label" style="margin-bottom:.3rem">Competitions</div>
-          <div class="judge-chips">
-            ${sheets.map((s) => `<span class="judge-chip">${escapeHtml(s.event.name)} <button type="button" data-remove-sheet="${s.eventId}">&times;</button></span>`).join("") || '<span class="muted" style="font-size:.72rem">None selected yet</span>'}
-          </div>
-          ${filteredEvents.length ? `
-          <div style="display:flex;gap:.5rem;align-items:center">
-            <select id="psAddEventSel" class="input" style="flex:1;font-size:.78rem">
-              <option value="">+ Select a programme to add...</option>
-              ${filteredEvents.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
-            </select>
-            <button class="btn btn-ghost" id="btnPsAddSheet" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
-          </div>` : ""}
-          <div class="muted" style="font-size:.68rem;margin:.3rem 0 1.1rem">Leave empty to include all</div>
-
-          ${sheets.map((s, i) => sheetHtml(s) + (i < sheets.length - 1 ? `<div class="ps-cut-line">\u{1F4C4} next: ${escapeHtml(sheets[i + 1].event.name)}</div>` : "")).join("")}
+          ${sheetHtml(sheets[0])}
           <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
             <button class="btn btn-ghost" id="btnPsClose" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem">Cancel</button>
-            <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print${sheets.length > 1 ? ` (${sheets.length} sheets)` : ""}</button>
+            <button class="btn btn-primary" id="btnPsPrint" style="flex:none;width:auto;padding:.4rem .9rem;font-size:.78rem;margin-left:auto">\u{1F5A8} Print</button>
           </div>
         </div>`;
 
-      document.getElementById("psCategoryFilter").addEventListener("change", (e) => {
-        selectedCategory = e.target.value;
-        renderAll();
-      });
-
-      document.querySelectorAll("[data-remove-sheet]").forEach((btn) => btn.addEventListener("click", () => {
-        const idx = sheets.findIndex((s) => s.eventId === btn.dataset.removeSheet);
-        if (idx > -1) sheets.splice(idx, 1);
-        renderAll();
-      }));
-
       document.getElementById("btnPsClose").addEventListener("click", () => { wrap.innerHTML = ""; });
-
-      const addBtn = document.getElementById("btnPsAddSheet");
-      if (addBtn) addBtn.addEventListener("click", () => {
-        const eid = document.getElementById("psAddEventSel").value;
-        if (!eid) return showToast("Choose a programme first");
-        const ev = state.events.find((e) => e.id === eid);
-        ev.status = "ticked";
-        const parts = ev.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
-        sheets.push({ event: ev, eventId: eid, participants: parts });
-        persist(); renderTicker(); renderChecklist();
-        renderAll();
-      });
 
       // One tap = one print dialog (see the matching comment in
       // renderValuationSheetInline for why #printOverlay is still used
-      // internally but never left open as a visible extra step). Each sheet
-      // after the first gets break-before:page (+ the older page-break-before
-      // alias for broader browser/PDF-export support) so every programme
-      // prints on its own separate A4 page in the same job — never two
-      // programmes sharing one sheet.
+      // internally but never left open as a visible extra step).
       document.getElementById("btnPsPrint").addEventListener("click", () => {
         document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
-        document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
-          `<div${i > 0 ? ' style="break-before:page;page-break-before:always"' : ""}>${sheetHtml(s)}</div>`
-        ).join("");
+        document.getElementById("printContent").innerHTML = `<div>${sheetHtml(sheets[0])}</div>`;
         document.getElementById("printOverlay").classList.remove("hidden");
         window.print();
         document.getElementById("printOverlay").classList.add("hidden");
@@ -4221,7 +4168,7 @@
       // comes first, before anything is generated \u2014 pick a category to
       // narrow the list, add one or more programmes as chips, then Generate
       // opens all of them at once, ready for a single print job.
-      if (pickEventKind === "Valuation Sheet" || pickEventKind === "Green Room Sign") {
+      if (pickEventKind === "Valuation Sheet") {
         let pickCategory = "";
         let pickedIds = [];
 
@@ -4283,7 +4230,6 @@
             });
             persist(); renderTicker(); renderChecklist();
             if (pickEventKind === "Valuation Sheet") renderValuationSheetInline(sheetWrap, builtSheets);
-            else renderGreenRoomSheetInline(sheetWrap, builtSheets);
             sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
           });
         }
@@ -4292,7 +4238,7 @@
         return;
       }
 
-      // ---- Call List and anything else: unchanged single-programme search picker ----
+      // ---- Call List and Green Room Sign: single-programme search picker ----
       let pickedEventId = "";
       pickWrap.innerHTML = `
         <div class="card">
@@ -4328,7 +4274,16 @@
       document.getElementById("btnGenerate").addEventListener("click", () => {
         const eid = pickedEventId;
         if (!eid) return showToast("Choose a programme first");
-        openPrintSheet(pickEventKind, eid);
+        if (pickEventKind === "Green Room Sign") {
+          const event = state.events.find((e) => e.id === eid);
+          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
+          const parts = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+          const sheetWrap = document.getElementById("sheetWrap");
+          renderGreenRoomSheetInline(sheetWrap, [{ event, eventId: eid, participants: parts }]);
+          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          openPrintSheet(pickEventKind, eid);
+        }
       });
     }));
     document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);

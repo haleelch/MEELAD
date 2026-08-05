@@ -555,9 +555,9 @@ body.no-scroll .bottom-nav{display:none;}
   body > *{display:none !important;}
   body > #printOverlay{display:block !important;}
   @page{size:A4;margin:12mm;}
-  #printOverlay.modal-overlay{position:static !important;background:none !important;padding:0 !important;inset:auto !important;}
-  .print-sheet{max-width:none !important;width:100% !important;max-height:none !important;box-shadow:none !important;}
-  .print-content{overflow:visible !important;padding:0 !important;}
+  #printOverlay.modal-overlay{position:static !important;background:none !important;padding:0 !important;inset:auto !important;display:block !important;}
+  .print-sheet{max-width:none !important;width:100% !important;max-height:none !important;box-shadow:none !important;overflow:visible !important;}
+  .print-content{overflow:visible !important;padding:4mm 0 0 !important;}
   .print-content table{page-break-inside:auto;}
   .print-content tr{page-break-inside:avoid;page-break-after:auto;}
   .print-masthead,.print-heading,.print-section-row{page-break-after:avoid;}
