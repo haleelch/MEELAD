@@ -738,7 +738,8 @@ html{scroll-behavior:smooth;}
 }
 .arabic-text{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  font-family:'Playfair Display',serif;font-size:26px;letter-spacing:.06em;color:#FAF9F6;font-weight:700;opacity:0;white-space:nowrap;
+  width:82%;text-align:center;
+  font-family:'Playfair Display',serif;font-size:15px;letter-spacing:.03em;color:#FAF9F6;font-weight:700;opacity:0;
   text-shadow:0 0 10px rgba(250,249,246,.6),0 0 20px rgba(250,249,246,.35);
   animation:glowText 1s ease 0s forwards;
 }

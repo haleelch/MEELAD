@@ -2228,7 +2228,11 @@
   // page, losing whatever admin tab was open. Session is already checked
   // above (adminAuthed) — if it's valid, re-enter the admin panel straight
   // to the last tab that was active instead of showing the starting page.
-  if (adminAuthed) openAdminEntry(safeStorageGet(ADMIN_LAST_TAB_KEY) || "dashboard");
+  // Deferred with setTimeout so it runs after the rest of this script
+  // (further below, e.g. other const-bound elements/listeners) has finished
+  // executing — calling it inline here broke the whole page load because it
+  // reached into things not set up yet.
+  if (adminAuthed) setTimeout(() => openAdminEntry(safeStorageGet(ADMIN_LAST_TAB_KEY) || "dashboard"), 0);
 
   /* ---------------- admin: portrait drawer menu ---------------- */
   const adminSidebar = document.getElementById("adminSidebar");
