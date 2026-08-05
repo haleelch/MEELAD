@@ -3888,10 +3888,11 @@
   }
 
   /* ===== Valuation Sheet: blind judging, Code Letter + 3 marks + total out of 100.
-     "Add Another Sheet" lets the admin queue up several programmes' sheets into
-     one print job \u2014 each still gets its own full page. ===== */
-  function renderValuationSheetInline(wrap, event, eventId, participants) {
-    const sheets = [{ event, eventId, participants }];
+     Accepts an array of initial sheets (one per selected programme) so the
+     Category+Competitions picker can hand over several at once; "Add Another
+     Sheet" below still lets more be queued into the same print job. ===== */
+  function renderValuationSheetInline(wrap, initialSheets) {
+    const sheets = initialSheets.slice();
     let selectedCategory = "";
 
     const rowHtml = (row) => `
@@ -4155,12 +4156,14 @@
       // One tap = one print dialog (see the matching comment in
       // renderValuationSheetInline for why #printOverlay is still used
       // internally but never left open as a visible extra step). Each sheet
-      // after the first gets break-before:page so every programme prints on
-      // its own page in the same job.
+      // after the first gets break-before:page (+ the older page-break-before
+      // alias for broader browser/PDF-export support) so every programme
+      // prints on its own separate A4 page in the same job — never two
+      // programmes sharing one sheet.
       document.getElementById("btnPsPrint").addEventListener("click", () => {
         document.getElementById("printTitle").textContent = "Green Room Sign Sheet";
         document.getElementById("printContent").innerHTML = sheets.map((s, i) =>
-          `<div${i > 0 ? ' style="break-before:page"' : ""}>${sheetHtml(s)}</div>`
+          `<div${i > 0 ? ' style="break-before:page;page-break-before:always"' : ""}>${sheetHtml(s)}</div>`
         ).join("");
         document.getElementById("printOverlay").classList.remove("hidden");
         window.print();
@@ -4212,8 +4215,86 @@
       pickEventKind = b.dataset.kind;
       document.getElementById("sheetWrap").innerHTML = "";
       document.querySelectorAll(".export-card").forEach((c) => c.classList.toggle("active", c === b)); // bug fix: highlight the selected card
+      const pickWrap = document.getElementById("pickWrap");
+
+      // Valuation Sheet & Green Room Sign: Category + Competitions picker
+      // comes first, before anything is generated \u2014 pick a category to
+      // narrow the list, add one or more programmes as chips, then Generate
+      // opens all of them at once, ready for a single print job.
+      if (pickEventKind === "Valuation Sheet" || pickEventKind === "Green Room Sign") {
+        let pickCategory = "";
+        let pickedIds = [];
+
+        function renderPicker() {
+          const available = state.events.filter((e) => !pickedIds.includes(e.id) && (!pickCategory || e.category === pickCategory));
+          pickWrap.innerHTML = `
+            <div class="card">
+              <div class="muted" style="font-size:.72rem;margin-bottom:.6rem">Select programme(s) for "${pickEventKind}"</div>
+              <div class="field-label" style="margin-bottom:.3rem">Categories</div>
+              <select id="pickCategoryFilter" class="input" style="font-size:.78rem">
+                <option value="">All categories...</option>
+                ${state.categories.map((c) => `<option value="${escapeAttr(c)}" ${c === pickCategory ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+              </select>
+              <div class="muted" style="font-size:.68rem;margin:.3rem 0 .9rem">Leave empty to include all</div>
+
+              <div class="field-label" style="margin-bottom:.3rem">Competitions</div>
+              <div class="judge-chips">
+                ${pickedIds.map((id) => {
+                  const e = state.events.find((ev) => ev.id === id);
+                  return e ? `<span class="judge-chip">${escapeHtml(e.name)} <button type="button" data-remove-pick="${id}">&times;</button></span>` : "";
+                }).join("") || '<span class="muted" style="font-size:.72rem">None selected yet</span>'}
+              </div>
+              ${available.length ? `
+              <div style="display:flex;gap:.5rem;align-items:center">
+                <select id="pickEventSel" class="input" style="flex:1;font-size:.78rem">
+                  <option value="">+ Select a programme to add...</option>
+                  ${available.map((e) => `<option value="${e.id}">${escapeHtml(e.name)} (${e.category})</option>`).join("")}
+                </select>
+                <button class="btn btn-ghost" id="btnPickAdd" style="flex:none;width:auto;padding:.4rem .8rem;font-size:.78rem">Add</button>
+              </div>` : ""}
+              <div class="muted" style="font-size:.68rem;margin:.3rem 0 1.1rem">Leave empty to include all</div>
+
+              <button class="btn btn-primary" id="btnGenerate" style="width:100%">Generate${pickedIds.length > 1 ? ` (${pickedIds.length} sheets)` : ""}</button>
+            </div>`;
+
+          document.getElementById("pickCategoryFilter").addEventListener("change", (e) => { pickCategory = e.target.value; renderPicker(); });
+
+          pickWrap.querySelectorAll("[data-remove-pick]").forEach((btn) => btn.addEventListener("click", () => {
+            pickedIds = pickedIds.filter((id) => id !== btn.dataset.removePick);
+            renderPicker();
+          }));
+
+          const addBtn = document.getElementById("btnPickAdd");
+          if (addBtn) addBtn.addEventListener("click", () => {
+            const eid = document.getElementById("pickEventSel").value;
+            if (!eid) return showToast("Choose a programme first");
+            pickedIds.push(eid);
+            renderPicker();
+          });
+
+          document.getElementById("btnGenerate").addEventListener("click", () => {
+            if (!pickedIds.length) return showToast("Choose at least one programme first");
+            const sheetWrap = document.getElementById("sheetWrap");
+            const builtSheets = pickedIds.map((eid) => {
+              const event = state.events.find((e) => e.id === eid);
+              event.status = "ticked";
+              const parts = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
+              return { event, eventId: eid, participants: parts };
+            });
+            persist(); renderTicker(); renderChecklist();
+            if (pickEventKind === "Valuation Sheet") renderValuationSheetInline(sheetWrap, builtSheets);
+            else renderGreenRoomSheetInline(sheetWrap, builtSheets);
+            sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        }
+
+        renderPicker();
+        return;
+      }
+
+      // ---- Call List and anything else: unchanged single-programme search picker ----
       let pickedEventId = "";
-      document.getElementById("pickWrap").innerHTML = `
+      pickWrap.innerHTML = `
         <div class="card">
           <div class="muted" style="font-size:.72rem;margin-bottom:.5rem">Select programme for "${pickEventKind}"</div>
           <div style="position:relative">
@@ -4247,21 +4328,7 @@
       document.getElementById("btnGenerate").addEventListener("click", () => {
         const eid = pickedEventId;
         if (!eid) return showToast("Choose a programme first");
-        const event = state.events.find((e) => e.id === eid);
-        const sheetWrap = document.getElementById("sheetWrap");
-        if (pickEventKind === "Valuation Sheet") {
-          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
-          const valParticipants = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
-          renderValuationSheetInline(sheetWrap, event, eid, valParticipants);
-          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else if (pickEventKind === "Green Room Sign") {
-          event.status = "ticked"; persist(); renderTicker(); renderChecklist();
-          const grsParticipants = event.type === "Group" ? groupAwareParticipants(eid) : state.students.filter((s) => s.events.includes(eid));
-          renderGreenRoomSheetInline(sheetWrap, [{ event, eventId: eid, participants: grsParticipants }]);
-          sheetWrap.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else {
-          openPrintSheet(pickEventKind, eid);
-        }
+        openPrintSheet(pickEventKind, eid);
       });
     }));
     document.getElementById("btnExportCsv").addEventListener("click", downloadCsv);
